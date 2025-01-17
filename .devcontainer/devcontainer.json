@@ -16,7 +16,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"Vue.volar"
+				"Vue.volar",
+				"mutantdino.resourcemonitor"
 			]
 		}
 	}
