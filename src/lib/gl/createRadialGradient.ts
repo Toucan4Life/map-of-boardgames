@@ -1,8 +1,8 @@
-// @ts-nocheck
+import { CustomLayerInterface } from 'maplibre-gl';
 import {defineProgram} from 'w-gl';
 
 
-export function createRadialGradient(layerName = 'radial-gradient') {
+export function createRadialGradient(layerName = 'radial-gradient'): CustomLayerInterface {
 
   return {
     id: layerName,

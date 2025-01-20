@@ -1,15 +1,14 @@
-// @ts-nocheck
-import maplibregl from 'maplibre-gl';
+import maplibregl, { GeoJSONSource, LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl';
 import {getPlaceLabels,  addLabelToPlaces, editLabelInPlaces} from './labelsStorage';
 import createMarkerEditor from './createDOMMarkerEditor';
 import bus from '../bus';
 
-export default function createLabelEditor(map) {
-  let places;
+export default function createLabelEditor(map : Map) {
+  let places: { type: string; features: any[]; } | undefined;
   const placeLabelLayers = ['place-country-1'];
 
   getPlaceLabels().then(loadedPlaces => {
-    map.getSource('place').setData(loadedPlaces)
+    map.getSource('place')?.setData(loadedPlaces)
     places = loadedPlaces;
   });
 
@@ -18,7 +17,7 @@ export default function createLabelEditor(map) {
     getPlaces: () => places
   }
 
-  function getContextMenuItems(e, borderOwnerId) {
+  function getContextMenuItems(e:MapMouseEvent & Object, borderOwnerId: string | number | undefined) {
     const labelFeature = map.queryRenderedFeatures(e.point, { layers: placeLabelLayers });
     let items = []
     if (labelFeature.length) {
@@ -37,8 +36,8 @@ export default function createLabelEditor(map) {
     return items;
   }
 
-  function addLabel(lngLat, borderOwnerId) {
-    const markerEditor = createMarkerEditor(map, save);
+  function addLabel(lngLat: LngLat, borderOwnerId:string | number | undefined) {
+    const markerEditor = createMarkerEditor(map, save, null);
 
     const marker = new maplibregl.Popup({closeButton: false});
     marker.setDOMContent(markerEditor.element);
@@ -47,15 +46,14 @@ export default function createLabelEditor(map) {
 
     markerEditor.setMarker(marker);
 
-    function save(value) {
-      if (!value) return;
+    function save(value: string) {
       places = addLabelToPlaces(places, value, marker.getLngLat(), map.getZoom(), borderOwnerId);
-      map.getSource('place').setData(places);
+      map.getSource('place')?.setData(places);
       bus.fire('unsaved-changes-detected', true);
     }
   }
 
-  function editLabel(lngLat, oldLabelProps) {
+  function editLabel(lngLat: LngLatLike, oldLabelProps: { [x: string]: any; name?: any; labelId?: any; }) {
     const markerEditor = createMarkerEditor(map, save, oldLabelProps.name);
 
     const marker = new maplibregl.Popup({closeButton: false});
@@ -65,9 +63,9 @@ export default function createLabelEditor(map) {
 
     markerEditor.setMarker(marker);
 
-    function save(value) {
+    function save(value: any) {
       places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom());
-      map.getSource('place').setData(places);
+      map.getSource('place')?.setData(places);
       bus.fire('unsaved-changes-detected', true);
     }
   }

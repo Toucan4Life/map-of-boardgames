@@ -1,8 +1,8 @@
-// @ts-nocheck
-import {defineProgram, InstancedAttribute, ColorAttribute} from 'w-gl';
+import { CustomLayerInterface, LayerSpecification } from 'maplibre-gl';
+import { defineProgram, InstancedAttribute, ColorAttribute } from 'w-gl';
 
 
-export function getCustomLayer(layerName = 'graph-edges') {
+export function getCustomLayer(layerName = 'graph-edges'): CustomLayerInterface {
 
   return {
     id: layerName,
@@ -37,8 +37,8 @@ void main() {
     void main() {
       gl_FragColor = vColor.abgr;
     }`,
-      attributes: { color: new ColorAttribute() },
-      instanced: {
+        attributes: { color: new ColorAttribute() },
+        instanced: {
           point: new InstancedAttribute([
             -0.5, 0, -0.5, 1, 0.5, 1, // First 2D triangle of the quad
             -0.5, 0, 0.5, 1, 0.5, 0   // Second 2D triangle of the quad
@@ -48,21 +48,21 @@ void main() {
     },
 
     render: function (gl, matrix) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        let zoom = this.map.getZoom();
-        let width = 0.00005 / zoom;
-        if (zoom >= 13.5) {
-          width = 1e-2 * (13.5 + 1) / Math.exp(13.5);
-        } else if (zoom >= 9.99851) {
-          // use exponential from here:
-          width = 1e-2 * (zoom + 1) / Math.exp(zoom);
-        }
-        this.program.draw({
-          //width: 0.00005 / zoom,
-          width,
-          modelViewProjection: matrix,
-        });
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      let zoom = this.map.getZoom();
+      let width = 0.00005 / zoom;
+      if (zoom >= 13.5) {
+        width = 1e-2 * (13.5 + 1) / Math.exp(13.5);
+      } else if (zoom >= 9.99851) {
+        // use exponential from here:
+        width = 1e-2 * (zoom + 1) / Math.exp(zoom);
+      }
+      this.program.draw({
+        //width: 0.00005 / zoom,
+        width,
+        modelViewProjection: matrix,
+      });
     },
 
     clear() {
@@ -72,6 +72,5 @@ void main() {
     addLine(lineDef) {
       this.program.add(lineDef);
     }
-};
-
+  };
 }

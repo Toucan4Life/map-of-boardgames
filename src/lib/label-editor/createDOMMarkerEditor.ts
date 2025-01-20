@@ -1,5 +1,5 @@
-// @ts-nocheck
-export default function createDOMarkerEditor(map, onSave, defaultText) {
+import { Map, Popup } from "maplibre-gl";
+export default function createDOMarkerEditor(map: Map, onSave: { (value: string): void }, defaultText: string | null) {
   const element = document.createElement('div');
   element.className = 'label-marker';
   element.innerHTML = `<form class="mini-label">
@@ -10,9 +10,12 @@ export default function createDOMarkerEditor(map, onSave, defaultText) {
   </div>
   </div>`;
 
-  if (defaultText) element.querySelector('input').value = defaultText;
+  if (defaultText) {
+    const input = element.querySelector('input');
+    if (input) input.value = defaultText
+  };
 
-  let marker; 
+  let marker: Popup;
   let startX = 0;
   let startY = 0;
   let dx = 0, dy = 0;
@@ -21,24 +24,25 @@ export default function createDOMarkerEditor(map, onSave, defaultText) {
 
   return {
     element,
-    setMarker: (newMarker) => { marker = newMarker; },
+    setMarker: (newMarker: Popup) => { marker = newMarker; },
   }
 
-  function submit(e) {
-    e.preventDefault(); 
-    onSave(element.querySelector('input').value);
+  function submit(e: Event) {
+    e.preventDefault();
+    const input = element.querySelector('input');
+    if (input) onSave(input.value);
     close();
   }
 
   function listenToEvents() {
     document.addEventListener('keydown', onKeyDown);
-    element.querySelector('form').addEventListener('submit', submit);
-    element.querySelector('.cancel').addEventListener('click', (e) => {
+    element.querySelector('form')?.addEventListener('submit', submit);
+    element.querySelector('.cancel')?.addEventListener('click', (e) => {
       e.preventDefault();
       close();
     });
 
-    element.querySelector('.accept').addEventListener('click', (e) => {
+    element.querySelector('.accept')?.addEventListener('click', (e) => {
       submit(e);
     });
 
@@ -52,7 +56,7 @@ export default function createDOMarkerEditor(map, onSave, defaultText) {
     });
   }
 
-  function onPointerMove(e) {
+  function onPointerMove(e : PointerEvent) {
     const newLngLat = map.unproject([e.clientX + dx, e.clientY + dy]);
     marker.setLngLat(newLngLat);
   }
@@ -68,7 +72,7 @@ export default function createDOMarkerEditor(map, onSave, defaultText) {
     cleanUp();
   }
 
-  function onKeyDown(e) {
+  function onKeyDown(e : KeyboardEvent) {
     if (e.key === 'Escape') {
       close();
       e.preventDefault();
