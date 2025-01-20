@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
 
 // define component props for the slider component
@@ -29,14 +29,14 @@ const { min, max, step, minValue, maxValue } = defineProps({
 const emit = defineEmits(["update:minValue", "update:maxValue"]);
 
 // define refs for the slider element and the slider values
-const slider = ref(null);
+const slider = ref<HTMLDivElement>();
 const inputMin = ref(null);
 const inputMax = ref(null);
 const sliderMinValue = ref(minValue);
 const sliderMaxValue = ref(maxValue);
 
 // function to get the percentage of a value between the min and max values
-const getPercent = (value, min, max) => {
+const getPercent = (value: number, min: number, max: number) => {
   return ((value - min) / (max - min)) * 100;
 };
 
@@ -46,9 +46,9 @@ const sliderDifference = computed(() => {
 });
 
 // function to set the css variables for width, left and right
-const setCSSProps = (left, right) => {
-  slider.value.style.setProperty("--progressLeft", `${left}%`);
-  slider.value.style.setProperty("--progressRight", `${right}%`);
+const setCSSProps = (left: number, right: number) => {
+  if (slider.value) slider.value.style.setProperty("--progressLeft", `${left}%`);
+  if (slider.value) slider.value.style.setProperty("--progressRight", `${right}%`);
 };
 
 // watchEffect to emit the updated values, and update the css variables
@@ -69,7 +69,7 @@ watchEffect(() => {
 });
 
 // validation sliderMinValue do not greater than sliderMaxValue and opposite
-const onInput = ({ target }) => {
+const onInput = ({ target }: {target:any}) => {
   if (target.name === 'min') {
     target.value > sliderMaxValue.value
       ? target.value = sliderMaxValue.value

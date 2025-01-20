@@ -1,15 +1,11 @@
-<script setup>
-import { defineEmits, onMounted, onBeforeUnmount, ref } from 'vue';
-import { getCachedCurrentUser, signOut } from '../lib/githubClient.ts';
-import bus from '../lib/bus.ts';
+<script setup lang="ts">
+import { defineEmits} from 'vue';
 
 const emit = defineEmits(['close']);
 
 function close() {
   emit('close');
 }
-
-
 
 </script>
 <template>

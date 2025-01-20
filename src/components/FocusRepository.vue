@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {defineProps, defineEmits, computed} from 'vue';
 const props = defineProps({
   vm: {
@@ -8,7 +8,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['selected', 'close']);
 
-function showDetails(repo, event) {
+function showDetails(repo:any, event:MouseEvent) {
   emit("selected", {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -21,7 +21,7 @@ function closePanel() {
   emit("close");
 }
 
-function getLink(repo) {
+function getLink(repo:any) {
   // console.log("repo : ",repo);
   // console.log("vm : ",vm);
   return 'https://boardgamegeek.com/boardgame/' + repo.id;

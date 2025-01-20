@@ -1,8 +1,8 @@
-// @ts-nocheck
+
 import './assets/main.css'
 
-let vueLoader = document.querySelector('.vue-loading');
-let mapLoader = document.querySelector('.map-loading');
+let vueLoader : HTMLElement | null  = document.querySelector('.vue-loading');
+let mapLoader : HTMLElement | null = document.querySelector('.map-loading');
 
 if (!webglSupported()) {
   document.body.innerHTML = `<div class='no-webgl'>
@@ -62,7 +62,7 @@ function webglSupported() {
   }
 }
 
-function showErrorMessage(e) {
+function showErrorMessage(e: { message: string; }) {
   document.body.innerHTML = `<div class='no-webgl'>
     <h4>Something went wrong :(</h4>
     <p>
@@ -72,7 +72,7 @@ function showErrorMessage(e) {
     The error message was: <pre class="error"></pre>
     </p>
   </div>`;
-  document.querySelector('.error').innerText = e.message;
+  (document.querySelector('.error') as HTMLElement).innerText = e.message;
 }
 
 // Print friendly message to the viewer:

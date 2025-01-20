@@ -1,16 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { defineProps, ref} from 'vue';
+import GroupViewModel from '../lib/GroupViewModel';
 
-const props = defineProps({
-  vm: {
-    type: Object,
-    required: true
-  },
-  models: {
-    type: Array,
-    required: true
-  }
-});
+interface Props {
+  vm: GroupViewModel
+  models: Array<Model>
+}
+interface Model {
+  id: string
+}
+
+const props = defineProps<Props>();
 
 const selectedModel = ref(props.models[0].id);
 
@@ -18,20 +18,20 @@ function submit() {
   props.vm.submit(selectedModel.value);
 }
 
-function getDisplayContent(message) {
+function getDisplayContent(message: { content: string | any[]; }) {
   if (message.content.length > 0) {
     return message.content;
   }
   return `Enter message here`;
 }
 
-function submitOnCmdEnter(event) {
+function submitOnCmdEnter(event : KeyboardEvent) {
   if (event.key === 'Enter' && event.metaKey) {
-    event.target.blur();
+    if (event.target) event.target.blur();
     submit();
     event.preventDefault();
   } else if (event.key === 'Escape') {
-    event.target.blur();
+    if (event.target) event.target.blur();
     event.preventDefault();
   }
 }
@@ -41,7 +41,7 @@ function cancelQuery() {
 }
 
 const vTextareaFitContentSize = {
-  beforeMount(el) {
+  beforeMount(el:any) {
     function resize() {
       el.style.height = 'auto';
       el.style.height = Math.max(48, el.scrollHeight) + 'px';
@@ -54,7 +54,7 @@ const vTextareaFitContentSize = {
       el.removeEventListener('focus', resize);
     }
   },
-  unmounted(el) {
+  unmounted(el:any) {
     el._cleanup();
   }
 }

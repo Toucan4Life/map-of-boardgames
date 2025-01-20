@@ -1,17 +1,13 @@
-<script setup>
-import { defineEmits, onMounted, onBeforeUnmount, ref } from 'vue';
-import { getCachedCurrentUser, signOut } from '../lib/githubClient.ts';
-import bus from '../lib/bus.ts';
+<script setup lang="ts">
+import { defineEmits, ref } from 'vue';
 import CustomMinMaxSlider from "./CustomMinMaxSlider.vue";
-// import MultiSelect from 'primevue/multiselect';
-import Multiselect from 'vue-multiselect'
 const emit = defineEmits(['close', 'search']);
 
 function close() {
   emit('close');
 }
 
-function search(minW, maxW, minR, maxR, minP, maxP, minPl, maxPl, pChoice) {
+function search(minW: number, maxW: number, minR: number, maxR: number, minP: number, maxP: number, minPl:  number, maxPl: number, pChoice: any) {
   // console.log(JSON.stringify({
   //   minWeight: minW, maxWeight: maxW,
   //   minRating: minR, maxRating: maxR,

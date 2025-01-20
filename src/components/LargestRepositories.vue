@@ -1,6 +1,5 @@
-<script setup>
+<script setup lang="ts">
 import { defineProps, defineEmits, computed } from 'vue';
-import ChatContainer from './ChatContainer.vue';
 const props = defineProps({
   repos: {
     type: Object,
@@ -9,7 +8,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['selected', 'close']);
 
-function showDetails(repo) {
+function showDetails(repo: any) {
   emit("selected", {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -21,7 +20,7 @@ function closePanel() {
   emit("close");
 }
 
-function getLink(repo) {
+function getLink(repo : any) {
   return 'https://boardgamegeek.com/boardgame/' + repo.id;
 }
 

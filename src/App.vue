@@ -1,3 +1,4 @@
+<!-- lang="ts" -->
 <script setup>
 import { ref, onBeforeUnmount, onBeforeMount, computed } from 'vue';
 import TypeAhead from './components/Typeahead.vue';
