@@ -54,9 +54,9 @@
 </template>
 
 <script>
-import bus from '../lib/bus.js';
-import ClickOutside from '../lib/clickOutside.js';
-import { getCurrentUser } from '../lib/githubClient';
+import bus from '../lib/bus.ts';
+import ClickOutside from '../lib/clickOutside.ts';
+import { getCurrentUser } from '../lib/githubClient.ts';
 
 export default {
   directives: { ClickOutside },

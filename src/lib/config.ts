@@ -1,3 +1,4 @@
+// @ts-nocheck
 const hostName = window.location.hostname;
 const isDev = hostName !== 'toucan4life.github.io';
 const server = isDev ? `http://${hostName}:3010/data` : 'https://Toucan4Life.github.io/graph-start/src/server/data';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const inProgressFetches = new Map();
 
 export default function dedupingFetch(url) {

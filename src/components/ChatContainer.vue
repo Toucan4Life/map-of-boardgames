@@ -1,6 +1,6 @@
 <script setup>
 import { defineProps, ref } from 'vue';
-import { getOpenAIModels, getStoredOpenAIKey, storeOpenAIKey } from '../lib/openAIClient.js';
+import { getOpenAIModels, getStoredOpenAIKey, storeOpenAIKey } from '../lib/openAIClient.ts';
 import ChatList from './ChatList.vue';
 
 const props = defineProps({

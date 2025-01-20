@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 let DOMPurify;
 let marked;
 

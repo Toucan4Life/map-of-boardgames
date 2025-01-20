@@ -1,9 +1,11 @@
+// @ts-nocheck
+
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl from "maplibre-gl";
 import bus from "./bus";
 import config from "./config";
-import { getCustomLayer } from "./gl/createLinesCollection.js";
-import downloadGroupGraph from "./downloadGroupGraph.js";
+import { getCustomLayer } from "./gl/createLinesCollection.ts";
+import downloadGroupGraph from "./downloadGroupGraph.ts";
 import getComplimentaryColor from "./getComplimentaryColor";
 import createLabelEditor from "./label-editor/createLabelEditor";
 import { createRadialGradient } from './gl/createRadialGradient';

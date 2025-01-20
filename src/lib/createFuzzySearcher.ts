@@ -1,7 +1,8 @@
+// @ts-nocheck
 import fuzzysort from 'fuzzysort';
-import log from './log.js';
-import config from './config.js';
-import dedupingFetch from './dedupingFetch.js';
+import log from './log.ts';
+import config from './config.ts';
+import dedupingFetch from './dedupingFetch.ts';
 
 const fetchedIndex = new Set();
 const seenWords = new Set();

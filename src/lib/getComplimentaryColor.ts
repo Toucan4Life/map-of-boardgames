@@ -1,3 +1,4 @@
+// @ts-nocheck
 export default function getComplimentaryColor(color, alpha = 0xaa) {
   if (typeof color === 'string') {
     if (color[0] === '#') {

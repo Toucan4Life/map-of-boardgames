@@ -1,3 +1,4 @@
+// @ts-nocheck
 import './assets/main.css'
 
 let vueLoader = document.querySelector('.vue-loading');
@@ -14,7 +15,7 @@ if (!webglSupported()) {
 } else {
   if (vueLoader) vueLoader.innerText = 'Loading Vue containers...';
   if (mapLoader) mapLoader.innerText = 'Loading Map...';
-  import( './lib/createMap.js').then(({default: createMap}) => {
+  import( './lib/createMap.ts').then(({default: createMap}) => {
     mapLoader?.remove();
     mapLoader = null;
     window.mapOwner = createMap();
@@ -38,7 +39,7 @@ if (!webglSupported()) {
     showErrorMessage(e);
   });
 
-  import( './lib/createFuzzySearcher.js').then(({default: createFuzzySearcher}) => {
+  import( './lib/createFuzzySearcher.ts').then(({default: createFuzzySearcher}) => {
     // This is kind of bad, but also make searching available in the console and easier to
     // hook with type-ahead.
     window.fuzzySearcher = createFuzzySearcher();

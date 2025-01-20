@@ -1,3 +1,5 @@
+
+// @ts-nocheck
 // import createGraph from 'ngraph.graph';
 import config from './config';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {defineProgram, InstancedAttribute, ColorAttribute} from 'w-gl';
 
 

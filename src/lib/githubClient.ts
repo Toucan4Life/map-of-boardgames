@@ -1,5 +1,6 @@
-import bus from './bus.js';
-import { getMarkdownContent } from './getMarkdownContent.js';
+// @ts-nocheck
+import bus from './bus.ts';
+import { getMarkdownContent } from './getMarkdownContent.ts';
 
 const readmeFilesFormat = [
   'README.md',       // (Markdown)

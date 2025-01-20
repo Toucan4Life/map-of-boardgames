@@ -1,7 +1,7 @@
 <script setup>
 import { defineEmits, onMounted, onBeforeUnmount, ref } from 'vue';
-import { getCachedCurrentUser, signOut } from '../lib/githubClient.js';
-import bus from '../lib/bus.js';
+import { getCachedCurrentUser, signOut } from '../lib/githubClient.ts';
+import bus from '../lib/bus.ts';
 
 const emit = defineEmits(['close']);
 

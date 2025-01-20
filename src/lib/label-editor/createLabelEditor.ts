@@ -1,3 +1,4 @@
+// @ts-nocheck
 import maplibregl from 'maplibre-gl';
 import {getPlaceLabels,  addLabelToPlaces, editLabelInPlaces} from './labelsStorage';
 import createMarkerEditor from './createDOMMarkerEditor';

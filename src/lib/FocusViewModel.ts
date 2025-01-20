@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { ref } from 'vue';
 import downloadGroupGraph from './downloadGroupGraph';
 

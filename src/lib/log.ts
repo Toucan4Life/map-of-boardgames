@@ -1,3 +1,4 @@
+// @ts-nocheck
 function log(caller, ...args) {
   const callerName = caller.name || caller;
   console.log(`%c${callerName}`, 'color: #0f0;', ...args);

@@ -1,6 +1,6 @@
 <script setup>
 import {defineProps, watch, reactive, defineEmits, ref} from 'vue';
-import {getRepoInfo} from '../lib/githubClient.js';
+import {getRepoInfo} from '../lib/githubClient.ts';
 import LoadingIcon from './LoadingIcon.vue'
 
 const props = defineProps({

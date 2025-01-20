@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 export default function createDOMarkerEditor(map, onSave, defaultText) {
   const element = document.createElement('div');
   element.className = 'label-marker';

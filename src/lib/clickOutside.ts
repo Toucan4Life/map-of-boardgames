@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Based on https://github.com/ElemeFE/element/blob/dev/src/utils/clickoutside.js
 // The MIT License (MIT), Copyright (c) 2016 ElemeFE
 const nodeList = [];

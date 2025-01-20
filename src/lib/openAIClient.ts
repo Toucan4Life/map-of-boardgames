@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 export function getStoredOpenAIKey() {
   return localStorage.getItem('openai-token') || '';
 }

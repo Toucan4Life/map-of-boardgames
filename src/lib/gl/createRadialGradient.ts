@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {defineProgram} from 'w-gl';
 
 
