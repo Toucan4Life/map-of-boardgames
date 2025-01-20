@@ -1,4 +1,3 @@
-// @ts-nocheck
 import bus from './bus.ts';
 import { getMarkdownContent } from './getMarkdownContent.ts';
 
@@ -13,15 +12,15 @@ const readmeFilesFormat = [
 ];
 
 const rawGithubUrl = 'https://raw.githubusercontent.com/';
-const headers = {Accept: 'application/vnd.github.v3+json'}
-let currentUser;
-let cachedRepositories = new Map();
+const headers = {Accept: 'application/vnd.github.v3+json', Authorization: ''}
+let currentUser: null;
+let cachedRepositories = new Map<string,any>();
 
 if (document.cookie.includes('github_token')) {
   headers['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0];
 }
 
-export function setAuthToken(token) {
+export function setAuthToken(token: string) {
   headers['Authorization'] = 'Bearer ' + token;
   // also write to cookie:
   document.cookie = 'github_token=' + token;
@@ -50,7 +49,7 @@ export function getCachedCurrentUser() {
   return currentUser;
 }
 
-export async function getRepoInfo(repoName) {
+export async function getRepoInfo(repoName: string) {
   if (cachedRepositories.has(repoName)) {
     return cachedRepositories.get(repoName);
   }

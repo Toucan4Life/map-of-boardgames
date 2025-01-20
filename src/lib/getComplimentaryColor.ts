@@ -1,5 +1,4 @@
-// @ts-nocheck
-export default function getComplimentaryColor(color, alpha = 0xaa) {
+export default function getComplimentaryColor(color: string | number, alpha = 0xaa) {
   if (typeof color === 'string') {
     if (color[0] === '#') {
       color = parseInt(color.slice(1), 16);
@@ -21,7 +20,7 @@ export default function getComplimentaryColor(color, alpha = 0xaa) {
   return (r0 << 24) | (g0 << 16) | (b0 << 8) | alpha;
 }
 
-function rgbToHsl(r, g, b) {
+function rgbToHsl(r: number, g: number, b: number) {
   r /= 255, g /= 255, b /= 255;
 
   var max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -36,7 +35,7 @@ function rgbToHsl(r, g, b) {
     switch (max) {
       case r: h = (g - b) / d + (g < b ? 6 : 0); break;
       case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      default: h = (r - g) / d + 4; break;
     }
 
     h /= 6;
@@ -45,7 +44,7 @@ function rgbToHsl(r, g, b) {
   return [ h, s, l ];
 }
 
-function hslToRgb(h, s, l) {
+function hslToRgb(h: number, s: number, l: number) {
   var r, g, b;
 
   if (s == 0) {
@@ -62,7 +61,7 @@ function hslToRgb(h, s, l) {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
-function hue2rgb(p, q, t) {
+function hue2rgb(p: number, q: number, t: number) {
   if (t < 0) t += 1;
   if (t > 1) t -= 1;
   if (t < 1/6) return p + (q - p) * 6 * t;

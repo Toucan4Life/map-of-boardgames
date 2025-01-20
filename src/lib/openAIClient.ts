@@ -1,9 +1,8 @@
-// @ts-nocheck
 export function getStoredOpenAIKey() {
   return localStorage.getItem('openai-token') || '';
 }
 
-export function storeOpenAIKey(key) {
+export function storeOpenAIKey(key: string) {
   localStorage.setItem('openai-token', key);
 }
 
@@ -14,13 +13,12 @@ export async function getOpenAIModels() {
     .then(data => {
       if (data.error) throw new Error(data.error.message);
 
-      return data.data.filter(x => x.id.includes('gpt'));
+      return data.data.filter((x: { id: string[]; }) => x.id.includes('gpt'));
     });
 }
 
-export async function sendChatRequest(messages) {
+export async function sendChatRequest(messages: { model: string; messages: any; }) {
   const headers = getAuthHeaders();
-  headers['Content-Type'] = 'application/json';
   const body = JSON.stringify(messages); 
 
   const url = "https://api.openai.com/v1/chat/completions";
@@ -41,5 +39,5 @@ function getStoredOpenAIKeyOrThrow() {
 }
 
 function getAuthHeaders() {
-  return { 'Authorization': `Bearer ${getStoredOpenAIKeyOrThrow()}` }
+  return { 'Authorization': `Bearer ${getStoredOpenAIKeyOrThrow()}` ,'Content-Type':'application/json'}
 }

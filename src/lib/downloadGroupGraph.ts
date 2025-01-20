@@ -1,11 +1,10 @@
-
-// @ts-nocheck
 // import createGraph from 'ngraph.graph';
+import { Graph } from 'ngraph.graph';
 import config from './config';
 
 const graphsCache = new Map();
 
-export default async function downloadGroupGraph(groupId) {
+export default async function downloadGroupGraph(groupId: string | number) {
   if (graphsCache.has(groupId)) {
     return graphsCache.get(groupId);
   }
@@ -15,9 +14,9 @@ export default async function downloadGroupGraph(groupId) {
   let text = await response.text();
 
   let fromDot = await import('ngraph.fromdot');
-  let graph = fromDot.default(text);
+  let graph : Graph = fromDot.default(text);
   graph.forEachNode(node => {
-    node.data.l = node.data.l.split(',').map(x => +x);
+    node.data.l = node.data.l.split(',').map((x: string | number) => +x);
   })
   // let nodeFetch = fetch(`${config.graphsEndpoint}/${groupId}.nodes.json`).then(r => r.json()).then(nodePositions => {
   //   let nodeId = 0;

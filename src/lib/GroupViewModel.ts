@@ -1,9 +1,15 @@
-// @ts-nocheck
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, Ref } from 'vue';
 import generateShortRandomId from './generateShortRandomId';
 import {sendChatRequest} from './openAIClient';
 
+interface chatMessage{  id:number,isEdited:Boolean,role:string,content:string}
+
 export default class GroupViewModel {
+  pendingRequest: null;
+  loading: Ref<boolean>;
+  error: Ref<string>;
+  chat: Ref<Array<chatMessage>>;
+  largest: Ref<null>;
   constructor() {
     this.largest = ref(null);
     this.chat = ref([])
@@ -39,7 +45,7 @@ export default class GroupViewModel {
     });
   }
 
-  submit(model) {
+  submit(model: string) {
     this.error = '';
     this.pendingRequest?.cancel();
     let request = {
@@ -51,7 +57,7 @@ export default class GroupViewModel {
         }
       }),
     }
-    this.chat.forEach(message => {
+    this.chat.forEach((message: chatMessage) => {
       message.isEdited = false;
     });
     let isCancelled = false;

@@ -1,5 +1,5 @@
 <!-- lang="ts" -->
-<script setup>
+<script setup lang>
 import { ref, onBeforeUnmount, onBeforeMount, computed } from 'vue';
 import TypeAhead from './components/Typeahead.vue';
 import GithubRepository from './components/GithubRepository.vue';

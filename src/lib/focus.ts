@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 const focus = {
   mounted: (el) => el.focus()
 }

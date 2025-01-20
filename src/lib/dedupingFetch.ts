@@ -1,7 +1,6 @@
-// @ts-nocheck
-const inProgressFetches = new Map();
+const inProgressFetches = new Map<URL, any>();
 
-export default function dedupingFetch(url) {
+export default function dedupingFetch(url: URL) {
   if (inProgressFetches.has(url)) {
     return inProgressFetches.get(url);
   }

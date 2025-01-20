@@ -1,4 +1,3 @@
-// @ts-nocheck
 import fuzzysort from 'fuzzysort';
 import log from './log.ts';
 import config from './config.ts';
@@ -6,9 +5,10 @@ import dedupingFetch from './dedupingFetch.ts';
 
 const fetchedIndex = new Set();
 const seenWords = new Set();
+interface Word{   name : string, lat: string, lon: string, id: string}
 
 export default function createFuzzySearcher() {
-  let words = [];
+  let words: Array<Word> = [];
   let lastPromise;
   let lastQuery;
   let api = {
@@ -25,8 +25,8 @@ export default function createFuzzySearcher() {
     const cacheKey = query[0];
     let isCancelled = false;
     if (!fetchedIndex.has(cacheKey)) {
-      const p = dedupingFetch(`${config.namesEndpoint}/${cacheKey}.json`).then(data => {
-        data.forEach(word => {
+      const p = dedupingFetch(new URL(`${config.namesEndpoint}/${cacheKey}.json`)).then((data: string[][]) => {
+        data.forEach((word: Array<string>) => {
           if (!seenWords.has(word[0])) {
             words.push({name: word[0], lat: word[1], lon: word[2], id: word[3]});
             seenWords.add(word[0]);
