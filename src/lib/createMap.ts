@@ -1,52 +1,34 @@
-// @ts-nocheck
-
 import "maplibre-gl/dist/maplibre-gl.css";
-import maplibregl from "maplibre-gl";
+import maplibregl, { MapGeoJSONFeature, MapMouseEvent, MapOptions, PointLike } from "maplibre-gl";
 import bus from "./bus";
 import config from "./config";
 import { getCustomLayer } from "./gl/createLinesCollection.ts";
 import downloadGroupGraph from "./downloadGroupGraph.ts";
 import getComplimentaryColor from "./getComplimentaryColor";
 import createLabelEditor from "./label-editor/createLabelEditor";
-import { createRadialGradient } from './gl/createRadialGradient';
+import { NodeId } from "ngraph.graph";
+import log from "./log.ts";
+interface Place {
+  type: string;
+  geometry: {
+    type: string;
+    coordinates: number[];
+  };
+  properties: {
+    symbolzoom: number;
+    name: string;
+    labelId: string;
+  };
+};
+interface Feature{
+  type: string,
+  geometry: { type: string, coordinates: string },
+  properties: { color: string, name: string|NodeId, background: string, textSize: number }
+}
 
 const primaryHighlightColor = "#bf2072";
 const secondaryHighlightColor = "#e56aaa";
-const original = {
-  background: '#101010',
-
-  circleColor: "#fff",
-  circleStrokeColor: "#000",
-  circleLabelsColor: "#FFF",
-  circleLabelsHaloColor: "#111",
-  circleLabelsHaloWidth: 0,
-
-  placeLabelsColor: "#FFF",
-  placeLabelsHaloColor: "#000",
-  placeLabelsHaloWidth: 1,
-
-  color: [
-    { input: '#516ebc', output: '#516ebc' },
-    { input: '#00529c', output: '#00529c' },
-    { input: '#153477', output: '#153477' },
-    { input: '#37009c', output: '#37009c' },
-    { input: '#00789c', output: '#00789c' },
-    { input: '#37549c', output: '#37549c' },
-  ]
-};
-
 const explorer = {
-  // background: "#0C2446",
-  // circleColor: "#0C2446",
-  // circleStrokeColor: "#000",
-  // circleLabelsColor: "#fff",
-  // circleLabelsHaloColor: "#0C2446",
-  // circleLabelsHaloWidth: 1,
-
-  // placeLabelsColor: "#222",
-  // placeLabelsHaloColor: "#fff",
-  // placeLabelsHaloWidth: 1,
-
   background: '#030E2E',
 
   circleColor: "#EAEDEF",
@@ -71,36 +53,34 @@ const explorer = {
 
 const currentColorTheme = explorer;
 
-const colorStyle = ["case"]
-currentColorTheme.color.forEach((row) => {
-  colorStyle.push(["==", ["get", "fill"], row.input], row.output);
-})
-colorStyle.push("#FF0000");
-
 export default function createMap() {
   const map = new maplibregl.Map(getDefaultStyle());
   map.dragRotate.disable();
   map.touchZoomRotate.disableRotation();
   const fastLinesLayer = getCustomLayer();
-  let backgroundEdgesFetch;
-  let labelEditor;
+  let backgroundEdgesFetch: Promise<void>;
+  let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => {type: string;  features: Array<Place>;} | undefined; };
   // collection of labels.
 
   map.on("load", () => {
     map.loadImage(config.iconSource + '/circle.png', (error, image) => {
       if (error) throw error;
+      if(image == null || image == undefined){log.error("Image not found");return;} 
       map.addImage('circle-icon', image, { 'sdf': true });
     })
     map.loadImage(config.iconSource + '/diamond.png', (error, image) => {
       if (error) throw error;
+      if(image == null || image == undefined){log.error("Image not found");return;} 
       map.addImage('diamond-icon', image, { 'sdf': true });
     })
     map.loadImage(config.iconSource + '/triangle.png', (error, image) => {
       if (error) throw error;
+      if(image == null || image == undefined){log.error("Image not found");return;} 
       map.addImage('triangle-icon', image, { 'sdf': true });
     })
     map.loadImage(config.iconSource + '/star.png', (error, image) => {
       if (error) throw error;
+      if(image == null || image == undefined){log.error("Image not found");return;} 
       map.addImage('star-icon', image, { 'sdf': true });
     })
     map.addLayer(fastLinesLayer, "circle-layer");
@@ -111,7 +91,7 @@ export default function createMap() {
   map.on("contextmenu", (e) => {
     bus.fire("show-tooltip");
 
-    let bg = getBackgroundNearPoint(e.point);
+    const bg = getBackgroundNearPoint(e.point);
     if (!bg) return;
 
     const contextMenuItems = {
@@ -124,8 +104,8 @@ export default function createMap() {
 
     const nearestCity = findNearestCity(e.point);
     if (nearestCity) {
-      let name = nearestCity.properties.label;
-      let parts = name.split('/')
+      const name = nearestCity.properties.label;
+      const parts = name.split('/')
       const displayName = parts[parts.length - 1] || name;
 
       contextMenuItems.items.push({
@@ -140,22 +120,7 @@ export default function createMap() {
 
     bus.fire("show-context-menu", contextMenuItems);
   });
-
-  map.on("mousemove", (e) => {
-    // let hoveredFeature = findNearestCity(e.point);
-    // if (hoveredFeature) {
-    //   const bgFeature = getBackgroundNearPoint(e.point);
-    //   bus.fire("show-tooltip", { 
-    //     text: hoveredFeature.properties.label, 
-    //     left: e.point.x + "px",
-    //     top: e.point.y + "px",
-    //     background: bgFeature?.properties?.fill || "rgba(0,0,0,0.5)",
-    //   });
-    // } else {
-    //   bus.fire("show-tooltip");
-    // }
-  });
-
+  
   map.on("click", (e) => {
     // console.log("Clicked")
     bus.fire("show-context-menu");
@@ -185,8 +150,8 @@ export default function createMap() {
     highlightNode
   }
 
-  function highlightNode(searchParameters) {
-    let highlightedNodes = {
+  function highlightNode(searchParameters: { minWeight: string; maxWeight: string; minRating: string; maxRating: string; minPlaytime: string; maxPlaytime: string; playerChoice: number; minPlayers: string; maxPlayers: string; }) {
+    const highlightedNodes:{type:string,features:Array<Feature>} = {
       type: "FeatureCollection",
       features: []
     };
@@ -222,28 +187,23 @@ export default function createMap() {
       });
     });
     // console.log("nodes : " + JSON.stringify(highlightedNodes))
-    map.getSource("selected-nodes").setData(highlightedNodes);
+    map.getSource("selected-nodes")?.setData(highlightedNodes);
     map.redraw();
   }
 
-  function getGroupIdAt(lat, lon) {
+  function getGroupIdAt(lat: number, lon: number) {
     // find first group that contains the point.
     return bordersCollection.then((collection) => {
-      const feature = collection.features.find((f) => {
+      const feature = collection.features.find((f: MapGeoJSONFeature) => {
         return polygonContainsPoint(f.geometry.coordinates[0], lat, lon);
       });
       if (!feature) return;
       const id = feature.id;
       return id;
     });
-
-    // const res = map.querySourceFeatures('borders-source').find((f) => {
-    //   return polygonContainsPoint(f.geometry.coordinates[0], lat, lon);
-    // });
-    // return res?.id;
   }
 
-  function showDetails(nearestCity) {
+  function showDetails(nearestCity:MapGeoJSONFeature) {
     const repo = nearestCity.properties.label
     // console.log("showing details for :" + repo)
     if (!repo) return;
@@ -253,12 +213,12 @@ export default function createMap() {
     bus.fire("repo-selected", { text: repo, lat, lon, id: nearestCity.properties.id });
   }
 
-  function showLargestProjectsContextMenuItem(bg) {
+  function showLargestProjectsContextMenuItem(bg:MapGeoJSONFeature) {
     return {
       text: "Show largest projects",
       click: () => {
-        let seen = new Map();
-        let largeRepositories = map.querySourceFeatures("points-source", {
+        const seen = new Map();
+        const largeRepositories = map.querySourceFeatures("points-source", {
           sourceLayer: "points",
           filter: ["==", "parent", bg.id]
         }).sort((a, b) => {
@@ -266,8 +226,8 @@ export default function createMap() {
         })
         // console.log(bg.id)
         // console.log(largeRepositories)
-        for (let repo of largeRepositories) {
-          let v = {
+        for (const repo of largeRepositories) {
+          const v = {
             name: repo.properties.label,
             lngLat: repo.geometry.coordinates,
             id: repo.properties.id
@@ -296,14 +256,14 @@ export default function createMap() {
 
   function clearHighlights() {
     fastLinesLayer.clear();
-    map.getSource("selected-nodes").setData({
+    map.getSource("selected-nodes")?.setData({
       type: "FeatureCollection",
       features: []
     });
     map.redraw();
   }
 
-  function makeVisible(repository, location, disableAnimation = false) {
+  function makeVisible(repository:string, location:{center:[number, number], zoom: number}, disableAnimation = false) {
     if (disableAnimation) {
       map.jumpTo(location);
     } else {
@@ -314,12 +274,12 @@ export default function createMap() {
     });
   }
 
-  function getBackgroundNearPoint(point) {
+  function getBackgroundNearPoint(point:PointLike) {
     const borderFeature = map.queryRenderedFeatures(point, { layers: ["polygon-layer"] });
     return borderFeature[0];
   }
 
-  function drawBackgroundEdges(point, repo, ignoreExternal = true) {
+  function drawBackgroundEdges(point:PointLike, repo:string, ignoreExternal = true) {
     // console.log("In drawBackgroundEdges")
     const bgFeature = getBackgroundNearPoint(point);
     // console.log("bgFeature :" + JSON.stringify(bgFeature))
@@ -329,20 +289,20 @@ export default function createMap() {
     if (groupId === undefined) return;
 
     const fillColor = getPolygonFillColor(bgFeature.properties);
-    let complimentaryColor = getComplimentaryColor(fillColor);
+    const complimentaryColor = getComplimentaryColor(fillColor);
     fastLinesLayer.clear();
     backgroundEdgesFetch?.cancel();
     let isCancelled = false;
-    let highlightedNodes = {
+    const highlightedNodes:{type:string,features:Array<Feature>}  = {
       type: "FeatureCollection",
       features: []
     };
 
     backgroundEdgesFetch = downloadGroupGraph(groupId).then(groupGraph => {
       if (isCancelled) return;
-      let firstLevelLinks = [];
-      let primaryNodePosition;
-      let renderedNodesAdjustment = new Map();
+      const firstLevelLinks:Array<{from: number[];to: number[];color: number;}> = [];
+      let primaryNodePosition:string;
+      const renderedNodesAdjustment = new Map();
       map.querySourceFeatures("points-source", {
         sourceLayer: "points",
         filter: ["==", "parent", groupId]
@@ -358,8 +318,8 @@ export default function createMap() {
       groupGraph.forEachLink(link => {
         if (link.data?.e && ignoreExternal) return; // external;
         // console.log(link)
-        const fromGeo = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId).data.l;
-        const toGeo = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId).data.l;
+        const fromGeo = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.l;
+        const toGeo = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.l;
 
         const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo);
         const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo);
@@ -381,7 +341,7 @@ export default function createMap() {
               properties: { color: primaryHighlightColor, name: repo, background: fillColor, textSize: 1.2 }
             });
           }
-          let otherName = repo === link.fromId ? link.toId : link.fromId;
+          const otherName = repo === link.fromId ? link.toId : link.fromId;
           // pick the other one too:
           highlightedNodes.features.push({
             type: "Feature",
@@ -394,27 +354,27 @@ export default function createMap() {
         fastLinesLayer.addLine(line)
       });
       // console.log("Node to highlight : " + JSON.stringify(highlightedNodes))
-      map.getSource("selected-nodes").setData(highlightedNodes);
+      map.getSource("selected-nodes")?.setData(highlightedNodes);
       map.redraw();
     });
     backgroundEdgesFetch.cancel = () => { isCancelled = true };
   }
 
-  function findNearestCity(point) {
-    let width = 16;
-    let height = 16;
+  function findNearestCity(point:{x:number, y :number}): MapGeoJSONFeature | undefined {
+    const width = 16;
+    const height = 16;
     const features = map.queryRenderedFeatures([
       [point.x - width / 2, point.y - height / 2],
       [point.x + width / 2, point.y + height / 2]
     ], { layers: ["circle-layer"] });
     if (!features.length) return;
     let distance = Infinity;
-    let nearestCity = null;
+    let nearestCity = undefined;
     features.forEach(feature => {
-      let geometry = feature.geometry.coordinates;
-      let dx = geometry[0] - point.x;
-      let dy = geometry[1] - point.y;
-      let d = dx * dx + dy * dy;
+      const geometry = feature.geometry.coordinates;
+      const dx = geometry[0] - point.x;
+      const dy = geometry[1] - point.y;
+      const d = dx * dx + dy * dy;
       if (d < distance) {
         distance = d;
         nearestCity = feature;
@@ -424,7 +384,7 @@ export default function createMap() {
   }
 }
 
-function getDefaultStyle() {
+function getDefaultStyle(): MapOptions {
   return {
     hash: true,
     container: "map",
@@ -440,7 +400,6 @@ function getDefaultStyle() {
           tiles: [config.vectorTilesTiles],
           minzoom: 0,
           maxzoom: 2,
-          center: [-9.843750, 4.213679, 2],
           bounds: [-54.781000, -47.422000, 54.781000, 47.422000]
         },
         "place": { // this one loaded asynchronously, and merged with local storage data
@@ -730,7 +689,7 @@ function getDefaultStyle() {
   };
 }
 
-function getPolygonFillColor(polygonProperties) {
+function getPolygonFillColor(polygonProperties: { [x: string]: string;}) {
   for (const color of currentColorTheme.color) {
     if (color.input === polygonProperties.fill) {
       return color.output;
@@ -738,7 +697,7 @@ function getPolygonFillColor(polygonProperties) {
   }
   return polygonProperties.fill;
 }
-function polygonContainsPoint(ring, pX, pY) {
+function polygonContainsPoint(ring: Array<[number,number]>, pX: number, pY: number) {
   let c = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const p1 = ring[i];

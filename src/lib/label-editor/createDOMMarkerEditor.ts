@@ -48,7 +48,7 @@ export default function createDOMarkerEditor(map: Map, onSave: { (value: string)
 
     element.addEventListener('pointerdown', (e) => {
       startX = e.clientX; startY = e.clientY;
-      let markerCoordinates = map.project(marker.getLngLat());
+      const markerCoordinates = map.project(marker.getLngLat());
       dx = markerCoordinates.x - startX;
       dy = markerCoordinates.y - startY;
       window.addEventListener('pointermove', onPointerMove, true);

@@ -11,7 +11,7 @@ export async function getMarkdownContent(markdownString: string, repoName: strin
     initMarkedRenderer(marked);
   }
   if (!DOMPurify) {
-    let domPurifyModule = await import('dompurify');
+    const domPurifyModule = await import('dompurify');
     DOMPurify = domPurifyModule.default;
   }
 
@@ -51,7 +51,7 @@ function initMarkedRenderer(marked) {
   }
 
   function getNormalizedImageLink(href: string) {
-    let isRelative = !(href.startsWith('http') || href.startsWith('data:') || href.startsWith('blob:') || href.startsWith('ftp:'));
+    const isRelative = !(href.startsWith('http') || href.startsWith('data:') || href.startsWith('blob:') || href.startsWith('ftp:'));
     if (isRelative) {
       href = currentRawRepoUrl + '/' + href;
     }

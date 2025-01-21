@@ -4,17 +4,17 @@ import config from './config';
 
 const graphsCache = new Map();
 
-export default async function downloadGroupGraph(groupId: string | number) {
+export default async function downloadGroupGraph(groupId: string | number): Promise<Graph> {
   if (graphsCache.has(groupId)) {
     return graphsCache.get(groupId);
   }
   // let graph = createGraph();
   //console.log("In downloadGroupGraph")
-  let response = await fetch(`${config.graphsEndpoint}/${groupId}.dot`);
-  let text = await response.text();
+  const response = await fetch(`${config.graphsEndpoint}/${groupId}.dot`);
+  const text = await response.text();
 
-  let fromDot = await import('ngraph.fromdot');
-  let graph : Graph = fromDot.default(text);
+  const fromDot = await import('ngraph.fromdot');
+  const graph : Graph = fromDot.default(text);
   graph.forEachNode(node => {
     node.data.l = node.data.l.split(',').map((x: string | number) => +x);
   })

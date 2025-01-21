@@ -1,10 +1,10 @@
-function log(caller: { name: any; }, ...args: any[]) {
-  const callerName = caller.name || caller;
+function log(caller: string, ...args: any[]) {
+  const callerName = caller;
   console.log(`%c${callerName}`, 'color: #0f0;', ...args);
 }
 
-log.error = function(caller: { name: any; }, ...args: any) {
-  const callerName = caller.name || caller;
+log.error = function(caller: string, ...args: any) {
+  const callerName = caller;
   console.log(`%c${callerName}`, 'color: #f00;', ...args);
 }
 

@@ -1,5 +1,5 @@
 const focus = {
-  mounted: (el) => el.focus()
+  mounted: (el: HTMLElement) => el.focus()
 }
 
 export default {

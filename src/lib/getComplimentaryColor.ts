@@ -8,28 +8,29 @@ export default function getComplimentaryColor(color: string | number, alpha = 0x
       return 0xFFFFFF22;
     }
   }
-  let r = (color >> 24) & 0xff;
-  let g = (color >> 16) & 0xff;
-  let b = (color >> 8) & 0xff;
+  const r = (color >> 24) & 0xff;
+  const g = (color >> 16) & 0xff;
+  const b = (color >> 8) & 0xff;
 
   let [h, s, l] = rgbToHsl(r, g, b);
   if (l > 0.5) l = Math.max(0, l - 0.2);
   else l = Math.min(1, l + 0.2);
   s = Math.min(1, s * 1.2);
-  let [r0, g0, b0] = hslToRgb(h, s, l);
+  const [r0, g0, b0] = hslToRgb(h, s, l);
   return (r0 << 24) | (g0 << 16) | (b0 << 8) | alpha;
 }
 
 function rgbToHsl(r: number, g: number, b: number) {
   r /= 255, g /= 255, b /= 255;
 
-  var max = Math.max(r, g, b), min = Math.min(r, g, b);
-  var h, s, l = (max + min) / 2;
-
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s;
+  const l = (max + min) / 2
+  
   if (max == min) {
     h = s = 0; // achromatic
   } else {
-    var d = max - min;
+    const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
 
     switch (max) {
@@ -45,13 +46,13 @@ function rgbToHsl(r: number, g: number, b: number) {
 }
 
 function hslToRgb(h: number, s: number, l: number) {
-  var r, g, b;
+  let r, g, b;
 
   if (s == 0) {
     r = g = b = l; // achromatic
   } else {
-    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    var p = 2 * l - q;
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
 
     r = hue2rgb(p, q, h + 1/3);
     g = hue2rgb(p, q, h);

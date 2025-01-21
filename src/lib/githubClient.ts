@@ -14,7 +14,7 @@ const readmeFilesFormat = [
 const rawGithubUrl = 'https://raw.githubusercontent.com/';
 const headers = {Accept: 'application/vnd.github.v3+json', Authorization: ''}
 let currentUser: null;
-let cachedRepositories = new Map<string,any>();
+const cachedRepositories = new Map<string,any>();
 
 if (document.cookie.includes('github_token')) {
   headers['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0];
@@ -56,7 +56,7 @@ export async function getRepoInfo(repoName: string) {
   const response = await fetch(`https://api.github.com/repos/${repoName}`, {headers});
   if (!response.ok) {
     if (response.headers.get('x-ratelimit-remaining') === '0') {
-      let retryIn = new Date(response.headers.get('x-ratelimit-reset') * 1000);
+      const retryIn = new Date(+response.headers.get('x-ratelimit-reset') * 1000);
       return {
         state: 'RATE_LIMIT_EXCEEDED',
         name: repoName,
@@ -106,20 +106,17 @@ export async function getRepoInfo(repoName: string) {
   return repository;
 }
 
-export async function getReadme(repoName, default_branch) {
+export async function getReadme(repoName: string, default_branch: Array<string>) {
   if (!default_branch) {
     default_branch = ['master', 'main'];
-  }
-  if (!Array.isArray(default_branch)) {
-    default_branch = [default_branch];
   }
     
   for (const branch of default_branch) {
     for (const readmeFile of readmeFilesFormat) {
       const response = await fetch(`${rawGithubUrl}${repoName}/${branch}/${readmeFile}`);
       if (response.ok) {
-        let markdownString = await response.text();
-        let safeMarkdownString = await getMarkdownContent(markdownString, repoName, branch);
+        const markdownString = await response.text();
+        const safeMarkdownString = await getMarkdownContent(markdownString, repoName, branch);
         return {
           state: 'LOADED',
           content: safeMarkdownString
@@ -129,6 +126,6 @@ export async function getReadme(repoName, default_branch) {
   }
 }
 
-function formatNiceNumber(x) {
+function formatNiceNumber(x: number) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }

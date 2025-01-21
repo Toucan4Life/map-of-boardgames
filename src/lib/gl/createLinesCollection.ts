@@ -1,4 +1,4 @@
-import { CustomLayerInterface, LayerSpecification } from 'maplibre-gl';
+import { CustomLayerInterface } from 'maplibre-gl';
 import { defineProgram, InstancedAttribute, ColorAttribute } from 'w-gl';
 
 
@@ -69,7 +69,7 @@ void main() {
       this.program.setCount(0);
     },
 
-    addLine(lineDef) {
+    addLine(lineDef:{from: number[];to: number[];color: number;  }) {
       this.program.add(lineDef);
     }
   };

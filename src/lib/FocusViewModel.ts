@@ -1,24 +1,24 @@
-import { ref } from 'vue';
+import { Ref, ref } from 'vue';
 import downloadGroupGraph from './downloadGroupGraph';
-import { Link, Node } from 'ngraph.graph';
-
+import { Graph, Link, Node, NodeId } from 'ngraph.graph';
+interface Repo { name: NodeId; lngLat: Ref<string>; isExternal: boolean; id: string; linkWeight: number; }
 /**
  * This view model is used to show direct neighbors of a node. It can be extended
  * to pull second layer neighbors as well and then perform layout on them.
  */
 export default class FocusViewModel {
   name: string;
-  repos: any;
-  lngLat: any;
-  loading: any;
+  repos: Ref<Repo[]>;
+  lngLat: Ref<string>;
+  loading: Ref<boolean>;
   constructor(repositoryName: string, groupId: string | number) {
     this.name = repositoryName;
     this.repos = ref([]);
     this.lngLat = ref(null);
     this.loading = ref(true);
-    downloadGroupGraph(groupId).then(graph => {
+    downloadGroupGraph(groupId).then((graph:Graph ): void => {
       this.loading.value = false;
-      let neighgbors: { name: any; lngLat: any; isExternal: boolean; id: any; linkWeight: any; }[] = [];
+      const neighgbors: Repo[] = [];
       this.lngLat.value = graph.getNode(repositoryName)?.data.l;
       graph.forEachLinkedNode(repositoryName, (node: Node, link: Link) => {
         neighgbors.push({
@@ -28,7 +28,7 @@ export default class FocusViewModel {
           id: node.data.id,
           linkWeight: link.data.weight
         });
-      });
+      },false);
       
       neighgbors.sort((a, b) => {
        return b.linkWeight-a.linkWeight

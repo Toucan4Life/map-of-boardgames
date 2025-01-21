@@ -17,9 +17,9 @@ export async function getOpenAIModels() {
     });
 }
 
-export async function sendChatRequest(messages: { model: string; messages: any; }) {
+export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string; } }>) {
   const headers = getAuthHeaders();
-  const body = JSON.stringify(messages); 
+  const body = JSON.stringify(messagess);
 
   const url = "https://api.openai.com/v1/chat/completions";
   const response = await fetch(url, { method: "POST", headers, body });
@@ -39,5 +39,5 @@ function getStoredOpenAIKeyOrThrow() {
 }
 
 function getAuthHeaders() {
-  return { 'Authorization': `Bearer ${getStoredOpenAIKeyOrThrow()}` ,'Content-Type':'application/json'}
+  return { 'Authorization': `Bearer ${getStoredOpenAIKeyOrThrow()}`, 'Content-Type': 'application/json' }
 }

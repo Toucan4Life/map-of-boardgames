@@ -4,7 +4,7 @@ export default function dedupingFetch(url: URL) {
   if (inProgressFetches.has(url)) {
     return inProgressFetches.get(url);
   }
-  let promise = fetch(url).then(r => r.json());
+  const promise = fetch(url).then(r => r.json());
   inProgressFetches.set(url, promise);
   return promise;
 }

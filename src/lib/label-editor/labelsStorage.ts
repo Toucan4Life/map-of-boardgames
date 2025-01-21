@@ -3,8 +3,8 @@ import generateShortRandomId from '../generateShortRandomId';
 import bus from '../bus';
 import { LngLat } from 'maplibre-gl';
 
-let originalPlaces: { features: any[]; };
-let indexedPlaces = new Map();
+let originalPlaces:{ type: string; features: Array<Place>; };
+const indexedPlaces = new Map();
 interface Place {
   type: string;
   geometry: {
@@ -18,7 +18,7 @@ interface Place {
   };
 };
 export async function getPlaceLabels() {
-  let r = await fetch(config.placesSource, { mode: 'cors' })
+  const r = await fetch(config.placesSource, { mode: 'cors' })
   originalPlaces = await r.json();
   originalPlaces.features.forEach(f => {
     indexedPlaces.set(f.properties.labelId, f);
@@ -54,7 +54,7 @@ export function addLabelToPlaces(places: { type: string; features: Array<Place>;
   return places;
 }
 
-export function editLabelInPlaces(labelId: any, places: { type: string; features: Array<Place>; } | undefined, value: any, lngLat: LngLat, mapZoomLevel: number) {
+export function editLabelInPlaces(labelId: string, places: { type: string; features: Array<Place>; } | undefined, value: any, lngLat: LngLat, mapZoomLevel: number) {
   if (!places) return
   if (!value) {
     places.features = places.features.filter(f => f.properties.labelId !== labelId);
@@ -78,7 +78,7 @@ function mergePlacesWithLocalStorage() {
   const places = localStorage.getItem('places');
   if (places) savedPlaces = JSON.parse(places)
 
-  let mergeIndex = new Map();
+  const mergeIndex = new Map();
   for (const savedPlace of savedPlaces.features) {
     const placeKey = savedPlace.properties.labelId;
     const place = mergeIndex.get(placeKey);

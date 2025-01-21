@@ -1,10 +1,21 @@
-import maplibregl, { GeoJSONSource, LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl';
+import maplibregl, { LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl';
 import {getPlaceLabels,  addLabelToPlaces, editLabelInPlaces} from './labelsStorage';
 import createMarkerEditor from './createDOMMarkerEditor';
 import bus from '../bus';
-
+interface Place {
+  type: string;
+  geometry: {
+    type: string;
+    coordinates: number[];
+  };
+  properties: {
+    symbolzoom: number;
+    name: string;
+    labelId: string;
+  };
+};
 export default function createLabelEditor(map : Map) {
-  let places: { type: string; features: any[]; } | undefined;
+  let places: { type: string; features: Array<Place>; } | undefined;
   const placeLabelLayers = ['place-country-1'];
 
   getPlaceLabels().then(loadedPlaces => {
@@ -17,9 +28,9 @@ export default function createLabelEditor(map : Map) {
     getPlaces: () => places
   }
 
-  function getContextMenuItems(e:MapMouseEvent & Object, borderOwnerId: string | number | undefined) {
+  function getContextMenuItems(e:MapMouseEvent & object, borderOwnerId: string | number | undefined) {
     const labelFeature = map.queryRenderedFeatures(e.point, { layers: placeLabelLayers });
-    let items = []
+    const items = []
     if (labelFeature.length) {
       const label = labelFeature[0].properties;
       items.push({
@@ -53,7 +64,7 @@ export default function createLabelEditor(map : Map) {
     }
   }
 
-  function editLabel(lngLat: LngLatLike, oldLabelProps: { [x: string]: any; name?: any; labelId?: any; }) {
+  function editLabel(lngLat: LngLatLike, oldLabelProps: {[name: string]: any}) {
     const markerEditor = createMarkerEditor(map, save, oldLabelProps.name);
 
     const marker = new maplibregl.Popup({closeButton: false});
@@ -63,7 +74,7 @@ export default function createLabelEditor(map : Map) {
 
     markerEditor.setMarker(marker);
 
-    function save(value: any) {
+    function save(value: string) {
       places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom());
       map.getSource('place')?.setData(places);
       bus.fire('unsaved-changes-detected', true);

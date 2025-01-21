@@ -8,16 +8,16 @@ const seenWords = new Set();
 interface Word{   name : string, lat: string, lon: string, id: string}
 
 export default function createFuzzySearcher() {
-  let words: Array<Word> = [];
-  let lastPromise;
-  let lastQuery;
-  let api = {
+  const words: Array<Word> = [];
+  let lastPromise: Fuzzysort.CancelablePromise<Fuzzysort.KeyResults<Word>>;
+  let lastQuery: string;
+  const api = {
     find
   }
 
   return api;
 
-  function find(query) {
+  function find(query: string) {
     if (lastPromise) {
       lastPromise.cancel();
     }
@@ -37,7 +37,7 @@ export default function createFuzzySearcher() {
           return; // Nobody cares, but lets keep the index.
         }
         return find(query); // Try again, but now with the index.
-      }).catch(err => {
+      }).catch((err: unknown) => {
         log.error('FuzzySearch', 'Failed to fetch index for ' + cacheKey, err)
       });
       p.cancel = () => {

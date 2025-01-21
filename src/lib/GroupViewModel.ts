@@ -2,14 +2,14 @@ import { ref, nextTick, Ref } from 'vue';
 import generateShortRandomId from './generateShortRandomId';
 import {sendChatRequest} from './openAIClient';
 
-interface chatMessage{  id:number,isEdited:Boolean,role:string,content:string}
+interface chatMessage{  id:string,isEdited:boolean,role:string,content:string}
 
 export default class GroupViewModel {
-  pendingRequest: null;
+  pendingRequest: Promise<void>;
   loading: Ref<boolean>;
   error: Ref<string>;
   chat: Ref<Array<chatMessage>>;
-  largest: Ref<null>;
+  largest: Ref<Array<{name: string}>>;
   constructor() {
     this.largest = ref(null);
     this.chat = ref([])
@@ -18,7 +18,7 @@ export default class GroupViewModel {
     this.pendingRequest = null;
   }
 
-  setLargest(currentLargest) {
+  setLargest(currentLargest: Array<{name: string}>) {
     this.largest.value = currentLargest;
     if (this.chat.value.length ===  0) {
       this.chat.value.push({
@@ -37,7 +37,7 @@ export default class GroupViewModel {
   }
 
   addMessage() {
-    this.chat.push({
+    this.chat.value.push({
       id: generateShortRandomId(),
       content: '',
       role: 'user',
@@ -46,48 +46,48 @@ export default class GroupViewModel {
   }
 
   submit(model: string) {
-    this.error = '';
+    this.error.value = '';
     this.pendingRequest?.cancel();
-    let request = {
+    const request = {
       model,
-      messages: this.chat.map(message => {
+      messages: this.chat.value.map(message => {
         return {
           content: message.content,
           role: message.role
         }
       }),
     }
-    this.chat.forEach((message: chatMessage) => {
+    this.chat.value.forEach((message: chatMessage) => {
       message.isEdited = false;
     });
     let isCancelled = false;
-    this.loading = true;
-    let p = sendChatRequest(request).then(responseMessage => {
+    this.loading.value = true;
+    const p = sendChatRequest(request).then(responseMessage => {
       if (isCancelled) return;
-      this.loading = false;
-      let newMessageId = generateShortRandomId();
+      this.loading.value = false;
+      const newMessageId = generateShortRandomId();
       responseMessage.id = newMessageId;
-      this.chat.push(responseMessage);
+      this.chat.value.push(responseMessage);
       nextTick(() => {
-        let newMessageEl = document.querySelector(`.add-message-link`);
+        const newMessageEl = document.querySelector(`.add-message-link`);
         if (newMessageEl) newMessageEl.scrollIntoView();
       });
     }).catch(err => {
       console.error(err);
-      this.error = 'Something went wrong. Open dev console for more details';
+      this.error.value = 'Something went wrong. Open dev console for more details';
     }).finally(() => {
-      this.loading = false;
+      this.loading.value = false;
     });
     p.cancel = () => { isCancelled = true; }
     this.pendingRequest = p;
   }
 
-  deleteMessage(id) {
-    this.chat = this.chat.filter(message => message.id !== id);
+  deleteMessage(id: string) {
+    this.chat.value = this.chat.value.filter(message => message.id !== id);
   }
 
   cancelQuery() {
-    this.loading = false;
+    this.loading.value = false;
     this.pendingRequest?.cancel();
   }
 }
