@@ -12,6 +12,7 @@
   "dependencies": {
     "dompurify": "^3.0.2",
     "fuzzysort": "^1.2.0",
+    "gl-matrix": "^3.4.3",
     "maplibre-gl": "^2.4.0",
     "marked": "^4.3.0",
     "ngraph.events": "^1.2.2",

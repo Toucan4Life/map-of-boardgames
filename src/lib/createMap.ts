@@ -1,5 +1,6 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import maplibregl, { MapGeoJSONFeature, MapMouseEvent, MapOptions, PointLike } from "maplibre-gl";
+import maplibregl, {MapGeoJSONFeature, MapMouseEvent, MapOptions, PointLike } from "maplibre-gl";
+
 import bus from "./bus";
 import config from "./config";
 import { getCustomLayer } from "./gl/createLinesCollection.ts";
@@ -57,7 +58,7 @@ export default function createMap() {
   const map = new maplibregl.Map(getDefaultStyle());
   map.dragRotate.disable();
   map.touchZoomRotate.disableRotation();
-  const fastLinesLayer = getCustomLayer();
+  const fastLinesLayer =new getCustomLayer();
   let backgroundEdgesFetch: Promise<void>;
   let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => {type: string;  features: Array<Place>;} | undefined; };
   // collection of labels.
@@ -180,9 +181,10 @@ export default function createMap() {
       sourceLayer: "points",
       filter: selectedFilters
     }).forEach(repo => {
-      highlightedNodes.features.push({
+      highlightedNodes.features.push(
+        {
         type: "Feature",
-        geometry: { type: "Point", coordinates: repo.geometry.coordinates },
+        geometry: { type: "Point", coordinates: (repo.geometry as Point).coordinates },
         properties: { color: primaryHighlightColor, name: repo.properties.label, background: "#ff0000", textSize: 1.2 }
       });
     });
@@ -217,6 +219,7 @@ export default function createMap() {
     return {
       text: "Show largest projects",
       click: () => {
+        if (!bg.id) return
         const seen = new Map();
         const largeRepositories = map.querySourceFeatures("points-source", {
           sourceLayer: "points",
@@ -227,7 +230,7 @@ export default function createMap() {
         // console.log(bg.id)
         // console.log(largeRepositories)
         for (const repo of largeRepositories) {
-          const v = {
+          const v:{name:string, lngLat:string,id:string} = {
             name: repo.properties.label,
             lngLat: repo.geometry.coordinates,
             id: repo.properties.id
@@ -237,7 +240,7 @@ export default function createMap() {
           if (seen.size >= 100) break;
         }
 
-        map.setFilter("border-highlight", ["==", ["id"], bg.id]);
+        map.setFilter("border-highlight", ["==", ["id"], bg.id.toString()]);
         map.setLayoutProperty("border-highlight", "visibility", "visible");
 
         // todo: fire a view model here instead of the list.
@@ -689,7 +692,7 @@ function getDefaultStyle(): MapOptions {
   };
 }
 
-function getPolygonFillColor(polygonProperties: { [x: string]: string;}) {
+function getPolygonFillColor(polygonProperties: { [x: string]: string;}): string {
   for (const color of currentColorTheme.color) {
     if (color.input === polygonProperties.fill) {
       return color.output;
@@ -697,7 +700,8 @@ function getPolygonFillColor(polygonProperties: { [x: string]: string;}) {
   }
   return polygonProperties.fill;
 }
-function polygonContainsPoint(ring: Array<[number,number]>, pX: number, pY: number) {
+
+function polygonContainsPoint(ring: Array<[number,number]>, pX: number, pY: number): boolean {
   let c = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const p1 = ring[i];
