@@ -13,14 +13,13 @@
     "dompurify": "^3.0.2",
     "fuzzysort": "^1.2.0",
     "gl-matrix": "^3.4.3",
-    "maplibre-gl": "^2.4.0",
+    "maplibre-gl": "^3.6.2",
     "marked": "^4.3.0",
     "ngraph.events": "^1.2.2",
     "ngraph.fromdot": "^7.0.0",
     "ngraph.graph": "^20.0.1",
     "vue": "^3.2.47",
-    "vue-multiselect": "^3.0.0",
-    "w-gl": "^0.21.0"
+    "vue-multiselect": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

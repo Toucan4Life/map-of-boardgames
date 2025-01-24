@@ -184,7 +184,7 @@ export default function createMap() {
       highlightedNodes.features.push(
         {
         type: "Feature",
-        geometry: { type: "Point", coordinates: (repo.geometry as Point).coordinates },
+        geometry: { type: "Point", coordinates: repo.geometry.coordinates },
         properties: { color: primaryHighlightColor, name: repo.properties.label, background: "#ff0000", textSize: 1.2 }
       });
     });
