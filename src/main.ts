@@ -54,12 +54,20 @@ function cleanUpLoaderIfNeeded() {
 }
 
 function webglSupported() {
+  const canvas = document.createElement('canvas');
   try {
-    const canvas = document.createElement('canvas');
-    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+      // Note that { failIfMajorPerformanceCaveat: true } can be passed as a second argument
+      // to canvas.getContext(), causing the check to fail if hardware rendering is not available. See
+      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+      // for more details.
+      const context = canvas.getContext('webgl2');
+      if (context && typeof context.getParameter == 'function') {
+          return true;
+      }
   } catch (e) {
-    return false;
+      // WebGL is supported, but disabled
   }
+  return false;
 }
 
 function showErrorMessage(e: { message: string; }) {

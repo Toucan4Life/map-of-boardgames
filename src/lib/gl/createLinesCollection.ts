@@ -1,5 +1,5 @@
 import { mat4 } from "gl-matrix";
-import { CustomLayerInterface, CustomRenderMethod, Map } from "maplibre-gl";
+import { CustomLayerInterface, CustomRenderMethod, CustomRenderMethodInput, Map } from "maplibre-gl";
 import { MyRenderProgram } from "./RenderProgram";
 export class getCustomLayer implements CustomLayerInterface {
 
@@ -10,7 +10,7 @@ export class getCustomLayer implements CustomLayerInterface {
   onRemove?(_map: Map, _gl: WebGLRenderingContext): void;
   map: Map | undefined;
   program: { draw: any; add: any; } | undefined;
-  gl: WebGLRenderingContext | undefined;
+  gl: WebGL2RenderingContext | undefined;
   count: number;
   constructor() {
     this.id = 'null-island';
@@ -18,14 +18,15 @@ export class getCustomLayer implements CustomLayerInterface {
     this.renderingMode = '2d';
     this.count = 0;
   }
-  onAdd(map: Map, gl: WebGLRenderingContext): void {
+  onAdd(map: Map, gl: WebGL2RenderingContext): void {
     this.gl = gl;
     this.map = map;
     this.program = MyRenderProgram(gl);
   }
 
-  render(gl: WebGLRenderingContext, matrix: mat4) {
+  render(gl: WebGLRenderingContext | WebGL2RenderingContext, matrix: mat4) {
     if (this.count === 0) return;
+    if(gl instanceof WebGLRenderingContext) throw new Error("WebGL1 not supported");    
     this.gl = gl;
     if (!this.map) return
     if (!this.program) return

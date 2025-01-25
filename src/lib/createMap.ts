@@ -63,27 +63,15 @@ export default function createMap() {
   let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => {type: string;  features: Array<Place>;} | undefined; };
   // collection of labels.
 
-  map.on("load", () => {
-    map.loadImage(config.iconSource + '/circle.png', (error, image) => {
-      if (error) throw error;
-      if(image == null || image == undefined){log.error("Image not found");return;} 
-      map.addImage('circle-icon', image, { 'sdf': true });
-    })
-    map.loadImage(config.iconSource + '/diamond.png', (error, image) => {
-      if (error) throw error;
-      if(image == null || image == undefined){log.error("Image not found");return;} 
-      map.addImage('diamond-icon', image, { 'sdf': true });
-    })
-    map.loadImage(config.iconSource + '/triangle.png', (error, image) => {
-      if (error) throw error;
-      if(image == null || image == undefined){log.error("Image not found");return;} 
-      map.addImage('triangle-icon', image, { 'sdf': true });
-    })
-    map.loadImage(config.iconSource + '/star.png', (error, image) => {
-      if (error) throw error;
-      if(image == null || image == undefined){log.error("Image not found");return;} 
-      map.addImage('star-icon', image, { 'sdf': true });
-    })
+  map.on("load", async () => {
+    const circle = await map.loadImage(config.iconSource + '/circle.png');
+    map.addImage('circle-icon', circle.data, { 'sdf': true });
+    const diamond = await map.loadImage(config.iconSource + '/diamond.png');
+    map.addImage('diamond-icon', diamond.data, { 'sdf': true });
+    const triangle = await map.loadImage(config.iconSource + '/triangle.png');
+    map.addImage('triangle-icon', triangle.data, { 'sdf': true });
+    const star = await map.loadImage(config.iconSource + '/star.png');
+    map.addImage('star-icon', triangle.data, { 'sdf': true }); 
     map.addLayer(fastLinesLayer, "circle-layer");
     // map.addLayer(createRadialGradient(), "polygon-layer");
     labelEditor = createLabelEditor(map);
@@ -689,6 +677,7 @@ function getDefaultStyle(): MapOptions {
         },
       ]
     },
+    canvasContextAttributes:{contextType : "webgl2"}
   };
 }
 
