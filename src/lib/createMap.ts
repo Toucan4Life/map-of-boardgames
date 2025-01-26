@@ -272,7 +272,7 @@ export default function createMap() {
 
     backgroundEdgesFetch = downloadGroupGraph(groupId).then(groupGraph => {
       if (isCancelled) return;
-      const firstLevelLinks:Array<{from: number[];to: number[];color: number;}> = [];
+      const firstLevelLinks:Array<{ from: [number, number]; to: [number, number]; color: number; }> = [];
       let primaryNodePosition:GeoJSON.Position;
       const renderedNodesAdjustment = new Map();
       map.querySourceFeatures("points-source", {
@@ -296,7 +296,7 @@ export default function createMap() {
         const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo);
         const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo);
         const isFirstLevel = repo === link.fromId || repo === link.toId;
-        const line = {
+        const line:{ from: [number, number]; to: [number, number]; color: number; } = {
           from: [from.x, from.y],
           to: [to.x, to.y],
           color: isFirstLevel ? 0xffffffFF : complimentaryColor

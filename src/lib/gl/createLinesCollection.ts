@@ -1,4 +1,3 @@
-import { mat4 } from "gl-matrix";
 import { CustomLayerInterface, CustomRenderMethod, CustomRenderMethodInput, Map } from "maplibre-gl";
 import { MyRenderProgram } from "./RenderProgram";
 export class getCustomLayer implements CustomLayerInterface {
@@ -9,7 +8,17 @@ export class getCustomLayer implements CustomLayerInterface {
   prerender?: CustomRenderMethod | undefined;
   onRemove?(_map: Map, _gl: WebGLRenderingContext): void;
   map: Map | undefined;
-  program: { draw: any; add: any; } | undefined;
+  program: {
+    add: (item: {
+      from: [number, number];
+      to: [number, number];
+      color: number;
+    }) => number;
+    draw: (uniforms: {
+      modelViewProjection: Iterable<number>;
+      width: number;
+    }) => void;
+  } | undefined;
   gl: WebGL2RenderingContext | undefined;
   count: number;
   constructor() {
@@ -24,9 +33,9 @@ export class getCustomLayer implements CustomLayerInterface {
     this.program = MyRenderProgram(gl);
   }
 
-  render(gl: WebGLRenderingContext | WebGL2RenderingContext, matrix: mat4) {
+  render(gl: WebGLRenderingContext | WebGL2RenderingContext, matrix: CustomRenderMethodInput) {
     if (this.count === 0) return;
-    if(gl instanceof WebGLRenderingContext) throw new Error("WebGL1 not supported");    
+    if (gl instanceof WebGLRenderingContext) throw new Error("WebGL1 not supported");
     this.gl = gl;
     if (!this.map) return
     if (!this.program) return
@@ -44,7 +53,7 @@ export class getCustomLayer implements CustomLayerInterface {
     this.program.draw({
       //width: 0.00005 / zoom,
       width,
-      modelViewProjection: matrix,
+      modelViewProjection: matrix.defaultProjectionData.mainMatrix,
     });
   }
 
@@ -52,7 +61,7 @@ export class getCustomLayer implements CustomLayerInterface {
     this.count = 0;
   }
 
-  addLine(lineDef: { from: number[]; to: number[]; color: number; }) {
+  addLine(lineDef: { from: [number, number]; to: [number, number]; color: number; }) {
     if (!this.program) return
     this.count++
     this.program.add(lineDef);

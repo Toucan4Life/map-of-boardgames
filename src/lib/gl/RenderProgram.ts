@@ -71,7 +71,7 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
     draw: draw,
   };
 
-  function add(item: { from: [number, number]; to: [number, number]; color: number; }) {
+  function add(item: { from: [number, number]; to: [number, number]; color: number; }): number {
     if (count * bytePerVertex >= capacity) {
       const oldBuffer = buffer;
       capacity *= 2;
@@ -97,7 +97,7 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
     return count++;
   }
 
-  function draw(uniforms: { modelViewProjection: Iterable<number>; width: number; }) {
+  function draw(uniforms: { modelViewProjection: Iterable<number>; width: number; }): void {
     if (count === 0) return;
     gl.useProgram(program);
     gl.uniformMatrix4fv(modelViewProjectionUniformLocation, false, uniforms.modelViewProjection);
