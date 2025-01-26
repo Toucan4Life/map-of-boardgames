@@ -1,5 +1,5 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import maplibregl, {MapGeoJSONFeature, MapMouseEvent, MapOptions, PointLike } from "maplibre-gl";
+import maplibregl, {FilterSpecification, GeoJSONSource, MapGeoJSONFeature, MapMouseEvent, MapOptions, PointLike } from "maplibre-gl";
 
 import bus from "./bus";
 import config from "./config";
@@ -7,25 +7,6 @@ import { getCustomLayer } from "./gl/createLinesCollection.ts";
 import downloadGroupGraph from "./downloadGroupGraph.ts";
 import getComplimentaryColor from "./getComplimentaryColor";
 import createLabelEditor from "./label-editor/createLabelEditor";
-import { NodeId } from "ngraph.graph";
-import log from "./log.ts";
-interface Place {
-  type: string;
-  geometry: {
-    type: string;
-    coordinates: number[];
-  };
-  properties: {
-    symbolzoom: number;
-    name: string;
-    labelId: string;
-  };
-};
-interface Feature{
-  type: string,
-  geometry: { type: string, coordinates: string },
-  properties: { color: string, name: string|NodeId, background: string, textSize: number }
-}
 
 const primaryHighlightColor = "#bf2072";
 const secondaryHighlightColor = "#e56aaa";
@@ -59,8 +40,8 @@ export default function createMap() {
   map.dragRotate.disable();
   map.touchZoomRotate.disableRotation();
   const fastLinesLayer =new getCustomLayer();
-  let backgroundEdgesFetch: Promise<void>;
-  let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => {type: string;  features: Array<Place>;} | undefined; };
+  let backgroundEdgesFetch: Promise<void>& { cancel: () => void };
+  let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => GeoJSON.GeoJSON | undefined; };
   // collection of labels.
 
   map.on("load", async () => {
@@ -71,7 +52,7 @@ export default function createMap() {
     const triangle = await map.loadImage(config.iconSource + '/triangle.png');
     map.addImage('triangle-icon', triangle.data, { 'sdf': true });
     const star = await map.loadImage(config.iconSource + '/star.png');
-    map.addImage('star-icon', triangle.data, { 'sdf': true }); 
+    map.addImage('star-icon', star.data, { 'sdf': true }); 
     map.addLayer(fastLinesLayer, "circle-layer");
     // map.addLayer(createRadialGradient(), "polygon-layer");
     labelEditor = createLabelEditor(map);
@@ -140,12 +121,12 @@ export default function createMap() {
   }
 
   function highlightNode(searchParameters: { minWeight: string; maxWeight: string; minRating: string; maxRating: string; minPlaytime: string; maxPlaytime: string; playerChoice: number; minPlayers: string; maxPlayers: string; }) {
-    const highlightedNodes:{type:string,features:Array<Feature>} = {
+    const highlightedNodes:GeoJSON.GeoJSON = {
       type: "FeatureCollection",
       features: []
     };
 
-    const selectedFilters = ["all",
+    const selectedFilters : FilterSpecification = ["all",
       [">=", ["to-number", ["get", 'complexity']], searchParameters.minWeight],
       ["<=", ["to-number", ["get", 'complexity']], searchParameters.maxWeight],
       [">=", ["to-number", ["get", 'ratings']], searchParameters.minRating],
@@ -172,20 +153,20 @@ export default function createMap() {
       highlightedNodes.features.push(
         {
         type: "Feature",
-        geometry: { type: "Point", coordinates: repo.geometry.coordinates },
+        geometry: { type: "Point", coordinates: (repo.geometry as GeoJSON.Point).coordinates },
         properties: { color: primaryHighlightColor, name: repo.properties.label, background: "#ff0000", textSize: 1.2 }
       });
     });
     // console.log("nodes : " + JSON.stringify(highlightedNodes))
-    map.getSource("selected-nodes")?.setData(highlightedNodes);
+    (map.getSource("selected-nodes") as GeoJSONSource).setData(highlightedNodes);
     map.redraw();
   }
 
   function getGroupIdAt(lat: number, lon: number) {
     // find first group that contains the point.
     return bordersCollection.then((collection) => {
-      const feature = collection.features.find((f: MapGeoJSONFeature) => {
-        return polygonContainsPoint(f.geometry.coordinates[0], lat, lon);
+      const feature = collection.features.find((f:MapGeoJSONFeature) => {
+        return polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon);
       });
       if (!feature) return;
       const id = feature.id;
@@ -197,7 +178,7 @@ export default function createMap() {
     const repo = nearestCity.properties.label
     // console.log("showing details for :" + repo)
     if (!repo) return;
-    const [lat, lon] = nearestCity.geometry.coordinates
+    const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
     //console.log(nearestCity)
     bus.fire("show-tooltip");
     bus.fire("repo-selected", { text: repo, lat, lon, id: nearestCity.properties.id });
@@ -218,9 +199,9 @@ export default function createMap() {
         // console.log(bg.id)
         // console.log(largeRepositories)
         for (const repo of largeRepositories) {
-          const v:{name:string, lngLat:string,id:string} = {
+          const v:{name:string, lngLat:GeoJSON.Position,id:string} = {
             name: repo.properties.label,
-            lngLat: repo.geometry.coordinates,
+            lngLat: (repo.geometry as GeoJSON.Point).coordinates,
             id: repo.properties.id
           }
           if (seen.has(repo.properties.label)) continue;
@@ -247,7 +228,7 @@ export default function createMap() {
 
   function clearHighlights() {
     fastLinesLayer.clear();
-    map.getSource("selected-nodes")?.setData({
+    (map.getSource("selected-nodes") as GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features: []
     });
@@ -284,7 +265,7 @@ export default function createMap() {
     fastLinesLayer.clear();
     backgroundEdgesFetch?.cancel();
     let isCancelled = false;
-    const highlightedNodes:{type:string,features:Array<Feature>}  = {
+    const highlightedNodes:GeoJSON.GeoJSON  = {
       type: "FeatureCollection",
       features: []
     };
@@ -292,13 +273,13 @@ export default function createMap() {
     backgroundEdgesFetch = downloadGroupGraph(groupId).then(groupGraph => {
       if (isCancelled) return;
       const firstLevelLinks:Array<{from: number[];to: number[];color: number;}> = [];
-      let primaryNodePosition:string;
+      let primaryNodePosition:GeoJSON.Position;
       const renderedNodesAdjustment = new Map();
       map.querySourceFeatures("points-source", {
         sourceLayer: "points",
         filter: ["==", "parent", groupId]
       }).forEach(repo => {
-        const lngLat = repo.geometry.coordinates;
+        const lngLat = (repo.geometry as GeoJSON.Point).coordinates;
         renderedNodesAdjustment.set(repo.properties.label, {
           lngLat
         });
@@ -345,7 +326,7 @@ export default function createMap() {
         fastLinesLayer.addLine(line)
       });
       // console.log("Node to highlight : " + JSON.stringify(highlightedNodes))
-      map.getSource("selected-nodes")?.setData(highlightedNodes);
+      (map.getSource("selected-nodes")as GeoJSONSource)?.setData(highlightedNodes);
       map.redraw();
     });
     backgroundEdgesFetch.cancel = () => { isCancelled = true };
@@ -362,7 +343,7 @@ export default function createMap() {
     let distance = Infinity;
     let nearestCity = undefined;
     features.forEach(feature => {
-      const geometry = feature.geometry.coordinates;
+      const geometry = (feature.geometry as GeoJSON.Point).coordinates;
       const dx = geometry[0] - point.x;
       const dy = geometry[1] - point.y;
       const d = dx * dx + dy * dy;
@@ -485,13 +466,13 @@ function getDefaultStyle(): MapOptions {
           "source": "points-source",
           "source-layer": "points",
           "filter": ["==", "$type", "Point"],
-          "icon-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            5, 0.1,
-            15, 0.9
-          ],
+          // "icon-opacity": [
+          //   "interpolate",
+          //   ["linear"],
+          //   ["zoom"],
+          //   5, 0.1,
+          //   15, 0.9
+          // ],
           'layout': {
             'icon-image': [
               "case",
@@ -512,8 +493,8 @@ function getDefaultStyle(): MapOptions {
                 23, ["+",["*", ["to-number",["get", "size"]], 0.000037],0.20],
               ],
           },
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
+          // "icon-allow-overlap": true,
+          // "icon-ignore-placement": true,
           "paint": {
             // "icon-color": [
             //   "case",
@@ -676,8 +657,7 @@ function getDefaultStyle(): MapOptions {
           ],
         },
       ]
-    },
-    canvasContextAttributes:{contextType : "webgl2"}
+    }
   };
 }
 
@@ -690,7 +670,7 @@ function getPolygonFillColor(polygonProperties: { [x: string]: string;}): string
   return polygonProperties.fill;
 }
 
-function polygonContainsPoint(ring: Array<[number,number]>, pX: number, pY: number): boolean {
+function polygonContainsPoint(ring: GeoJSON.Position[], pX: number, pY: number): boolean {
   let c = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const p1 = ring[i];

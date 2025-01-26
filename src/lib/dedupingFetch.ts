@@ -1,9 +1,8 @@
-const inProgressFetches = new Map<URL, any>();
+const inProgressFetches = new Map<URL, Promise<string[][]>>();
 
-export default function dedupingFetch(url: URL) {
-  if (inProgressFetches.has(url)) {
-    return inProgressFetches.get(url);
-  }
+export default function dedupingFetch(url: URL) :Promise<string[][]>{
+  const pro = inProgressFetches.get(url)
+  if (pro) {return pro;}
   const promise = fetch(url).then(r => r.json());
   inProgressFetches.set(url, promise);
   return promise;

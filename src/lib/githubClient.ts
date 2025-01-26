@@ -14,7 +14,22 @@ const readmeFilesFormat = [
 const rawGithubUrl = 'https://raw.githubusercontent.com/';
 const headers = {Accept: 'application/vnd.github.v3+json', Authorization: ''}
 let currentUser: null;
-const cachedRepositories = new Map<string,any>();
+const cachedRepositories = new Map<string,Repository>();
+interface Repository {
+  state: string;
+  name: string;
+  description: string;
+  language: string;
+  stars: string;
+  forks: string;
+  watchers: string;
+  default_branch: string;
+  topics: string;
+  license: string;
+  updated_at: string;
+  remainingRequests: string | null;
+}
+
 
 if (document.cookie.includes('github_token')) {
   headers['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0];
@@ -88,7 +103,7 @@ export async function getRepoInfo(repoName: string) {
   }
   const data = await response.json();
   const remainingRequests = response.headers.get('x-ratelimit-remaining');
-  const repository = {
+  const repository : Repository = {
     state: 'LOADED',
     name: data.name,
     description: data.description,

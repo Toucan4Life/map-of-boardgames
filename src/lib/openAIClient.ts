@@ -17,7 +17,7 @@ export async function getOpenAIModels() {
     });
 }
 
-export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string; } }>) {
+export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string; }[] }>) {
   const headers = getAuthHeaders();
   const body = JSON.stringify(messagess);
 

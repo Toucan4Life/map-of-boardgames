@@ -1,25 +1,15 @@
-import maplibregl, { LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl';
+import maplibregl, { GeoJSONSource, LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl';
 import {getPlaceLabels,  addLabelToPlaces, editLabelInPlaces} from './labelsStorage';
 import createMarkerEditor from './createDOMMarkerEditor';
 import bus from '../bus';
-interface Place {
-  type: string;
-  geometry: {
-    type: string;
-    coordinates: number[];
-  };
-  properties: {
-    symbolzoom: number;
-    name: string;
-    labelId: string;
-  };
-};
+
 export default function createLabelEditor(map : Map) {
-  let places: { type: string; features: Array<Place>; } | undefined;
+  let places: GeoJSON.FeatureCollection<GeoJSON.Point,GeoJSON.GeoJsonProperties> | undefined;
   const placeLabelLayers = ['place-country-1'];
 
   getPlaceLabels().then(loadedPlaces => {
-    map.getSource('place')?.setData(loadedPlaces)
+    if(!loadedPlaces) return;
+    (map.getSource('place')as GeoJSONSource)?.setData(loadedPlaces)
     places = loadedPlaces;
   });
 
@@ -33,9 +23,10 @@ export default function createLabelEditor(map : Map) {
     const items = []
     if (labelFeature.length) {
       const label = labelFeature[0].properties;
+      const coordinates = (labelFeature[0].geometry as GeoJSON.Point).coordinates;
       items.push({
         text: `Edit ${label.name}`,
-        click: () => editLabel(labelFeature[0].geometry.coordinates, label)
+        click: () => editLabel(new LngLat(coordinates[0],coordinates[1]), label)
       });
     } else {
       items.push({
@@ -59,7 +50,8 @@ export default function createLabelEditor(map : Map) {
 
     function save(value: string) {
       places = addLabelToPlaces(places, value, marker.getLngLat(), map.getZoom(), borderOwnerId);
-      map.getSource('place')?.setData(places);
+      if(!places) return;
+      (map.getSource('place') as GeoJSONSource)?.setData(places);
       bus.fire('unsaved-changes-detected', true);
     }
   }
@@ -76,7 +68,8 @@ export default function createLabelEditor(map : Map) {
 
     function save(value: string) {
       places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom());
-      map.getSource('place')?.setData(places);
+      if(!places) return;
+      (map.getSource('place')as GeoJSONSource)?.setData(places);
       bus.fire('unsaved-changes-detected', true);
     }
   }

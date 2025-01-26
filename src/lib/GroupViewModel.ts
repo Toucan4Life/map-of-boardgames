@@ -2,7 +2,7 @@ import { ref, nextTick, Ref } from 'vue';
 import generateShortRandomId from './generateShortRandomId';
 import {sendChatRequest} from './openAIClient';
 
-interface chatMessage{  id:string,isEdited:boolean,role:string,content:string}
+interface chatMessage{  id:string|number,isEdited:boolean,role:string,content:string}
 
 export default class GroupViewModel {
   pendingRequest: Promise<void>;
@@ -48,8 +48,8 @@ export default class GroupViewModel {
   submit(model: string) {
     this.error.value = '';
     this.pendingRequest?.cancel();
-    const request = {
-      model,
+    const request: { model: string; messages: { content: string; role: string; }[] }= {
+      model:model,
       messages: this.chat.value.map(message => {
         return {
           content: message.content,
@@ -62,7 +62,7 @@ export default class GroupViewModel {
     });
     let isCancelled = false;
     this.loading.value = true;
-    const p = sendChatRequest(request).then(responseMessage => {
+    const p = sendChatRequest([request]).then(responseMessage => {
       if (isCancelled) return;
       this.loading.value = false;
       const newMessageId = generateShortRandomId();
