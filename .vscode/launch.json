@@ -11,13 +11,7 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/src",
       "preLaunchTask": "start server",
-      "postDebugTask": "stop server",
-      "pathMappings": [
-        {
-          "url": "http://localhost:5173/src",
-          "path": "${workspaceFolder}/src"
-        }
-      ]
+      "postDebugTask": "stop server"
     }
   ]
 }
