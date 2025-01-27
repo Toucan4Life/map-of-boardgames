@@ -40,7 +40,7 @@ export default function createMap() {
   map.dragRotate.disable();
   map.touchZoomRotate.disableRotation();
   const fastLinesLayer =new getCustomLayer();
-  let backgroundEdgesFetch: Promise<void>& { cancel: () => void };
+  let backgroundEdgesFetch: Promise<void> & { cancel: () => void };
   let labelEditor: { getContextMenuItems : (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => {text: string;click: () => void;}[]; getPlaces:  () => GeoJSON.GeoJSON | undefined; };
   // collection of labels.
 

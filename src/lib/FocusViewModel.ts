@@ -14,7 +14,7 @@ export default class FocusViewModel {
   constructor(repositoryName: string, groupId: string | number) {
     this.name = repositoryName;
     this.repos = ref([]);
-    this.lngLat = ref(null);
+    this.lngLat = ref("");
     this.loading = ref(true);
     downloadGroupGraph(groupId).then((graph:Graph ): void => {
       this.loading.value = false;

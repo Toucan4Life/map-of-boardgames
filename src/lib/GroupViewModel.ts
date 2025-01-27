@@ -5,7 +5,7 @@ import {sendChatRequest} from './openAIClient';
 interface chatMessage{  id:string|number,isEdited:boolean,role:string,content:string}
 
 export default class GroupViewModel {
-  pendingRequest: Promise<void>;
+  pendingRequest: Promise<void> & { cancel: () => void };
   loading: Ref<boolean>;
   error: Ref<string>;
   chat: Ref<Array<chatMessage>>;
