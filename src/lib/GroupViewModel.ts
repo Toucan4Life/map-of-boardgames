@@ -13,7 +13,7 @@ export default class GroupViewModel {
   pendingRequest: Promise<void> & { cancel: () => void }
   loading: Ref<boolean>
   error: Ref<string>
-  chat: Ref<Array<chatMessage>>
+  chat: Ref<chatMessage[]>
   largest: Ref<Array<{ name: string }>>
   constructor() {
     this.largest = ref(null)

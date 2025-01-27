@@ -7,7 +7,7 @@ function close() {
   emit('close')
 }
 
-function search(minW: number, maxW: number, minR: number, maxR: number, minP: number, maxP: number, minPl: number, maxPl: number, pChoice: any) {
+function search(minW: number, maxW: number, minR: number, maxR: number, minP: number, maxP: number, minPl: number, maxPl: number, pChoice: number) {
   // console.log(JSON.stringify({
   //   minWeight: minW, maxWeight: maxW,
   //   minRating: minR, maxRating: maxR,
@@ -30,10 +30,6 @@ function search(minW: number, maxW: number, minR: number, maxR: number, minP: nu
   })
 }
 
-function clearAll() {
-  selectedTags.value = []
-}
-
 const sliderMin = ref(1)
 const sliderMax = ref(5)
 const sliderMinR = ref(0)
@@ -46,7 +42,6 @@ const selectedTags = ref([])
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 const playersChoice = 0
-const countries = ['toronto', 'austin', 'paris', 'barcelona', 'hanoi']
 </script>
 
 <template>

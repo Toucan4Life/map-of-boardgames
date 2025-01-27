@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from 'vue'
-const props = defineProps({
+import { defineEmits } from 'vue'
+defineProps({
   vm: {
     type: Object,
     required: true,
@@ -8,7 +8,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: any, event: MouseEvent) {
+function showDetails(repo: { name: string; lngLat: GeoJSON.Position; id: string }, event: MouseEvent) {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -21,9 +21,7 @@ function closePanel() {
   emit('close')
 }
 
-function getLink(repo: any) {
-  // console.log("repo : ",repo);
-  // console.log("vm : ",vm);
+function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>

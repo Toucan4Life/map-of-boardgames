@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 const props = defineProps({
   repos: {
     type: Object,
@@ -8,7 +8,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: any) {
+function showDetails(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -20,7 +20,7 @@ function closePanel() {
   emit('close')
 }
 
-function getLink(repo: any) {
+function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>

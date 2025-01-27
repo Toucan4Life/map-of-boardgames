@@ -18,7 +18,7 @@ function submit() {
   props.vm.submit(selectedModel.value)
 }
 
-function getDisplayContent(message: { content: string | any[] }) {
+function getDisplayContent(message: { content: string }) {
   if (message.content.length > 0) {
     return message.content
   }

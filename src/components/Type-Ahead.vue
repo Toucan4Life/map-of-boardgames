@@ -100,7 +100,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import bus from '../lib/bus.ts'
 import ClickOutside from '../lib/clickOutside.ts'
 import { getCurrentUser } from '../lib/githubClient.ts'
