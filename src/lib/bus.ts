@@ -1,5 +1,5 @@
-import eventify from 'ngraph.events';
+import eventify from 'ngraph.events'
 
-const bus = eventify({});
+const bus = eventify({})
 
-export default bus;
+export default bus

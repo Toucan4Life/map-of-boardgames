@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import {defineProps, reactive, defineEmits, ref} from 'vue';
+import { defineProps, reactive, defineEmits, ref } from 'vue'
 const props = defineProps({
   name: {
     type: String,
-    required: true
+    required: true,
   },
   id: {
     type: Number,
-    required: true
-  }
-});
+    required: true,
+  },
+})
 
-const emit = defineEmits(['show-full-preview']);
+const emit = defineEmits(['show-full-preview'])
 
 const repoInfo = reactive({
   state: 'LOADING',
@@ -25,21 +25,20 @@ const repoInfo = reactive({
   topics: [],
   license: '',
   updated_at: '',
-  remainingRequests: 0
-});
+  remainingRequests: 0,
+})
 
-const errorInfo = ref(null);
+const errorInfo = ref(null)
 
 function showFullPreview() {
   console.log(JSON.stringify(props))
-  emit('show-full-preview', props.name);
+  emit('show-full-preview', props.name)
 }
-
 </script>
 <template>
-  <a href='#' @click.prevent='showFullPreview' class='small-preview-container'>
-    <div class='header'>
-      <span>{{props.name}}</span>
+  <a href="#" @click.prevent="showFullPreview" class="small-preview-container">
+    <div class="header">
+      <span>{{ props.name }}</span>
     </div>
   </a>
 </template>
@@ -62,7 +61,7 @@ function showFullPreview() {
   color: var(--text-color);
 }
 div.error {
-  color: var(--critical-call-to-action)
+  color: var(--critical-call-to-action);
 }
 .info {
   margin-top: 4px;

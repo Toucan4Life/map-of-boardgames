@@ -1,22 +1,30 @@
 <script setup lang="ts">
-import { defineEmits } from 'vue';
+import { defineEmits } from 'vue'
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close'])
 
 function close() {
-  emit('close');
+  emit('close')
 }
-
 </script>
 <template>
   <div>
-    <div class='row'>
+    <div class="row">
       <h2>Map of Boardgames</h2>
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <a href='#' @click.prevent='close' class='close-btn'>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          class="feather feather-x-circle">
+      <a href="#" @click.prevent="close" class="close-btn">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="feather feather-x-circle"
+        >
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="15" y1="9" x2="9" y2="15"></line>
           <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -26,28 +34,15 @@ function close() {
     <div class="container">
       <p>
         <!-- <img src="../../public/apple-touch-icon.png" alt="GitHub Map" class="map-image"> -->
-        Each dot is a boardgame. Two dots within the same cluster are
-        connected if multiple users frequently gave review to
-        both games. The size of the dot indicates the number of review the
-        game has received, the shape indicate the complexity and the color indicate the user's ratings
+        Each dot is a boardgame. Two dots within the same cluster are connected if multiple users frequently gave review to both games. The size of
+        the dot indicates the number of review the game has received, the shape indicate the complexity and the color indicate the user's ratings
       </p>
-      <p>
-        Only games with over 500 ratings were taken into account for now, and clusters of less than 20 games have been
-        dropped
-      </p>
-      <p>
-        The map has more than <b>4000</b> games, clustered into <b>11</b> countries.
-      </p>
-      <p>
-        The code for this project can be found <a href=" https://github.com/Toucan4Life/map-of-boardgames"
-          class='normal'>here</a>
-      </p>
+      <p>Only games with over 500 ratings were taken into account for now, and clusters of less than 20 games have been dropped</p>
+      <p>The map has more than <b>4000</b> games, clustered into <b>11</b> countries.</p>
+      <p>The code for this project can be found <a href=" https://github.com/Toucan4Life/map-of-boardgames" class="normal">here</a></p>
       <h2>Legend</h2>
 
-      <p>
-        The colors are related to the user ratings. Each color is associated with 10% of the boardgames:
-      </p>
-
+      <p>The colors are related to the user ratings. Each color is associated with 10% of the boardgames:</p>
 
       <ul class="legend">
         <li><span style="background-color: #ff0000"></span> &lt;=6.1</li>
@@ -62,9 +57,7 @@ function close() {
         <li><span style="background-color: #00e9ff"></span> &gt;7.77</li>
       </ul>
 
-      <p>
-        The shape are related to the bgg complexity of the game:
-      </p>
+      <p>The shape are related to the bgg complexity of the game:</p>
 
       <!-- <ul class="legend">
         <li><img src="../../public/circle.png" style="width:40px;height:auto;" alt="circle" class="map-image"> &lt;=2
@@ -77,10 +70,7 @@ function close() {
       </ul> -->
 
       <h2>Credits</h2>
-      <p>
-        A huge thanks to <b>Anvaka</b> which inspired me to do this project and did the tools that enabled me to come
-        this far.
-      </p>
+      <p>A huge thanks to <b>Anvaka</b> which inspired me to do this project and did the tools that enabled me to come this far.</p>
 
       <p>
         <b>Toucan4Life / Onixou</b>

@@ -1,34 +1,73 @@
 <template>
-  <div class='ak-typeahead' v-click-outside='hideSuggestions'>
-    <a href="#" class='menu-opener' @click.prevent='menuClicked'>
-      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser">
+  <div class="ak-typeahead" v-click-outside="hideSuggestions">
+    <a href="#" class="menu-opener" @click.prevent="menuClicked">
+      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser" />
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-        class="feather feather-info">
+      <svg
+        v-else
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="feather feather-info"
+      >
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
       </svg>
     </a>
-    <a href="#" class='menu-opener' @click.prevent='showAdvancedSearch'>
-      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser">
+    <a href="#" class="menu-opener" @click.prevent="showAdvancedSearch">
+      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser" />
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-        class="feather feather-more-vertical">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="feather feather-more-vertical"
+      >
         <circle cx="12" cy="12" r="1"></circle>
         <circle cx="12" cy="5" r="1"></circle>
         <circle cx="12" cy="19" r="1"></circle>
       </svg>
     </a>
-    <input ref='input' autofocus type='text' autocomplete='off' autocorrect='off' autocapitalize='off'
-      spellcheck='false' :value='currentQuery' :placeholder='placeholder' @input='handleInput' @keydown="cycleTheList">
-    <a type='submit' class='search-submit' href='#' @click.prevent='clearSearch' v-if='currentQuery || showClearButton'>
+    <input
+      ref="input"
+      autofocus
+      type="text"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      :value="currentQuery"
+      :placeholder="placeholder"
+      @input="handleInput"
+      @keydown="cycleTheList"
+    />
+    <a type="submit" class="search-submit" href="#" @click.prevent="clearSearch" v-if="currentQuery || showClearButton">
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-        class="feather feather-x-circle">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="feather feather-x-circle"
+      >
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="15" y1="9" x2="9" y2="15"></line>
         <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -36,14 +75,22 @@
     </a>
     <ul v-if="showSuggestions" class="suggestions">
       <li v-for="(suggestion, index) in suggestions" :key="index">
-        <a @click.prevent="pickSuggestion(suggestion)" class="suggestion" :class="{ selected: suggestion.selected }"
-          href="#" v-html="suggestion.html"></a>
+        <a
+          @click.prevent="pickSuggestion(suggestion)"
+          class="suggestion"
+          :class="{ selected: suggestion.selected }"
+          href="#"
+          v-html="suggestion.html"
+        ></a>
       </li>
     </ul>
 
     <ul v-if="showLoading" class="suggestions">
       <li class="searching">
-        <span v-if="!loadingError">Downloading search index for letter <b>{{ currentQuery[0] }}</b>...</span>
+        <span v-if="!loadingError"
+          >Downloading search index for letter <b>{{ currentQuery[0] }}</b
+          >...</span
+        >
         <div v-if="loadingError" class="loading-error">
           <div>Failed to get project completions:</div>
           <pre>{{ loadingError }}</pre>
@@ -54,32 +101,32 @@
 </template>
 
 <script>
-import bus from '../lib/bus.ts';
-import ClickOutside from '../lib/clickOutside.ts';
-import { getCurrentUser } from '../lib/githubClient.ts';
+import bus from '../lib/bus.ts'
+import ClickOutside from '../lib/clickOutside.ts'
+import { getCurrentUser } from '../lib/githubClient.ts'
 
 export default {
   directives: { ClickOutside },
   props: {
     placeholder: {
-      default: "Type here"
+      default: 'Type here',
     },
     showClearButton: {
-      default: false
+      default: false,
     },
     query: {
-      default: ""
+      default: '',
     },
     delay: {
-      default: 80
-    }
+      default: 80,
+    },
   },
   mounted() {
     this.updateCurrentUser()
-    bus.on('auth-changed', this.updateCurrentUser);
+    bus.on('auth-changed', this.updateCurrentUser)
   },
   beforeUnmount() {
-    bus.off('auth-changed', this.updateCurrentUser);
+    bus.off('auth-changed', this.updateCurrentUser)
   },
   data() {
     return {
@@ -90,156 +137,156 @@ export default {
       suggestions: [],
       currentQuery: this.query,
       currentUser: null,
-    };
+    }
   },
   watch: {
     query(newQuery) {
-      this.currentQuery = newQuery;
-    }
+      this.currentQuery = newQuery
+    },
   },
   methods: {
     updateCurrentUser() {
-      getCurrentUser().then(user => {
+      getCurrentUser().then((user) => {
         this.currentUser = user
-      });
+      })
     },
 
     refresh() {
-      if (this.showSuggestions) this.getSuggestionsInternal();
+      if (this.showSuggestions) this.getSuggestionsInternal()
     },
 
     menuClicked() {
-      this.$emit('menuClicked');
+      this.$emit('menuClicked')
     },
 
     showAdvancedSearch() {
-      this.$emit('showAdvancedSearch');
+      this.$emit('showAdvancedSearch')
     },
 
     hideSuggestions() {
-      this.showSuggestions = false;
-      this.showLoading = false;
-      this.pendingKeyToShow = true;
+      this.showSuggestions = false
+      this.showLoading = false
+      this.pendingKeyToShow = true
     },
 
     showIfNeeded(visible) {
       // we need to wait until next key press before we can show suggestion.
       // This avoids race conditions between search results and form submission
-      if (!this.pendingKeyToShow) this.showSuggestions = visible;
+      if (!this.pendingKeyToShow) this.showSuggestions = visible
     },
 
     focus() {
-      this.$refs.input.focus();
+      this.$refs.input.focus()
     },
-    test(){
-      console.log("In test")
+    test() {
+      console.log('In test')
     },
     pickSuggestion(suggestion) {
-      this.currentQuery = suggestion.text;
-      this.hideSuggestions();
-      this.$emit("selected", suggestion);
+      this.currentQuery = suggestion.text
+      this.hideSuggestions()
+      this.$emit('selected', suggestion)
     },
 
     clearSearch() {
-      let payload = { shouldProceed: true };
-      this.$emit('beforeClear', payload);
-      if (!payload.shouldProceed) return;
+      const payload = { shouldProceed: true }
+      this.$emit('beforeClear', payload)
+      if (!payload.shouldProceed) return
 
-      this.currentQuery = '';
-      this.getSuggestionsInternal();
+      this.currentQuery = ''
+      this.getSuggestionsInternal()
       // this.focus();
-      this.$emit("cleared");
+      this.$emit('cleared')
     },
 
     handleInput(event) {
-      this.currentQuery = event.target.value;
-      this.$emit('inputChanged');
-      this.getSuggestionsInternal();
+      this.currentQuery = event.target.value
+      this.$emit('inputChanged')
+      this.getSuggestionsInternal()
     },
 
     getSuggestionsInternal() {
-      var self = this;
+      const self = this
       if (self.previous) {
-        window.clearTimeout(self.previous);
-        self.previous = null;
+        window.clearTimeout(self.previous)
+        self.previous = null
       }
       if (!self.currentQuery) {
-        this.showSuggestions = false;
-        return;
+        this.showSuggestions = false
+        return
       }
 
       self.previous = window.setTimeout(function () {
-        var p = window.fuzzySearcher.find(self.currentQuery.toLowerCase());
+        const p = window.fuzzySearcher.find(self.currentQuery.toLowerCase())
 
         if (Array.isArray(p)) {
-          self.suggestions = p.map(toOwnSuggestion);
-          self.currentSelected = -1;
-          self.showIfNeeded(p && p.length > 0);
+          self.suggestions = p.map(toOwnSuggestion)
+          self.currentSelected = -1
+          self.showIfNeeded(p && p.length > 0)
         } else if (p) {
-          self.loadingError = null;
-          self.showLoading = true;
+          self.loadingError = null
+          self.showLoading = true
           p.then(
             function (suggestions) {
-              if (suggestions === undefined) return; // resolution of cancelled promise
-              self.showLoading = false;
-              suggestions = suggestions || [];
-              self.suggestions = suggestions.map(toOwnSuggestion);
-              self.currentSelected = -1;
-              self.showIfNeeded(suggestions && suggestions.length > 0);
+              if (suggestions === undefined) return // resolution of cancelled promise
+              self.showLoading = false
+              suggestions = suggestions || []
+              self.suggestions = suggestions.map(toOwnSuggestion)
+              self.currentSelected = -1
+              self.showIfNeeded(suggestions && suggestions.length > 0)
             },
             function (err) {
-              self.loadingError = err;
-            }
-          );
+              self.loadingError = err
+            },
+          )
         } else {
-          throw new Error("Could not parse suggestions response");
+          throw new Error('Could not parse suggestions response')
         }
-      }, self.delay);
+      }, self.delay)
     },
 
     cycleTheList(e) {
-      var items = this.suggestions;
-      var currentSelected = this.currentSelected;
+      const items = this.suggestions
+      let currentSelected = this.currentSelected
       // Any key is alright for the suggestions
-      this.pendingKeyToShow = false;
+      this.pendingKeyToShow = false
 
-      let dx;
+      let dx
       if (e.which === 38) {
         // UP
-        dx = -1;
+        dx = -1
       } else if (e.which === 40) {
         // down
-        dx = 1;
+        dx = 1
       } else if (e.which === 13) {
         // Enter === accept
         if (items[currentSelected]) {
-          this.pickSuggestion(items[currentSelected]);
+          this.pickSuggestion(items[currentSelected])
         } else {
-          this.pickSuggestion({ text: this.currentQuery });
+          this.pickSuggestion({ text: this.currentQuery })
         }
-        e.preventDefault();
-        return;
+        e.preventDefault()
+        return
       } else if (e.which === 27) {
         // Esc === close
-        this.hideSuggestions();
+        this.hideSuggestions()
       }
 
-      if (!dx || items.length === 0) return;
+      if (!dx || items.length === 0) return
 
-      e.preventDefault();
+      e.preventDefault()
 
       if (currentSelected >= 0) {
-        this.suggestions[currentSelected].selected = false;
+        this.suggestions[currentSelected].selected = false
       }
-      currentSelected += dx;
-      if (currentSelected < 0) currentSelected = items.length - 1;
-      if (currentSelected >= items.length) currentSelected = 0;
+      currentSelected += dx
+      if (currentSelected < 0) currentSelected = items.length - 1
+      if (currentSelected >= items.length) currentSelected = 0
 
-      this.suggestions[currentSelected].selected = true;
-      this.currentSelected = currentSelected;
-    }
-  }
-};
+      this.suggestions[currentSelected].selected = true
+      this.currentSelected = currentSelected
+    },
+  },
+}
 function toOwnSuggestion(x) {
   return {
     selected: false,
@@ -247,8 +294,8 @@ function toOwnSuggestion(x) {
     html: x.html,
     lon: x.lon,
     lat: x.lat,
-    id: x.id
-  };
+    id: x.id,
+  }
 }
 </script>
 
@@ -312,7 +359,6 @@ img.avatar {
   text-decoration: none;
   font-weight: bold;
   color: var(--color-text);
-
 }
 
 .suggestion b {

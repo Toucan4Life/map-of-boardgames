@@ -1,30 +1,32 @@
 <script setup lang="ts">
-import { computed, defineEmits} from 'vue';
+import { computed, defineEmits } from 'vue'
 const props = defineProps({
   name: {
     type: String,
-    required: true
+    required: true,
   },
   id: {
     type: Number,
-    required: true
-  }
-});
+    required: true,
+  },
+})
 
-const emit = defineEmits(['listConnections']);
+const emit = defineEmits(['listConnections'])
 const repoLink = computed(() => {
-  return `https://boardgamegeek.com/boardgame/` + props.id;
-});
+  return `https://boardgamegeek.com/boardgame/` + props.id
+})
 
 function listConnections() {
-  emit('listConnections');
+  emit('listConnections')
 }
 </script>
 
 <template>
   <div class="repo-viewer">
     <div>
-      <h2><a :href='repoLink' target="_blank">{{name}}</a></h2>
+      <h2>
+        <a :href="repoLink" target="_blank">{{ name }}</a>
+      </h2>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
       </div>
@@ -37,7 +39,7 @@ h2 {
   font-size: 24px;
   max-width: 100%;
   text-overflow: ellipsis;
-  overflow: hidden;;
+  overflow: hidden;
 }
 
 .repo-viewer {
@@ -53,7 +55,7 @@ h2 a {
   line-height: 1.2em;
   max-width: 100%;
   text-overflow: ellipsis;
-  overflow: hidden;;
+  overflow: hidden;
 }
 .byline {
   margin: 8px 0;
@@ -125,9 +127,7 @@ h2 a {
 }
 </style>
 
-
 <style>
-
 .readme-content {
   border-top: 1px solid var(--color-border);
   padding-top: 8px;

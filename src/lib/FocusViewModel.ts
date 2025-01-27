@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 import downloadGroupGraph from './downloadGroupGraph'
-import { Graph, Link, Node, NodeId } from 'ngraph.graph'
+import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 interface Repo {
   name: NodeId
   lngLat: Ref<string>

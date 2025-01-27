@@ -1,8 +1,7 @@
-
 import './assets/main.css'
 
-let vueLoader : HTMLElement | null  = document.querySelector('.vue-loading');
-let mapLoader : HTMLElement | null = document.querySelector('.map-loading');
+let vueLoader: HTMLElement | null = document.querySelector('.vue-loading')
+let mapLoader: HTMLElement | null = document.querySelector('.map-loading')
 
 if (!webglSupported()) {
   document.body.innerHTML = `<div class='no-webgl'>
@@ -11,66 +10,69 @@ if (!webglSupported()) {
     </p> <p>
     You can try another browser. If the problem persists - very likely your video card isn't supported.
     </p>
-  </div>`;
+  </div>`
 } else {
-  if (vueLoader) vueLoader.innerText = 'Loading Vue containers...';
-  if (mapLoader) mapLoader.innerText = 'Loading Map...';
-  import( './lib/createMap.ts').then(({default: createMap}) => {
-    mapLoader?.remove();
-    mapLoader = null;
-    window.mapOwner = createMap();
-    cleanUpLoaderIfNeeded();
-  }).catch((e) => {
-    console.error(e);
-    mapLoader?.remove();
-    mapLoader = null;
-    showErrorMessage(e);
-  });
+  if (vueLoader) vueLoader.innerText = 'Loading Vue containers...'
+  if (mapLoader) mapLoader.innerText = 'Loading Map...'
+  import('./lib/createMap.ts')
+    .then(({ default: createMap }) => {
+      mapLoader?.remove()
+      mapLoader = null
+      window.mapOwner = createMap()
+      cleanUpLoaderIfNeeded()
+    })
+    .catch((e) => {
+      console.error(e)
+      mapLoader?.remove()
+      mapLoader = null
+      showErrorMessage(e)
+    })
 
-  import('./startVue').then(({default: startVue}) => {
-    vueLoader?.remove();
-    vueLoader = null;
-    startVue();
-    cleanUpLoaderIfNeeded();
-  }).catch(e => {
-    console.error(e);
-    vueLoader?.remove();
-    vueLoader = null;
-    showErrorMessage(e);
-  });
+  import('./startVue')
+    .then(({ default: startVue }) => {
+      vueLoader?.remove()
+      vueLoader = null
+      startVue()
+      cleanUpLoaderIfNeeded()
+    })
+    .catch((e) => {
+      console.error(e)
+      vueLoader?.remove()
+      vueLoader = null
+      showErrorMessage(e)
+    })
 
-  import( './lib/createFuzzySearcher.ts').then(({default: createFuzzySearcher}) => {
+  import('./lib/createFuzzySearcher.ts').then(({ default: createFuzzySearcher }) => {
     // This is kind of bad, but also make searching available in the console and easier to
     // hook with type-ahead.
-    window.fuzzySearcher = createFuzzySearcher();
+    window.fuzzySearcher = createFuzzySearcher()
   })
 }
 
-
 function cleanUpLoaderIfNeeded() {
   if (!vueLoader && !mapLoader) {
-    document.querySelector('.boot')?.remove();
+    document.querySelector('.boot')?.remove()
   }
 }
 
 function webglSupported() {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement('canvas')
   try {
-      // Note that { failIfMajorPerformanceCaveat: true } can be passed as a second argument
-      // to canvas.getContext(), causing the check to fail if hardware rendering is not available. See
-      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
-      // for more details.
-      const context = canvas.getContext('webgl2');
-      if (context && typeof context.getParameter == 'function') {
-          return true;
-      }
+    // Note that { failIfMajorPerformanceCaveat: true } can be passed as a second argument
+    // to canvas.getContext(), causing the check to fail if hardware rendering is not available. See
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+    // for more details.
+    const context = canvas.getContext('webgl2')
+    if (context && typeof context.getParameter == 'function') {
+      return true
+    }
   } catch (e) {
-      // WebGL is supported, but disabled
+    // WebGL is supported, but disabled
   }
-  return false;
+  return false
 }
 
-function showErrorMessage(e: { message: string; }) {
+function showErrorMessage(e: { message: string }) {
   document.body.innerHTML = `<div class='no-webgl'>
     <h4>Something went wrong :(</h4>
     <p>
@@ -79,12 +81,12 @@ function showErrorMessage(e: { message: string; }) {
     <p>
     The error message was: <pre class="error"></pre>
     </p>
-  </div>`;
-  (document.querySelector('.error') as HTMLElement).innerText = e.message;
+  </div>`
+  ;(document.querySelector('.error') as HTMLElement).innerText = e.message
 }
 
 // Print friendly message to the viewer:
-console.log(`%c 👋 Hello there!`, 'font-size: 24px; font-weight: bold;');
+console.log(`%c 👋 Hello there!`, 'font-size: 24px; font-weight: bold;')
 console.log('Thank you for checking out source code. You can read it here: ')
-console.log('https://github.com/Toucan4Life/map-of-github');
-console.log('If you have any questions, please let me know');
+console.log('https://github.com/Toucan4Life/map-of-github')
+console.log('If you have any questions, please let me know')

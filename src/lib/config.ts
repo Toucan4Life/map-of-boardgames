@@ -1,8 +1,7 @@
-
-const hostName = window.location.hostname;
-const isDev = false;
-const server = isDev ? `http://${hostName}:3010/data` : 'https://Toucan4Life.github.io/graph-start/src/server/data';
-const version = '/v1';
+const hostName = window.location.hostname
+const isDev = false
+const server = isDev ? `http://${hostName}:3010/data` : 'https://Toucan4Life.github.io/graph-start/src/server/data'
+const version = '/v1'
 
 export default {
   serverUrl: '',
@@ -14,4 +13,4 @@ export default {
   iconSource: `${server}${version}/icon`,
   namesEndpoint: `${server}${version}/names`,
   graphsEndpoint: `${server}${version}/graphs`,
-};
+}
