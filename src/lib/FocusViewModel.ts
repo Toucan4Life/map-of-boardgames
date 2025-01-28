@@ -8,23 +8,34 @@ interface Repo {
   id: string
   linkWeight: number
 }
-/**
- * This view model is used to show direct neighbors of a node. It can be extended
- * to pull second layer neighbors as well and then perform layout on them.
- */
-export default class FocusViewModel {
+interface IFocusViewModel {
+  id: string
   name: string
   repos: Ref<Repo[]>
   lngLat: Ref<string>
   loading: Ref<boolean>
+}
+/**
+ * This view model is used to show direct neighbors of a node. It can be extended
+ * to pull second layer neighbors as well and then perform layout on them.
+ */
+export default class FocusViewModel implements IFocusViewModel {
+  name: string
+  repos: Ref<Repo[]>
+  lngLat: Ref<string>
+  loading: Ref<boolean>
+  id: string
   constructor(repositoryName: string, groupId: string | number) {
     this.name = repositoryName
     this.repos = ref([])
     this.lngLat = ref('')
+    this.id = ''
     this.loading = ref(true)
     downloadGroupGraph(groupId).then((graph: Graph): void => {
       this.loading.value = false
       const neighgbors: Repo[] = []
+      const id = graph.getNode(repositoryName)?.id
+      if (id) this.id = id.toString()
       this.lngLat.value = graph.getNode(repositoryName)?.data.l
       graph.forEachLinkedNode(
         repositoryName,

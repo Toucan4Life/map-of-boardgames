@@ -41,7 +41,7 @@ function cancelQuery() {
 }
 
 const vTextareaFitContentSize = {
-  beforeMount(el: any) {
+  beforeMount(el: HTMLElement) {
     function resize() {
       el.style.height = 'auto'
       el.style.height = Math.max(48, el.scrollHeight) + 'px'
@@ -54,7 +54,7 @@ const vTextareaFitContentSize = {
       el.removeEventListener('focus', resize)
     }
   },
-  unmounted(el: any) {
+  unmounted(el: HTMLElement) {
     el._cleanup()
   },
 }
@@ -67,7 +67,7 @@ const vTextareaFitContentSize = {
     <div class="container">
       <ul class="message-list">
         <li
-          v-for="message in vm.chat"
+          v-for="message in vm.chat.value"
           :key="message.id"
           class="message"
           :class="{

@@ -99,7 +99,7 @@ export default class GroupViewModel {
     this.pendingRequest = p
   }
 
-  deleteMessage(id: string) {
+  deleteMessage(id: string | number) {
     this.chat.value = this.chat.value.filter((message) => message.id !== id)
   }
 

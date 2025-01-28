@@ -165,7 +165,7 @@ export default function createMap() {
       selectedFilters.push(['>=', ['to-number', ['get', 'min_players_best']], searchParameters.minPlayers])
       selectedFilters.push(['<=', ['to-number', ['get', 'max_players_best']], searchParameters.maxPlayers])
     }
-    // console.log(JSON.stringify(selectedFilters))
+
     map
       .querySourceFeatures('points-source', {
         sourceLayer: 'points',

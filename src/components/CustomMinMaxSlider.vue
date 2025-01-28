@@ -40,11 +40,6 @@ const getPercent = (value: number, min: number, max: number) => {
   return ((value - min) / (max - min)) * 100
 }
 
-// function to get the difference between the min and max values
-const sliderDifference = computed(() => {
-  return Math.abs(sliderMaxValue.value - sliderMinValue.value)
-})
-
 // function to set the css variables for width, left and right
 const setCSSProps = (left: number, right: number) => {
   if (slider.value) slider.value.style.setProperty('--progressLeft', `${left}%`)
@@ -69,13 +64,15 @@ watchEffect(() => {
 })
 
 // validation sliderMinValue do not greater than sliderMaxValue and opposite
-const onInput = ({ target }: { target: any }) => {
+const onInput = (payload: Event) => {
+  const target = payload.target as HTMLInputElement
+  if (!target) return
   if (target.name === 'min') {
-    target.value > sliderMaxValue.value ? (target.value = sliderMaxValue.value) : (sliderMinValue.value = parseFloat(target.value))
-  }
-
-  if (target.name === 'max') {
-    target.value < sliderMinValue.value ? (target.value = sliderMinValue.value) : (sliderMaxValue.value = parseFloat(target.value))
+    if (parseFloat(target.value) > sliderMaxValue.value) target.value = sliderMaxValue.value.toString()
+    else sliderMinValue.value = parseFloat(target.value)
+  } else if (target.name === 'max') {
+    if (parseFloat(target.value) < sliderMinValue.value) target.value = sliderMinValue.value.toString()
+    sliderMaxValue.value = parseFloat(target.value)
   }
 }
 </script>

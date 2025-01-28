@@ -2,10 +2,11 @@
 import { defineProps, ref } from 'vue'
 import { getOpenAIModels, getStoredOpenAIKey, storeOpenAIKey } from '../lib/openAIClient.ts'
 import ChatList from './ChatList.vue'
+import GroupViewModel from '@/lib/GroupViewModel.ts'
 
 const props = defineProps({
   vm: {
-    type: Object,
+    type: GroupViewModel,
     required: true,
   },
   description: {

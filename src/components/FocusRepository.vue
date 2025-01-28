@@ -1,18 +1,30 @@
 <script setup lang="ts">
-import { defineEmits } from 'vue'
-defineProps({
-  vm: {
-    type: Object,
-    required: true,
-  },
-})
+import type { NodeId } from 'ngraph.graph'
+import { defineEmits, type Ref } from 'vue'
+
+interface Repo {
+  name: NodeId
+  lngLat: Ref<string>
+  isExternal: boolean
+  id: string
+  linkWeight: number
+}
+interface IFocusViewModel {
+  id: string
+  name: string
+  repos: Ref<Repo[]>
+  lngLat: Ref<string>
+  loading: Ref<boolean>
+}
+const vm = defineProps<IFocusViewModel>()
+
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: { name: string; lngLat: GeoJSON.Position; id: string }, event: MouseEvent) {
+function showDetails(repo: IFocusViewModel | Repo, event: MouseEvent) {
   emit('selected', {
     text: repo.name,
-    lon: repo.lngLat[1],
-    lat: repo.lngLat[0],
+    lon: repo.lngLat.value[1],
+    lat: repo.lngLat.value[0],
     skipAnimation: event.altKey,
     id: repo.id,
   })
@@ -21,7 +33,7 @@ function closePanel() {
   emit('close')
 }
 
-function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
+function getLink(repo: IFocusViewModel | Repo) {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>
@@ -33,7 +45,7 @@ function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
           <h2>
             <a :href="getLink(vm)" @click.prevent="showDetails(vm, $event)" class="normal">{{ vm.name }}</a>
           </h2>
-          <h3 v-if="!vm.loading">Direct connections ({{ vm.repos.length }})</h3>
+          <h3 v-if="!vm.loading">Direct connections ({{ vm.repos.value.length }})</h3>
           <h3 v-else>Loading...</h3>
         </div>
         <a class="close-btn" href="#" @click.prevent="closePanel()">
@@ -58,7 +70,7 @@ function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
       </div>
 
       <ul v-if="vm.repos">
-        <li v-for="repo in vm.repos" :key="repo.name">
+        <li v-for="repo in vm.repos.value" :key="repo.name">
           <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank"
             >{{ repo.name }} <span v-if="repo.isExternal" title="External country">E</span>
           </a>
