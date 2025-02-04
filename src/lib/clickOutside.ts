@@ -1,74 +1,73 @@
 // Based on https://github.com/ElemeFE/element/blob/dev/src/utils/clickoutside.js
 // The MIT License (MIT), Copyright (c) 2016 ElemeFE
-const nodeList = []
-const ctx = '@@clickoutsideContext'
+import type { ComponentPublicInstance, DirectiveBinding, ObjectDirective } from 'vue'
 
-let startClick
-let seed = 0
+type DocumentHandler = <T extends Event>(mouseup: T, mousedown: T) => void
+type FlushList = Map<
+  HTMLElement,
+  {
+    documentHandler: DocumentHandler
+    bindingFn: (...args: unknown[]) => unknown
+  }
+>
+const nodeList: FlushList = new Map()
 
-document.addEventListener('mousedown', (e) => (startClick = e))
+let startClick: MouseEvent | TouchEvent
+
+document.addEventListener('mousedown', (e: MouseEvent) => (startClick = e))
 document.addEventListener('mouseup', (e) => {
-  nodeList.forEach((node) => node[ctx].documentHandler(e, startClick))
+  for (const { documentHandler } of nodeList.values()) {
+    documentHandler(e, startClick)
+  }
 })
 
 // Also hide when tapped outside.
-document.addEventListener('touchstart', (e) => {
-  startClick = e
-})
+document.addEventListener('touchstart', (e) => (startClick = e))
 document.addEventListener('touchend', (e) => {
-  nodeList.forEach((node) => node[ctx].documentHandler(e, startClick))
+  for (const { documentHandler } of nodeList.values()) {
+    documentHandler(e, startClick)
+  }
 })
 
-function createDocumentHandler(el, binding, vnode) {
-  return function (mouseup = {}, mousedown = {}) {
+function createDocumentHandler(el: HTMLElement, binding: DirectiveBinding): DocumentHandler {
+  return function (mouseup, mousedown) {
+    const popperRef = (
+      binding.instance as ComponentPublicInstance<{
+        popperRef: HTMLElement
+      }>
+    ).popperRef
     if (
-      !vnode ||
-      !vnode.context ||
+      !binding ||
+      !binding.instance ||
       !mouseup.target ||
       !mousedown.target ||
-      el.contains(mouseup.target) ||
-      el.contains(mousedown.target) ||
+      el.contains(mouseup.target as Node) ||
+      el.contains(mousedown.target as Node) ||
       el === mouseup.target ||
-      (vnode.context.popperElm && (vnode.context.popperElm.contains(mouseup.target) || vnode.context.popperElm.contains(mousedown.target)))
-    )
+      (popperRef && (popperRef.contains(mouseup.target as Node) || popperRef.contains(mousedown.target as Node)))
+    ) {
       return
-
-    const methodName = el[ctx].methodName
-    if (binding.expression && methodName && vnode.context[methodName]) {
-      vnode.context[methodName]()
-    } else {
-      el[ctx].bindingFn && el[ctx].bindingFn()
     }
+    binding.value()
   }
 }
 
-export default {
-  bind(el, binding, vnode) {
-    nodeList.push(el)
-    const id = seed++
-    el[ctx] = {
-      id,
-      documentHandler: createDocumentHandler(el, binding, vnode),
-      methodName: binding.expression,
+const ClickOutside: ObjectDirective = {
+  beforeMount(el: HTMLElement, binding: DirectiveBinding): void {
+    nodeList.set(el, {
+      documentHandler: createDocumentHandler(el, binding),
       bindingFn: binding.value,
-    }
+    })
   },
-
-  update(el, binding, vnode) {
-    el[ctx].documentHandler = createDocumentHandler(el, binding, vnode)
-    el[ctx].methodName = binding.expression
-    el[ctx].bindingFn = binding.value
+  updated(el: HTMLElement, binding: DirectiveBinding): void {
+    nodeList.set(el, {
+      documentHandler: createDocumentHandler(el, binding),
+      bindingFn: binding.value,
+    })
   },
-
-  unbind(el) {
-    const len = nodeList.length
-
-    for (let i = 0; i < len; i++) {
-      if (nodeList[i][ctx].id === el[ctx].id) {
-        nodeList.splice(i, 1)
-        break
-      }
-    }
-    delete el[ctx]
+  unmounted(el: HTMLElement): void {
+    nodeList.delete(el)
   },
 }
+
+export default ClickOutside

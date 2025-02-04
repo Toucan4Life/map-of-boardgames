@@ -18,7 +18,7 @@ export default function createLabelEditor(map: Map) {
     getPlaces: () => places,
   }
 
-  function getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined) {
+  function getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined): { text: string; click: () => void }[] {
     const labelFeature = map.queryRenderedFeatures(e.point, { layers: placeLabelLayers })
     const items = []
     if (labelFeature.length) {

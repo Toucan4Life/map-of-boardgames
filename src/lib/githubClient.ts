@@ -13,7 +13,7 @@ const readmeFilesFormat = [
 
 const rawGithubUrl = 'https://raw.githubusercontent.com/'
 const headers = { Accept: 'application/vnd.github.v3+json', Authorization: '' }
-let currentUser: null
+let currentUser: undefined | User
 const cachedRepositories = new Map<string, Repository>()
 interface Repository {
   state: string
@@ -30,6 +30,10 @@ interface Repository {
   remainingRequests: string | null
 }
 
+interface User {
+  avater_url: string
+}
+
 if (document.cookie.includes('github_token')) {
   headers['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0]
 }
@@ -44,22 +48,22 @@ export function setAuthToken(token: string) {
 export function signOut() {
   delete headers['Authorization']
   document.cookie = 'github_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-  currentUser = null
+  currentUser = undefined
   bus.fire('auth-changed')
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | undefined> {
   if (currentUser) return currentUser
   if (!headers['Authorization']) return
 
   const response = await fetch('https://api.github.com/user', { headers })
   if (response.ok) {
-    currentUser = await response.json()
+    currentUser = (await response.json()) as User
     return currentUser
   }
 }
 
-export function getCachedCurrentUser() {
+export function getCachedCurrentUser(): User | undefined {
   return currentUser
 }
 

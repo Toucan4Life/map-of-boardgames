@@ -1,5 +1,10 @@
 import './assets/main.css'
-
+declare global {
+  interface Window {
+    mapOwner: any
+    fuzzySearcher: any
+  }
+}
 let vueLoader: HTMLElement | null = document.querySelector('.vue-loading')
 let mapLoader: HTMLElement | null = document.querySelector('.map-loading')
 
@@ -66,8 +71,9 @@ function webglSupported() {
     if (context && typeof context.getParameter == 'function') {
       return true
     }
-  } catch (e) {
+  } catch (e: unknown) {
     // WebGL is supported, but disabled
+    console.warn(e)
   }
   return false
 }

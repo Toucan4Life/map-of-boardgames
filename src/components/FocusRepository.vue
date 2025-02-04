@@ -16,7 +16,7 @@ interface IFocusViewModel {
   lngLat: Ref<string>
   loading: Ref<boolean>
 }
-const vm = defineProps<IFocusViewModel>()
+const vm = defineProps<{ vm: IFocusViewModel }>()
 
 const emit = defineEmits(['selected', 'close'])
 
@@ -43,9 +43,9 @@ function getLink(repo: IFocusViewModel | Repo) {
       <div class="header-container">
         <div class="header">
           <h2>
-            <a :href="getLink(vm)" @click.prevent="showDetails(vm, $event)" class="normal">{{ vm.name }}</a>
+            <a :href="getLink(vm.vm)" @click.prevent="showDetails(vm.vm, $event)" class="normal">{{ vm.vm.name }}</a>
           </h2>
-          <h3 v-if="!vm.loading">Direct connections ({{ vm.repos.value.length }})</h3>
+          <h3 v-if="!vm.vm.loading">Direct connections ({{ vm.vm.repos.value.length }})</h3>
           <h3 v-else>Loading...</h3>
         </div>
         <a class="close-btn" href="#" @click.prevent="closePanel()">
@@ -69,8 +69,8 @@ function getLink(repo: IFocusViewModel | Repo) {
         </a>
       </div>
 
-      <ul v-if="vm.repos">
-        <li v-for="repo in vm.repos.value" :key="repo.name">
+      <ul v-if="vm.vm.repos">
+        <li v-for="repo in vm.vm.repos.value" :key="repo.name">
           <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank"
             >{{ repo.name }} <span v-if="repo.isExternal" title="External country">E</span>
           </a>

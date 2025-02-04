@@ -101,10 +101,18 @@
 </template>
 
 <script lang="ts">
+import type { SearchResult } from '@/lib/createFuzzySearcher.ts'
 import bus from '../lib/bus.ts'
 import ClickOutside from '../lib/clickOutside.ts'
 import { getCurrentUser } from '../lib/githubClient.ts'
-
+interface Suggestion {
+  selected: boolean
+  text: string
+  html: string | null
+  lon: string
+  lat: string
+  id: string
+}
 export default {
   directives: { ClickOutside },
   props: {
@@ -112,7 +120,7 @@ export default {
       default: 'Type here',
     },
     showClearButton: {
-      default: false,
+      default: '',
     },
     query: {
       default: '',
@@ -134,9 +142,11 @@ export default {
       showSuggestions: false,
       showLoading: false,
       loadingError: null,
-      suggestions: [],
+      suggestions: new Array<Suggestion>(),
       currentQuery: this.query,
-      currentUser: null,
+      currentUser: undefined,
+      pendingKeyToShow: false,
+      previous: undefined,
     }
   },
   watch: {
@@ -169,7 +179,7 @@ export default {
       this.pendingKeyToShow = true
     },
 
-    showIfNeeded(visible) {
+    showIfNeeded(visible: boolean) {
       // we need to wait until next key press before we can show suggestion.
       // This avoids race conditions between search results and form submission
       if (!this.pendingKeyToShow) this.showSuggestions = visible
@@ -181,7 +191,7 @@ export default {
     test() {
       console.log('In test')
     },
-    pickSuggestion(suggestion) {
+    pickSuggestion(suggestion: { text: string }) {
       this.currentQuery = suggestion.text
       this.hideSuggestions()
       this.$emit('selected', suggestion)
@@ -198,53 +208,52 @@ export default {
       this.$emit('cleared')
     },
 
-    handleInput(event) {
-      this.currentQuery = event.target.value
+    handleInput(event: Event) {
+      this.currentQuery = (event.target as HTMLInputElement).value
       this.$emit('inputChanged')
       this.getSuggestionsInternal()
     },
 
     getSuggestionsInternal() {
-      const self = this
-      if (self.previous) {
-        window.clearTimeout(self.previous)
-        self.previous = null
+      if (this.previous) {
+        window.clearTimeout(this.previous)
+        this.previous = undefined
       }
-      if (!self.currentQuery) {
+      if (!this.currentQuery) {
         this.showSuggestions = false
         return
       }
 
-      self.previous = window.setTimeout(function () {
-        const p = window.fuzzySearcher.find(self.currentQuery.toLowerCase())
+      this.previous = window.setTimeout(() => {
+        const p = (window.fuzzySearcher as { find: (query: string) => Promise<SearchResult[] | void> }).find(this.currentQuery.toLowerCase())
 
         if (Array.isArray(p)) {
-          self.suggestions = p.map(toOwnSuggestion)
-          self.currentSelected = -1
-          self.showIfNeeded(p && p.length > 0)
+          this.suggestions = p.map(toOwnSuggestion)
+          this.currentSelected = -1
+          this.showIfNeeded(p && p.length > 0)
         } else if (p) {
-          self.loadingError = null
-          self.showLoading = true
+          this.loadingError = null
+          this.showLoading = true
           p.then(
-            function (suggestions) {
+            (suggestions) => {
               if (suggestions === undefined) return // resolution of cancelled promise
-              self.showLoading = false
+              this.showLoading = false
               suggestions = suggestions || []
-              self.suggestions = suggestions.map(toOwnSuggestion)
-              self.currentSelected = -1
-              self.showIfNeeded(suggestions && suggestions.length > 0)
+              this.suggestions = suggestions.map(toOwnSuggestion)
+              this.currentSelected = -1
+              this.showIfNeeded(suggestions && suggestions.length > 0)
             },
-            function (err) {
-              self.loadingError = err
+            (err) => {
+              this.loadingError = err
             },
           )
         } else {
           throw new Error('Could not parse suggestions response')
         }
-      }, self.delay)
+      }, this.delay)
     },
 
-    cycleTheList(e) {
+    cycleTheList(e: KeyboardEvent): void {
       const items = this.suggestions
       let currentSelected = this.currentSelected
       // Any key is alright for the suggestions
@@ -287,7 +296,7 @@ export default {
     },
   },
 }
-function toOwnSuggestion(x) {
+function toOwnSuggestion(x: SearchResult): Suggestion {
   return {
     selected: false,
     text: x.text,

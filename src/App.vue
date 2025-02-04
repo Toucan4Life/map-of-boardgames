@@ -10,8 +10,8 @@ import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
 import GroupViewModel from './lib/GroupViewModel'
 import FocusViewModel from './lib/FocusViewModel'
-
 import bus from './lib/bus'
+import type { SearchResult } from './lib/createFuzzySearcher'
 
 const SM_SCREEN_BREAKPOINT = 600
 
@@ -19,16 +19,31 @@ const sidebarVisible = ref(false)
 const currentProject = ref('')
 const currentId = ref('')
 const smallPreviewName = ref('')
-const tooltip = ref(null)
-const contextMenu = ref(null)
+const tooltip = ref<Tooltip>()
+const contextMenu = ref<ContextMenu>()
 const aboutVisible = ref(false)
 const advSearchVisible = ref(false)
-const currentGroup = ref(null)
-const currentFocus = ref(null)
+const currentGroup = ref<GroupViewModel>()
+const currentFocus = ref<FocusViewModel>()
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
-let lastSelected
+
+interface Tooltip {
+  left: string
+  top: string
+  background: string
+  text: string
+}
+
+interface ContextMenu {
+  click(): void
+  left: string
+  top: string
+  items: { text: string; click: () => void }[]
+}
+
+let lastSelected: SearchResult
 
 function onTypeAheadInput() {}
 
@@ -45,7 +60,7 @@ function closeSideBarOnSmallScreen() {
   closeSideBarViewer()
 }
 
-function findProject(x) {
+function findProject(x: SearchResult) {
   if (x.lat === undefined && lastSelected && x.text === lastSelected.text) {
     x = lastSelected
   } else {
@@ -61,13 +76,13 @@ function findProject(x) {
   currentId.value = x.id
 }
 
-function onRepoSelected(repo) {
+function onRepoSelected(repo: SearchResult) {
   lastSelected = repo
   if (isSmallScreen.value) {
     // move panel to the bottom
     smallPreviewName.value = repo.text
     currentId.value = repo.id
-    currentProject.value = null
+    currentProject.value = ''
   } else {
     currentProject.value = repo.text
     currentId.value = repo.id
@@ -75,15 +90,15 @@ function onRepoSelected(repo) {
 }
 
 function showFullPreview() {
-  smallPreviewName.value = null
+  smallPreviewName.value = ''
   currentProject.value = lastSelected.text
 }
 
-function onShowTooltip(newTooltip) {
+function onShowTooltip(newTooltip: Tooltip) {
   tooltip.value = newTooltip
 }
 
-function onShowContextMenu(newContextMenu) {
+function onShowContextMenu(newContextMenu: ContextMenu) {
   contextMenu.value = newContextMenu
 }
 
@@ -112,39 +127,39 @@ function onResize() {
   isSmallScreen.value = window.innerWidth < SM_SCREEN_BREAKPOINT
 }
 
-function doContextMenuAction(menuItem) {
-  contextMenu.value = null
+function doContextMenuAction(menuItem: { text: string; click: () => void }) {
+  contextMenu.value = undefined
   menuItem.click()
 }
 
-function onFocusOnRepo(repo, groupId) {
+function onFocusOnRepo(repo: string, groupId: string | number) {
   const focusViewModel = new FocusViewModel(repo, groupId)
-  currentGroup.value = null
+  currentGroup.value = undefined
   currentFocus.value = focusViewModel
 }
 
-function onShowLargestInGroup(groupId, largest) {
-  let groupViewModel = groupCache.get(groupId)
+function onShowLargestInGroup(groupId: number, largest: { name: string }[]) {
+  let groupViewModel: GroupViewModel = groupCache.get(groupId)
   if (!groupViewModel) {
-    groupViewModel = new GroupViewModel(groupId)
+    groupViewModel = new GroupViewModel()
     groupCache.set(groupId, groupViewModel)
   }
   groupViewModel.setLargest(largest)
-  currentFocus.value = null
+  currentFocus.value = undefined
   currentGroup.value = groupViewModel
 }
 
-function onUnsavedChangesDetected(hasChanges) {
+function onUnsavedChangesDetected(hasChanges: boolean) {
   hasUnsavedChanges.value = hasChanges
 }
 
 function closeLargestRepositories() {
-  currentGroup.value = null
+  currentGroup.value = undefined
   window.mapOwner?.clearBorderHighlights()
 }
 
 function closeFocusView() {
-  currentFocus.value = null
+  currentFocus.value = undefined
 }
 
 const typeAheadVisible = computed(() => {
@@ -160,11 +175,21 @@ async function listCurrentConnections() {
   const groupId = await window.mapOwner?.getGroupIdAt(lastSelected.lat, lastSelected.lon)
   if (groupId !== undefined) {
     const focusViewModel = new FocusViewModel(lastSelected.text, groupId)
-    currentGroup.value = null
+    currentGroup.value = undefined
     currentFocus.value = focusViewModel
   }
 }
-async function search(parameters) {
+async function search(parameters: {
+  minWeight: string
+  maxWeight: string
+  minRating: string
+  maxRating: string
+  minPlaytime: string
+  maxPlaytime: string
+  playerChoice: number
+  minPlayers: string
+  maxPlayers: string
+}) {
   await window.mapOwner?.highlightNode(parameters)
 }
 </script>
@@ -189,7 +214,7 @@ async function search(parameters) {
     ></largest-repositories>
     <focus-repository :vm="currentFocus" v-if="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView()"></focus-repository>
     <github-repository :name="currentProject" :id="currentId" v-if="currentProject" @listConnections="listCurrentConnections()"></github-repository>
-    <form @submit.prevent="onSubmit" class="search-box" v-if="typeAheadVisible">
+    <form @submit.prevent class="search-box" v-if="typeAheadVisible">
       <type-ahead
         placeholder="Find Game"
         @menuClicked="aboutVisible = true"

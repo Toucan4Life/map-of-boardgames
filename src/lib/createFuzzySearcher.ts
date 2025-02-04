@@ -11,14 +11,15 @@ interface Word {
   lon: string
   id: string
 }
-interface SearchResult {
+export interface SearchResult {
+  skipAnimation: boolean
   html: string | null
   text: string
   lat: string
   lon: string
   id: string
 }
-export default function createFuzzySearcher() {
+export default function createFuzzySearcher(): { find: (query: string) => Promise<SearchResult[] | void> } {
   const words: Array<Word> = []
   let lastPromise: Fuzzysort.CancelablePromise<Fuzzysort.KeyResults<Word>>
   let lastQuery: string
