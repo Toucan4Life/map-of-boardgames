@@ -30,8 +30,8 @@ interface Repository {
   remainingRequests: string | null
 }
 
-interface User {
-  avater_url: string
+export interface User {
+  avatar_url: string
 }
 
 if (document.cookie.includes('github_token')) {

@@ -100,203 +100,178 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { SearchResult } from '@/lib/createFuzzySearcher.ts'
 import bus from '../lib/bus.ts'
-import ClickOutside from '../lib/clickOutside.ts'
-import { getCurrentUser } from '../lib/githubClient.ts'
-interface Suggestion {
-  selected: boolean
-  text: string
-  html: string | null
-  lon: string
-  lat: string
-  id: string
+import { getCurrentUser, type User } from '../lib/githubClient.ts'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+const emit = defineEmits(['menuClicked', 'showAdvancedSearch', 'selected', 'beforeClear', 'cleared', 'inputChanged'])
+
+const props = defineProps({
+  placeholder: {
+    default: 'Type here',
+  },
+  showClearButton: {
+    default: '',
+  },
+  query: {
+    default: '',
+  },
+  delay: {
+    default: 80,
+  },
+})
+
+const currentSelected = ref(-1)
+const showSuggestions = ref(false)
+const showLoading = ref(false)
+const loadingError = ref(null)
+const suggestions = ref(new Array<SearchResult>())
+const currentUser = ref<User>()
+const currentQuery = ref(props.query)
+const pendingKeyToShow = ref(false)
+const previous = ref<number>()
+const input = ref(null)
+
+onMounted(() => {
+  updateCurrentUser()
+  bus.on('auth-changed', updateCurrentUser)
+})
+onBeforeUnmount(() => {
+  bus.off('auth-changed', updateCurrentUser)
+})
+
+function updateCurrentUser() {
+  getCurrentUser().then((user) => {
+    currentUser.value = user
+  })
 }
-export default {
-  directives: { ClickOutside },
-  props: {
-    placeholder: {
-      default: 'Type here',
-    },
-    showClearButton: {
-      default: '',
-    },
-    query: {
-      default: '',
-    },
-    delay: {
-      default: 80,
-    },
-  },
-  mounted() {
-    this.updateCurrentUser()
-    bus.on('auth-changed', this.updateCurrentUser)
-  },
-  beforeUnmount() {
-    bus.off('auth-changed', this.updateCurrentUser)
-  },
-  data() {
-    return {
-      currentSelected: -1,
-      showSuggestions: false,
-      showLoading: false,
-      loadingError: null,
-      suggestions: new Array<Suggestion>(),
-      currentQuery: this.query,
-      currentUser: undefined,
-      pendingKeyToShow: false,
-      previous: undefined,
+
+function menuClicked() {
+  emit('menuClicked')
+}
+
+function showAdvancedSearch() {
+  emit('showAdvancedSearch')
+}
+
+function hideSuggestions() {
+  showSuggestions.value = false
+  showLoading.value = false
+  pendingKeyToShow.value = true
+}
+
+function showIfNeeded(visible: boolean) {
+  // we need to wait until next key press before we can show suggestion.
+  // This avoids race conditions between search results and form submission
+  if (!pendingKeyToShow.value) showSuggestions.value = visible
+}
+
+function pickSuggestion(suggestion: { text: string }) {
+  currentQuery.value = suggestion.text
+  hideSuggestions()
+  emit('selected', suggestion)
+}
+
+function clearSearch() {
+  const payload = { shouldProceed: true }
+  emit('beforeClear', payload)
+  if (!payload.shouldProceed) return
+
+  currentQuery.value = ''
+  getSuggestionsInternal()
+  // focus();
+  emit('cleared')
+}
+
+function handleInput(event: Event) {
+  currentQuery.value = (event.target as HTMLInputElement).value
+  emit('inputChanged')
+  getSuggestionsInternal()
+}
+
+function getSuggestionsInternal() {
+  if (previous.value) {
+    window.clearTimeout(previous.value)
+    previous.value = undefined
+  }
+  if (!currentQuery.value) {
+    showSuggestions.value = false
+    return
+  }
+
+  previous.value = window.setTimeout(() => {
+    const p = window.fuzzySearcher.find(currentQuery.value.toLowerCase())
+
+    if (Array.isArray(p)) {
+      suggestions.value = p.map(toOwnSuggestion)
+      currentSelected.value = -1
+      showIfNeeded(p && p.length > 0)
+    } else if (p) {
+      loadingError.value = null
+      showLoading.value = true
+      p.then(
+        (sug: void | SearchResult[]) => {
+          if (sug === undefined) return // resolution of cancelled promise
+          showLoading.value = false
+          suggestions.value = sug || []
+          suggestions.value = sug.map(toOwnSuggestion)
+          currentSelected.value = -1
+          showIfNeeded(suggestions.value && suggestions.value.length > 0)
+        },
+        (err) => {
+          loadingError.value = err
+        },
+      )
+    } else {
+      throw new Error('Could not parse suggestions response')
     }
-  },
-  watch: {
-    query(newQuery) {
-      this.currentQuery = newQuery
-    },
-  },
-  methods: {
-    updateCurrentUser() {
-      getCurrentUser().then((user) => {
-        this.currentUser = user
-      })
-    },
-
-    refresh() {
-      if (this.showSuggestions) this.getSuggestionsInternal()
-    },
-
-    menuClicked() {
-      this.$emit('menuClicked')
-    },
-
-    showAdvancedSearch() {
-      this.$emit('showAdvancedSearch')
-    },
-
-    hideSuggestions() {
-      this.showSuggestions = false
-      this.showLoading = false
-      this.pendingKeyToShow = true
-    },
-
-    showIfNeeded(visible: boolean) {
-      // we need to wait until next key press before we can show suggestion.
-      // This avoids race conditions between search results and form submission
-      if (!this.pendingKeyToShow) this.showSuggestions = visible
-    },
-
-    focus() {
-      this.$refs.input.focus()
-    },
-    test() {
-      console.log('In test')
-    },
-    pickSuggestion(suggestion: { text: string }) {
-      this.currentQuery = suggestion.text
-      this.hideSuggestions()
-      this.$emit('selected', suggestion)
-    },
-
-    clearSearch() {
-      const payload = { shouldProceed: true }
-      this.$emit('beforeClear', payload)
-      if (!payload.shouldProceed) return
-
-      this.currentQuery = ''
-      this.getSuggestionsInternal()
-      // this.focus();
-      this.$emit('cleared')
-    },
-
-    handleInput(event: Event) {
-      this.currentQuery = (event.target as HTMLInputElement).value
-      this.$emit('inputChanged')
-      this.getSuggestionsInternal()
-    },
-
-    getSuggestionsInternal() {
-      if (this.previous) {
-        window.clearTimeout(this.previous)
-        this.previous = undefined
-      }
-      if (!this.currentQuery) {
-        this.showSuggestions = false
-        return
-      }
-
-      this.previous = window.setTimeout(() => {
-        const p = (window.fuzzySearcher as { find: (query: string) => Promise<SearchResult[] | void> }).find(this.currentQuery.toLowerCase())
-
-        if (Array.isArray(p)) {
-          this.suggestions = p.map(toOwnSuggestion)
-          this.currentSelected = -1
-          this.showIfNeeded(p && p.length > 0)
-        } else if (p) {
-          this.loadingError = null
-          this.showLoading = true
-          p.then(
-            (suggestions) => {
-              if (suggestions === undefined) return // resolution of cancelled promise
-              this.showLoading = false
-              suggestions = suggestions || []
-              this.suggestions = suggestions.map(toOwnSuggestion)
-              this.currentSelected = -1
-              this.showIfNeeded(suggestions && suggestions.length > 0)
-            },
-            (err) => {
-              this.loadingError = err
-            },
-          )
-        } else {
-          throw new Error('Could not parse suggestions response')
-        }
-      }, this.delay)
-    },
-
-    cycleTheList(e: KeyboardEvent): void {
-      const items = this.suggestions
-      let currentSelected = this.currentSelected
-      // Any key is alright for the suggestions
-      this.pendingKeyToShow = false
-
-      let dx
-      if (e.which === 38) {
-        // UP
-        dx = -1
-      } else if (e.which === 40) {
-        // down
-        dx = 1
-      } else if (e.which === 13) {
-        // Enter === accept
-        if (items[currentSelected]) {
-          this.pickSuggestion(items[currentSelected])
-        } else {
-          this.pickSuggestion({ text: this.currentQuery })
-        }
-        e.preventDefault()
-        return
-      } else if (e.which === 27) {
-        // Esc === close
-        this.hideSuggestions()
-      }
-
-      if (!dx || items.length === 0) return
-
-      e.preventDefault()
-
-      if (currentSelected >= 0) {
-        this.suggestions[currentSelected].selected = false
-      }
-      currentSelected += dx
-      if (currentSelected < 0) currentSelected = items.length - 1
-      if (currentSelected >= items.length) currentSelected = 0
-
-      this.suggestions[currentSelected].selected = true
-      this.currentSelected = currentSelected
-    },
-  },
+  }, props.delay)
 }
-function toOwnSuggestion(x: SearchResult): Suggestion {
+
+function cycleTheList(e: KeyboardEvent): void {
+  const items = suggestions
+  let currentS = currentSelected.value
+  // Any key is alright for the suggestions
+  pendingKeyToShow.value = false
+
+  let dx
+  if (e.which === 38) {
+    // UP
+    dx = -1
+  } else if (e.which === 40) {
+    // down
+    dx = 1
+  } else if (e.which === 13) {
+    // Enter === accept
+    if (items.value[currentS]) {
+      pickSuggestion(items.value[currentS])
+    } else {
+      pickSuggestion({ text: currentQuery.value })
+    }
+    e.preventDefault()
+    return
+  } else if (e.which === 27) {
+    // Esc === close
+    hideSuggestions()
+  }
+
+  if (!dx || items.value.length === 0) return
+
+  e.preventDefault()
+
+  if (currentSelected.value >= 0) {
+    suggestions.value[currentS].selected = false
+  }
+  currentSelected.value += dx
+  if (currentS < 0) currentS = items.value.length - 1
+  if (currentS >= items.value.length) currentS = 0
+
+  suggestions.value[currentS].selected = true
+  currentSelected.value = currentS
+}
+
+function toOwnSuggestion(x: SearchResult): SearchResult {
   return {
     selected: false,
     text: x.text,
@@ -304,6 +279,7 @@ function toOwnSuggestion(x: SearchResult): Suggestion {
     lon: x.lon,
     lat: x.lat,
     id: x.id,
+    skipAnimation: false,
   }
 }
 </script>

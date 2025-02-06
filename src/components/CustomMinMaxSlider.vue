@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { ref, watchEffect } from 'vue'
 
 // define component props for the slider component
 const { min, max, step, minValue, maxValue } = defineProps({

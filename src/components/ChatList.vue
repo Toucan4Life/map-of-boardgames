@@ -27,11 +27,11 @@ function getDisplayContent(message: { content: string }) {
 
 function submitOnCmdEnter(event: KeyboardEvent) {
   if (event.key === 'Enter' && event.metaKey) {
-    if (event.target) event.target.blur()
+    if (event.target) (event.target as HTMLElement).blur()
     submit()
     event.preventDefault()
   } else if (event.key === 'Escape') {
-    if (event.target) event.target.blur()
+    if (event.target) (event.target as HTMLElement).blur()
     event.preventDefault()
   }
 }
@@ -49,13 +49,14 @@ const vTextareaFitContentSize = {
     el.addEventListener('input', resize)
     el.addEventListener('focus', resize)
     resize()
-    el._cleanup = () => {
-      el.removeEventListener('input', resize)
-      el.removeEventListener('focus', resize)
-    }
   },
   unmounted(el: HTMLElement) {
-    el._cleanup()
+    function resize() {
+      el.style.height = 'auto'
+      el.style.height = Math.max(48, el.scrollHeight) + 'px'
+    }
+    el.removeEventListener('input', resize)
+    el.removeEventListener('focus', resize)
   },
 }
 </script>

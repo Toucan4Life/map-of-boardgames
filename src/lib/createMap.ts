@@ -42,95 +42,90 @@ const explorer = {
 
 const currentColorTheme = explorer
 
-export default function createMap() {
-  const map = new maplibregl.Map(getDefaultStyle())
-  map.dragRotate.disable()
-  map.touchZoomRotate.disableRotation()
-  const fastLinesLayer = new getCustomLayer()
-  let backgroundEdgesFetch: Promise<void> & { cancel: () => void }
-  let labelEditor: {
-    getContextMenuItems: (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => { text: string; click: () => void }[]
-    getPlaces: () => GeoJSON.GeoJSON | undefined
+export class BoardGameMap {
+  backgroundEdgesFetch: (Promise<void> & { cancel: () => void }) | undefined
+  bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
+  map: maplibregl.Map
+  fastLinesLayer: getCustomLayer
+  labelEditor:
+    | {
+        getContextMenuItems: (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => { text: string; click: () => void }[]
+        getPlaces: () => GeoJSON.GeoJSON | undefined
+      }
+    | undefined
+
+  constructor() {
+    this.map = new maplibregl.Map(this.getDefaultStyle())
+    this.map.dragRotate.disable()
+    this.map.touchZoomRotate.disableRotation()
+    this.fastLinesLayer = new getCustomLayer()
+    // collection of labels.
+
+    this.map.on('load', async () => {
+      const circle = await this.map.loadImage(config.iconSource + '/circle.png')
+      this.map.addImage('circle-icon', circle.data, { sdf: true })
+      const diamond = await this.map.loadImage(config.iconSource + '/diamond.png')
+      this.map.addImage('diamond-icon', diamond.data, { sdf: true })
+      const triangle = await this.map.loadImage(config.iconSource + '/triangle.png')
+      this.map.addImage('triangle-icon', triangle.data, { sdf: true })
+      const star = await this.map.loadImage(config.iconSource + '/star.png')
+      this.map.addImage('star-icon', star.data, { sdf: true })
+      this.map.addLayer(this.fastLinesLayer, 'circle-layer')
+      // map.addLayer(createRadialGradient(), "polygon-layer");
+      this.labelEditor = createLabelEditor(this.map)
+    })
+
+    this.map.on('contextmenu', (e) => {
+      bus.fire('show-tooltip')
+
+      const bg = this.getBackgroundNearPoint(e.point)
+      if (!bg) return
+
+      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
+        items: [this.showLargestProjectsContextMenuItem(bg)],
+        left: e.point.x + 'px',
+        top: e.point.y + 'px',
+      }
+
+      if (this.labelEditor) {
+        contextMenuItems.items.concat(this.labelEditor.getContextMenuItems(e, bg.id))
+      }
+
+      const nearestCity = this.findNearestCity(e.point)
+      if (nearestCity) {
+        const name = nearestCity.properties.label
+        const parts = name.split('/')
+        const displayName = parts[parts.length - 1] || name
+
+        contextMenuItems.items.push({
+          text: 'List connections of ' + displayName,
+          click: () => {
+            this.showDetails(nearestCity)
+            this.drawBackgroundEdges(e.point, name)
+            bus.fire('focus-on-repo', name, bg.id)
+          },
+        })
+      }
+
+      bus.fire('show-context-menu', contextMenuItems)
+    })
+
+    this.map.on('click', (e) => {
+      // console.log("Clicked")
+      bus.fire('show-context-menu')
+      const nearestCity = this.findNearestCity(e.point)
+      // console.log("Nearest city :" + JSON.stringify(nearestCity))
+      if (!nearestCity) return
+      const repo = nearestCity.properties.label
+      if (!repo) return
+      this.showDetails(nearestCity)
+
+      const includeExternal = e.originalEvent.altKey
+      this.drawBackgroundEdges(e.point, repo, !includeExternal)
+    })
+    this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
-  // collection of labels.
-
-  map.on('load', async () => {
-    const circle = await map.loadImage(config.iconSource + '/circle.png')
-    map.addImage('circle-icon', circle.data, { sdf: true })
-    const diamond = await map.loadImage(config.iconSource + '/diamond.png')
-    map.addImage('diamond-icon', diamond.data, { sdf: true })
-    const triangle = await map.loadImage(config.iconSource + '/triangle.png')
-    map.addImage('triangle-icon', triangle.data, { sdf: true })
-    const star = await map.loadImage(config.iconSource + '/star.png')
-    map.addImage('star-icon', star.data, { sdf: true })
-    map.addLayer(fastLinesLayer, 'circle-layer')
-    // map.addLayer(createRadialGradient(), "polygon-layer");
-    labelEditor = createLabelEditor(map)
-  })
-
-  map.on('contextmenu', (e) => {
-    bus.fire('show-tooltip')
-
-    const bg = getBackgroundNearPoint(e.point)
-    if (!bg) return
-
-    const contextMenuItems = {
-      items: labelEditor.getContextMenuItems(e, bg.id),
-      left: e.point.x + 'px',
-      top: e.point.y + 'px',
-    }
-
-    contextMenuItems.items.push(showLargestProjectsContextMenuItem(bg))
-
-    const nearestCity = findNearestCity(e.point)
-    if (nearestCity) {
-      const name = nearestCity.properties.label
-      const parts = name.split('/')
-      const displayName = parts[parts.length - 1] || name
-
-      contextMenuItems.items.push({
-        text: 'List connections of ' + displayName,
-        click: () => {
-          showDetails(nearestCity)
-          drawBackgroundEdges(e.point, name)
-          bus.fire('focus-on-repo', name, bg.id)
-        },
-      })
-    }
-
-    bus.fire('show-context-menu', contextMenuItems)
-  })
-
-  map.on('click', (e) => {
-    // console.log("Clicked")
-    bus.fire('show-context-menu')
-    const nearestCity = findNearestCity(e.point)
-    // console.log("Nearest city :" + JSON.stringify(nearestCity))
-    if (!nearestCity) return
-    const repo = nearestCity.properties.label
-    if (!repo) return
-    showDetails(nearestCity)
-
-    const includeExternal = e.originalEvent.altKey
-    drawBackgroundEdges(e.point, repo, !includeExternal)
-  })
-  const bordersCollection = fetch(config.bordersSource).then((res) => res.json())
-
-  return {
-    map,
-    dispose() {
-      map.remove()
-      // TODO: Remove custom layer?
-    },
-    makeVisible,
-    clearHighlights,
-    clearBorderHighlights,
-    getPlacesGeoJSON,
-    getGroupIdAt,
-    highlightNode,
-  }
-
-  function highlightNode(searchParameters: {
+  highlightNode(searchParameters: {
     minWeight: string
     maxWeight: string
     minRating: string
@@ -166,7 +161,7 @@ export default function createMap() {
       selectedFilters.push(['<=', ['to-number', ['get', 'max_players_best']], searchParameters.maxPlayers])
     }
 
-    map
+    this.map
       .querySourceFeatures('points-source', {
         sourceLayer: 'points',
         filter: selectedFilters,
@@ -179,23 +174,21 @@ export default function createMap() {
         })
       })
     // console.log("nodes : " + JSON.stringify(highlightedNodes))
-    ;(map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
-    map.redraw()
+    ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
+    this.map.redraw()
   }
-
-  function getGroupIdAt(lat: number, lon: number) {
+  getGroupIdAt(lat: number, lon: number) {
     // find first group that contains the point.
-    return bordersCollection.then((collection) => {
+    return this.bordersCollection.then((collection) => {
       const feature = collection.features.find((f: MapGeoJSONFeature) => {
-        return polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
+        return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
       })
       if (!feature) return
       const id = feature.id
       return id
     })
   }
-
-  function showDetails(nearestCity: MapGeoJSONFeature) {
+  showDetails(nearestCity: MapGeoJSONFeature) {
     const repo = nearestCity.properties.label
     // console.log("showing details for :" + repo)
     if (!repo) return
@@ -204,14 +197,13 @@ export default function createMap() {
     bus.fire('show-tooltip')
     bus.fire('repo-selected', { text: repo, lat, lon, id: nearestCity.properties.id })
   }
-
-  function showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature) {
+  showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature) {
     return {
       text: 'Show largest projects',
       click: () => {
         if (!bg.id) return
         const seen = new Map()
-        const largeRepositories = map
+        const largeRepositories = this.map
           .querySourceFeatures('points-source', {
             sourceLayer: 'points',
             filter: ['==', 'parent', bg.id],
@@ -232,8 +224,8 @@ export default function createMap() {
           if (seen.size >= 100) break
         }
 
-        map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
-        map.setLayoutProperty('border-highlight', 'visibility', 'visible')
+        this.map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
+        this.map.setLayoutProperty('border-highlight', 'visibility', 'visible')
 
         // todo: fire a view model here instead of the list.
         bus.fire('show-largest-in-group', bg.id, Array.from(seen.values()))
@@ -241,64 +233,72 @@ export default function createMap() {
     }
   }
 
-  function getPlacesGeoJSON() {
-    return labelEditor.getPlaces()
+  getPlacesGeoJSON() {
+    if (!this.labelEditor) {
+      console.warn('labelEditor not yet initialized')
+      return
+    }
+    return this.labelEditor.getPlaces()
   }
 
-  function clearBorderHighlights() {
-    map.setLayoutProperty('border-highlight', 'visibility', 'none')
+  clearBorderHighlights() {
+    this.map.setLayoutProperty('border-highlight', 'visibility', 'none')
   }
 
-  function clearHighlights() {
-    fastLinesLayer.clear()
-    ;(map.getSource('selected-nodes') as GeoJSONSource)?.setData({
+  clearHighlights() {
+    if (!this.fastLinesLayer) {
+      console.warn('fastLinesLayer not yet initialized')
+      return
+    }
+    this.fastLinesLayer.clear()
+    ;(this.map.getSource('selected-nodes') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: [],
     })
-    map.redraw()
+    this.map.redraw()
   }
 
-  function makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false) {
+  makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false) {
     if (disableAnimation) {
-      map.jumpTo(location)
+      this.map.jumpTo(location)
     } else {
-      map.flyTo(location)
+      this.map.flyTo(location)
     }
-    map.once('moveend', () => {
-      drawBackgroundEdges(location.center, repository)
+    this.map.once('moveend', () => {
+      this.drawBackgroundEdges(location.center, repository)
     })
   }
 
-  function getBackgroundNearPoint(point: PointLike) {
-    const borderFeature = map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
+  getBackgroundNearPoint(point: PointLike) {
+    const borderFeature = this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
     return borderFeature[0]
   }
 
-  function drawBackgroundEdges(point: PointLike, repo: string, ignoreExternal = true) {
+  drawBackgroundEdges(point: PointLike, repo: string, ignoreExternal = true) {
     // console.log("In drawBackgroundEdges")
-    const bgFeature = getBackgroundNearPoint(point)
+    const bgFeature = this.getBackgroundNearPoint(point)
     // console.log("bgFeature :" + JSON.stringify(bgFeature))
     if (!bgFeature) return
     const groupId = bgFeature.id
     //console.log("groupId :" + JSON.stringify(groupId))
     if (groupId === undefined) return
 
-    const fillColor = getPolygonFillColor(bgFeature.properties)
+    const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
-    fastLinesLayer.clear()
-    backgroundEdgesFetch?.cancel()
+    this.fastLinesLayer.clear()
+    this.backgroundEdgesFetch?.cancel()
     let isCancelled = false
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
     }
 
-    backgroundEdgesFetch = downloadGroupGraph(groupId).then((groupGraph) => {
+    this.backgroundEdgesFetch = downloadGroupGraph(groupId).then((groupGraph) => {
       if (isCancelled) return
       const firstLevelLinks: Array<{ from: [number, number]; to: [number, number]; color: number }> = []
       let primaryNodePosition: GeoJSON.Position
       const renderedNodesAdjustment = new Map()
-      map
+      this.map
         .querySourceFeatures('points-source', {
           sourceLayer: 'points',
           filter: ['==', 'parent', groupId],
@@ -345,24 +345,24 @@ export default function createMap() {
             geometry: { type: 'Point', coordinates: repo === link.fromId ? toGeo : fromGeo },
             properties: { color: secondaryHighlightColor, name: otherName, background: fillColor, textSize: 0.8 },
           })
-        } else fastLinesLayer.addLine(line)
+        } else this.fastLinesLayer.addLine(line)
       })
       firstLevelLinks.forEach((line) => {
-        fastLinesLayer.addLine(line)
+        this.fastLinesLayer.addLine(line)
       })
       // console.log("Node to highlight : " + JSON.stringify(highlightedNodes))
-      ;(map.getSource('selected-nodes') as GeoJSONSource)?.setData(highlightedNodes)
-      map.redraw()
+      ;(this.map.getSource('selected-nodes') as GeoJSONSource)?.setData(highlightedNodes)
+      this.map.redraw()
     })
-    backgroundEdgesFetch.cancel = () => {
+    this.backgroundEdgesFetch.cancel = () => {
       isCancelled = true
     }
   }
 
-  function findNearestCity(point: { x: number; y: number }): MapGeoJSONFeature | undefined {
+  findNearestCity(point: { x: number; y: number }): MapGeoJSONFeature | undefined {
     const width = 16
     const height = 16
-    const features = map.queryRenderedFeatures(
+    const features = this.map.queryRenderedFeatures(
       [
         [point.x - width / 2, point.y - height / 2],
         [point.x + width / 2, point.y + height / 2],
@@ -384,308 +384,308 @@ export default function createMap() {
     })
     return nearestCity
   }
-}
 
-function getDefaultStyle(): MapOptions {
-  return {
-    hash: true,
-    container: 'map',
-    center: [0, 0],
-    zoom: 2,
-    style: {
-      version: 8,
-      glyphs: config.glyphsSource,
-      sources: {
-        'borders-source': { type: 'geojson', data: config.bordersSource },
-        'points-source': {
-          type: 'vector',
-          tiles: [config.vectorTilesTiles],
-          minzoom: 0,
-          maxzoom: 2,
-          bounds: [-54.781, -47.422, 54.781, 47.422],
-        },
-        place: {
-          // this one loaded asynchronously, and merged with local storage data
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [],
+  getDefaultStyle(): MapOptions {
+    return {
+      hash: true,
+      container: 'map',
+      center: [0, 0],
+      zoom: 2,
+      style: {
+        version: 8,
+        glyphs: config.glyphsSource,
+        sources: {
+          'borders-source': { type: 'geojson', data: config.bordersSource },
+          'points-source': {
+            type: 'vector',
+            tiles: [config.vectorTilesTiles],
+            minzoom: 0,
+            maxzoom: 2,
+            bounds: [-54.781, -47.422, 54.781, 47.422],
+          },
+          place: {
+            // this one loaded asynchronously, and merged with local storage data
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: [],
+            },
+          },
+          'selected-nodes': {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: [],
+            },
           },
         },
-        'selected-nodes': {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [],
+        layers: [
+          {
+            id: 'background',
+            type: 'background',
+            paint: {
+              'background-color': currentColorTheme.background,
+            },
           },
-        },
-      },
-      layers: [
-        {
-          id: 'background',
-          type: 'background',
-          paint: {
-            'background-color': currentColorTheme.background,
+          {
+            id: 'polygon-layer',
+            type: 'fill',
+            source: 'borders-source',
+            filter: ['==', '$type', 'Polygon'],
+            paint: {
+              'fill-color': ['get', 'fill'],
+            },
           },
-        },
-        {
-          id: 'polygon-layer',
-          type: 'fill',
-          source: 'borders-source',
-          filter: ['==', '$type', 'Polygon'],
-          paint: {
-            'fill-color': ['get', 'fill'],
+          {
+            id: 'border-highlight',
+            type: 'line',
+            source: 'borders-source',
+            layout: {
+              visibility: 'none',
+            },
+            paint: {
+              'line-color': '#FFF',
+              'line-width': 4,
+            },
           },
-        },
-        {
-          id: 'border-highlight',
-          type: 'line',
-          source: 'borders-source',
-          layout: {
-            visibility: 'none',
-          },
-          paint: {
-            'line-color': '#FFF',
-            'line-width': 4,
-          },
-        },
-        // {
-        //   "id": "circle-layer",
-        //   "type": "circle",
-        //   "source": "points-source",
-        //   "source-layer": "points",
-        //   "filter": ["==", "$type", "Point"],
-        //   "paint": {
-        //     "circle-color": [
-        //       "case",
-        //       [">=", ["to-number", ["get", 'complexity']], 4],
-        //       "#9a0202",
-        //       [">=", ["to-number", ["get", 'complexity']], 3],
-        //       "#ffe612",
-        //       [">=", ["to-number", ["get", 'complexity']], 2],
-        //       "#28ff12",
-        //       "#12ffe2"
-        //     ],
-        //     "circle-opacity": [
-        //       "interpolate",
-        //       ["linear"],
-        //       ["zoom"],
-        //       5, 0.1,
-        //       15, 0.9
-        //     ],
-        //     "circle-stroke-color": currentColorTheme.circleStrokeColor,
-        //     "circle-stroke-width": 1,
-        //     "circle-stroke-opacity": [
-        //       "interpolate",
-        //       ["linear"],
-        //       ["zoom"],
-        //       8, 0.0,
-        //       15, 0.9
-        //     ],
-        //     "circle-radius": [
-        //       "interpolate",
-        //       ["linear"],
-        //       ["zoom"],
-        //       5, ["*", ["get", "size"], .1],
-        //       23, ["*", ["get", "size"], 1.5],
-        //     ]
-        //   }
-        // },
-        {
-          id: 'circle-layer',
-          type: 'symbol',
-          source: 'points-source',
-          'source-layer': 'points',
-          filter: ['==', '$type', 'Point'],
-          // "icon-opacity": [
-          //   "interpolate",
-          //   ["linear"],
-          //   ["zoom"],
-          //   5, 0.1,
-          //   15, 0.9
-          // ],
-          layout: {
-            'icon-image': [
-              'case',
-              ['>=', ['to-number', ['get', 'complexity']], 4],
-              'star-icon',
-              ['>=', ['to-number', ['get', 'complexity']], 3],
-              'diamond-icon',
-              ['>=', ['to-number', ['get', 'complexity']], 2],
-              'triangle-icon',
-              'circle-icon',
-            ],
-            'icon-size': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              5,
-              ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
-              23,
-              ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
-            ],
-          },
-          // "icon-allow-overlap": true,
-          // "icon-ignore-placement": true,
-          paint: {
-            // "icon-color": [
-            //   "case",
-            //   [">=", ["to-number", ["get", 'ratings']], 7.77],
-            //   "#00ff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 7.46],
-            //   "#0fff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 7.2],
-            //   "#4bff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 7.03],
-            //   "#87ff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 6.9],
-            //   "#c3ff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 6.76],
-            //   "#ffff00",
-            //   [">=", ["to-number", ["get", 'ratings']], 6.6],
-            //   "#fff000",
-            //   [">=", ["to-number", ["get", 'ratings']], 6.4],
-            //   "#ffb400",
-            //   [">=", ["to-number", ["get", 'ratings']], 6.1],
-            //   "#ff7800",
-            //   "#ff3c00"
-            // ],
-            'icon-color': [
-              'case',
-              ['>=', ['to-number', ['get', 'ratings']], 7.77],
-              '#00e9ff',
-              ['>=', ['to-number', ['get', 'ratings']], 7.46],
-              '#00f8d8',
-              ['>=', ['to-number', ['get', 'ratings']], 7.2],
-              '#00ff83',
-              ['>=', ['to-number', ['get', 'ratings']], 7.03],
-              '#62f25e',
-              ['>=', ['to-number', ['get', 'ratings']], 6.9],
-              '#87e539',
-              ['>=', ['to-number', ['get', 'ratings']], 6.76],
-              '#a2d600',
-              ['>=', ['to-number', ['get', 'ratings']], 6.6],
-              '#c3b700',
-              ['>=', ['to-number', ['get', 'ratings']], 6.4],
-              '#de9200',
-              ['>=', ['to-number', ['get', 'ratings']], 6.1],
-              '#f36300',
-              '#ff0000',
-            ],
+          // {
+          //   "id": "circle-layer",
+          //   "type": "circle",
+          //   "source": "points-source",
+          //   "source-layer": "points",
+          //   "filter": ["==", "$type", "Point"],
+          //   "paint": {
+          //     "circle-color": [
+          //       "case",
+          //       [">=", ["to-number", ["get", 'complexity']], 4],
+          //       "#9a0202",
+          //       [">=", ["to-number", ["get", 'complexity']], 3],
+          //       "#ffe612",
+          //       [">=", ["to-number", ["get", 'complexity']], 2],
+          //       "#28ff12",
+          //       "#12ffe2"
+          //     ],
+          //     "circle-opacity": [
+          //       "interpolate",
+          //       ["linear"],
+          //       ["zoom"],
+          //       5, 0.1,
+          //       15, 0.9
+          //     ],
+          //     "circle-stroke-color": currentColorTheme.circleStrokeColor,
+          //     "circle-stroke-width": 1,
+          //     "circle-stroke-opacity": [
+          //       "interpolate",
+          //       ["linear"],
+          //       ["zoom"],
+          //       8, 0.0,
+          //       15, 0.9
+          //     ],
+          //     "circle-radius": [
+          //       "interpolate",
+          //       ["linear"],
+          //       ["zoom"],
+          //       5, ["*", ["get", "size"], .1],
+          //       23, ["*", ["get", "size"], 1.5],
+          //     ]
+          //   }
+          // },
+          {
+            id: 'circle-layer',
+            type: 'symbol',
+            source: 'points-source',
+            'source-layer': 'points',
+            filter: ['==', '$type', 'Point'],
             // "icon-opacity": [
             //   "interpolate",
             //   ["linear"],
             //   ["zoom"],
             //   5, 0.1,
             //   15, 0.9
-            // ]
+            // ],
+            layout: {
+              'icon-image': [
+                'case',
+                ['>=', ['to-number', ['get', 'complexity']], 4],
+                'star-icon',
+                ['>=', ['to-number', ['get', 'complexity']], 3],
+                'diamond-icon',
+                ['>=', ['to-number', ['get', 'complexity']], 2],
+                'triangle-icon',
+                'circle-icon',
+              ],
+              'icon-size': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                5,
+                ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
+                23,
+                ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
+              ],
+            },
+            // "icon-allow-overlap": true,
+            // "icon-ignore-placement": true,
+            paint: {
+              // "icon-color": [
+              //   "case",
+              //   [">=", ["to-number", ["get", 'ratings']], 7.77],
+              //   "#00ff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 7.46],
+              //   "#0fff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 7.2],
+              //   "#4bff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 7.03],
+              //   "#87ff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 6.9],
+              //   "#c3ff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 6.76],
+              //   "#ffff00",
+              //   [">=", ["to-number", ["get", 'ratings']], 6.6],
+              //   "#fff000",
+              //   [">=", ["to-number", ["get", 'ratings']], 6.4],
+              //   "#ffb400",
+              //   [">=", ["to-number", ["get", 'ratings']], 6.1],
+              //   "#ff7800",
+              //   "#ff3c00"
+              // ],
+              'icon-color': [
+                'case',
+                ['>=', ['to-number', ['get', 'ratings']], 7.77],
+                '#00e9ff',
+                ['>=', ['to-number', ['get', 'ratings']], 7.46],
+                '#00f8d8',
+                ['>=', ['to-number', ['get', 'ratings']], 7.2],
+                '#00ff83',
+                ['>=', ['to-number', ['get', 'ratings']], 7.03],
+                '#62f25e',
+                ['>=', ['to-number', ['get', 'ratings']], 6.9],
+                '#87e539',
+                ['>=', ['to-number', ['get', 'ratings']], 6.76],
+                '#a2d600',
+                ['>=', ['to-number', ['get', 'ratings']], 6.6],
+                '#c3b700',
+                ['>=', ['to-number', ['get', 'ratings']], 6.4],
+                '#de9200',
+                ['>=', ['to-number', ['get', 'ratings']], 6.1],
+                '#f36300',
+                '#ff0000',
+              ],
+              // "icon-opacity": [
+              //   "interpolate",
+              //   ["linear"],
+              //   ["zoom"],
+              //   5, 0.1,
+              //   15, 0.9
+              // ]
+            },
           },
-        },
-        {
-          id: 'label-layer',
-          type: 'symbol',
-          source: 'points-source',
-          'source-layer': 'points',
-          filter: ['>=', ['zoom'], 8],
-          layout: {
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-            'text-font': ['Roboto Condensed Regular'],
-            'text-field': ['get', 'label'],
-            'text-anchor': 'top',
-            'text-max-width': 10,
-            'symbol-sort-key': ['-', 0, ['get', 'size']],
-            'symbol-spacing': 500,
-            'text-offset': [0, 0.5],
-            'text-size': ['interpolate', ['linear'], ['zoom'], 6, ['/', ['get', 'size'], 20], 20, ['+', ['get', 'size'], 20]],
+          {
+            id: 'label-layer',
+            type: 'symbol',
+            source: 'points-source',
+            'source-layer': 'points',
+            filter: ['>=', ['zoom'], 8],
+            layout: {
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+              'text-font': ['Roboto Condensed Regular'],
+              'text-field': ['get', 'label'],
+              'text-anchor': 'top',
+              'text-max-width': 10,
+              'symbol-sort-key': ['-', 0, ['get', 'size']],
+              'symbol-spacing': 500,
+              'text-offset': [0, 0.5],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 6, ['/', ['get', 'size'], 20], 20, ['+', ['get', 'size'], 20]],
+            },
+            paint: {
+              'text-color': currentColorTheme.circleLabelsColor,
+              'text-halo-color': currentColorTheme.circleLabelsHaloColor,
+              'text-halo-width': currentColorTheme.circleLabelsHaloWidth,
+            },
           },
-          paint: {
-            'text-color': currentColorTheme.circleLabelsColor,
-            'text-halo-color': currentColorTheme.circleLabelsHaloColor,
-            'text-halo-width': currentColorTheme.circleLabelsHaloWidth,
+          {
+            id: 'selected-nodes-layer',
+            type: 'circle',
+            source: 'selected-nodes',
+            paint: {
+              'circle-color': ['get', 'color'],
+            },
           },
-        },
-        {
-          id: 'selected-nodes-layer',
-          type: 'circle',
-          source: 'selected-nodes',
-          paint: {
-            'circle-color': ['get', 'color'],
+          {
+            id: 'selected-nodes-labels-layer',
+            type: 'symbol',
+            source: 'selected-nodes',
+            layout: {
+              'text-font': ['Roboto Condensed Regular'],
+              'text-field': ['get', 'name'],
+              'text-anchor': 'top',
+              'text-max-width': 10,
+              'symbol-sort-key': ['-', 0, ['get', 'textSize']],
+              'symbol-spacing': 500,
+              'text-offset': [0, 0.5],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 8, ['/', ['get', 'size'], 4], 10, ['+', ['get', 'size'], 8]],
+            },
+            paint: {
+              'text-color': '#fff',
+              'text-halo-color': ['get', 'color'],
+              'text-halo-width': 2,
+            },
           },
-        },
-        {
-          id: 'selected-nodes-labels-layer',
-          type: 'symbol',
-          source: 'selected-nodes',
-          layout: {
-            'text-font': ['Roboto Condensed Regular'],
-            'text-field': ['get', 'name'],
-            'text-anchor': 'top',
-            'text-max-width': 10,
-            'symbol-sort-key': ['-', 0, ['get', 'textSize']],
-            'symbol-spacing': 500,
-            'text-offset': [0, 0.5],
-            'text-size': ['interpolate', ['linear'], ['zoom'], 8, ['/', ['get', 'size'], 4], 10, ['+', ['get', 'size'], 8]],
+          // TODO: move labels stuff to label editor?
+          {
+            id: 'place-country-1',
+            // minzoom: 1,
+            maxzoom: 10,
+            type: 'symbol',
+            source: 'place',
+            layout: {
+              'text-font': ['Roboto Condensed Bold'],
+              'text-size': [
+                'interpolate',
+                ['cubic-bezier', 0.2, 0, 0.7, 1],
+                ['zoom'],
+                1,
+                ['step', ['get', 'symbolzoom'], 15, 4, 13, 5, 12],
+                9,
+                ['step', ['get', 'symbolzoom'], 22, 4, 19, 5, 17],
+              ],
+              'symbol-sort-key': ['get', 'symbolzoom'],
+              'text-field': '{name}',
+              'text-max-width': 6,
+              'text-line-height': 1.1,
+              'text-letter-spacing': 0,
+            },
+            paint: {
+              'text-color': currentColorTheme.placeLabelsColor,
+              'text-halo-color': currentColorTheme.placeLabelsHaloColor,
+              'text-halo-width': currentColorTheme.placeLabelsHaloWidth,
+            },
+            filter: ['<=', ['get', 'symbolzoom'], ['+', ['zoom'], 4]],
           },
-          paint: {
-            'text-color': '#fff',
-            'text-halo-color': ['get', 'color'],
-            'text-halo-width': 2,
-          },
-        },
-        // TODO: move labels stuff to label editor?
-        {
-          id: 'place-country-1',
-          // minzoom: 1,
-          maxzoom: 10,
-          type: 'symbol',
-          source: 'place',
-          layout: {
-            'text-font': ['Roboto Condensed Bold'],
-            'text-size': [
-              'interpolate',
-              ['cubic-bezier', 0.2, 0, 0.7, 1],
-              ['zoom'],
-              1,
-              ['step', ['get', 'symbolzoom'], 15, 4, 13, 5, 12],
-              9,
-              ['step', ['get', 'symbolzoom'], 22, 4, 19, 5, 17],
-            ],
-            'symbol-sort-key': ['get', 'symbolzoom'],
-            'text-field': '{name}',
-            'text-max-width': 6,
-            'text-line-height': 1.1,
-            'text-letter-spacing': 0,
-          },
-          paint: {
-            'text-color': currentColorTheme.placeLabelsColor,
-            'text-halo-color': currentColorTheme.placeLabelsHaloColor,
-            'text-halo-width': currentColorTheme.placeLabelsHaloWidth,
-          },
-          filter: ['<=', ['get', 'symbolzoom'], ['+', ['zoom'], 4]],
-        },
-      ],
-    },
-  }
-}
-
-function getPolygonFillColor(polygonProperties: { [x: string]: string }): string {
-  for (const color of currentColorTheme.color) {
-    if (color.input === polygonProperties.fill) {
-      return color.output
+        ],
+      },
     }
   }
-  return polygonProperties.fill
-}
 
-function polygonContainsPoint(ring: GeoJSON.Position[], pX: number, pY: number): boolean {
-  let c = false
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const p1 = ring[i]
-    const p2 = ring[j]
-    if (p1[1] > pY !== p2[1] > pY && pX < ((p2[0] - p1[0]) * (pY - p1[1])) / (p2[1] - p1[1]) + p1[0]) {
-      c = !c
+  getPolygonFillColor(polygonProperties: { [x: string]: string }): string {
+    for (const color of currentColorTheme.color) {
+      if (color.input === polygonProperties.fill) {
+        return color.output
+      }
     }
+    return polygonProperties.fill
   }
-  return c
+
+  polygonContainsPoint(ring: GeoJSON.Position[], pX: number, pY: number): boolean {
+    let c = false
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const p1 = ring[i]
+      const p2 = ring[j]
+      if (p1[1] > pY !== p2[1] > pY && pX < ((p2[0] - p1[0]) * (pY - p1[1])) / (p2[1] - p1[1]) + p1[0]) {
+        c = !c
+      }
+    }
+    return c
+  }
 }

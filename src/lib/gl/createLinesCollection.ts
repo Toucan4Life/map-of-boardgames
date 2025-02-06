@@ -1,4 +1,4 @@
-import { CustomLayerInterface, CustomRenderMethod, CustomRenderMethodInput, Map } from 'maplibre-gl'
+import { type CustomLayerInterface, type CustomRenderMethod, type CustomRenderMethodInput, Map } from 'maplibre-gl'
 import { MyRenderProgram } from './RenderProgram'
 export class getCustomLayer implements CustomLayerInterface {
   id: string

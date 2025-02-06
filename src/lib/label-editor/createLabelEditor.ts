@@ -1,4 +1,4 @@
-import maplibregl, { GeoJSONSource, LngLat, LngLatLike, Map, MapMouseEvent } from 'maplibre-gl'
+import maplibregl, { GeoJSONSource, LngLat, type LngLatLike, Map, MapMouseEvent } from 'maplibre-gl'
 import { getPlaceLabels, addLabelToPlaces, editLabelInPlaces } from './labelsStorage'
 import createMarkerEditor from './createDOMMarkerEditor'
 import bus from '../bus'
@@ -56,7 +56,7 @@ export default function createLabelEditor(map: Map) {
     }
   }
 
-  function editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: any }) {
+  function editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: string }) {
     const markerEditor = createMarkerEditor(map, save, oldLabelProps.name)
 
     const marker = new maplibregl.Popup({ closeButton: false })
