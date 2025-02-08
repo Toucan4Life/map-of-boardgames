@@ -1,3 +1,5 @@
+import type { chatMessage } from './GroupViewModel'
+
 export function getStoredOpenAIKey() {
   return localStorage.getItem('openai-token') || ''
 }
@@ -6,7 +8,7 @@ export function storeOpenAIKey(key: string) {
   localStorage.setItem('openai-token', key)
 }
 
-export async function getOpenAIModels() {
+export async function getOpenAIModels(): Promise<chatMessage> {
   const headers = getAuthHeaders()
   return fetch('https://api.openai.com/v1/models', { headers })
     .then((response) => response.json())
@@ -17,7 +19,7 @@ export async function getOpenAIModels() {
     })
 }
 
-export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string }[] }>) {
+export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string }[] }>): Promise<chatMessage> {
   const headers = getAuthHeaders()
   const body = JSON.stringify(messagess)
 

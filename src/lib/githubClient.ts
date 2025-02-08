@@ -10,9 +10,11 @@ const readmeFilesFormat = [
   'README.mkd', // (Markdown)
   'readme.md', // (Markdown)
 ]
+const headerDict: Record<string, string> = {
+  Accept: 'application/json',
+}
 
 const rawGithubUrl = 'https://raw.githubusercontent.com/'
-const headers = { Accept: 'application/vnd.github.v3+json', Authorization: '' }
 let currentUser: undefined | User
 const cachedRepositories = new Map<string, Repository>()
 interface Repository {
@@ -35,18 +37,18 @@ export interface User {
 }
 
 if (document.cookie.includes('github_token')) {
-  headers['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0]
+  headerDict['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0]
 }
 
 export function setAuthToken(token: string) {
-  headers['Authorization'] = 'Bearer ' + token
+  headerDict['Authorization'] = 'Bearer ' + token
   // also write to cookie:
   document.cookie = 'github_token=' + token
   bus.fire('auth-changed')
 }
 
 export function signOut() {
-  delete headers['Authorization']
+  delete headerDict['Authorization']
   document.cookie = 'github_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
   currentUser = undefined
   bus.fire('auth-changed')
@@ -54,9 +56,9 @@ export function signOut() {
 
 export async function getCurrentUser(): Promise<User | undefined> {
   if (currentUser) return currentUser
-  if (!headers['Authorization']) return
-
-  const response = await fetch('https://api.github.com/user', { headers })
+  if (!headerDict['Authorization']) return
+  const requestOptions = { headers: new Headers(headerDict) }
+  const response = await fetch('https://api.github.com/user', requestOptions)
   if (response.ok) {
     currentUser = (await response.json()) as User
     return currentUser
@@ -71,10 +73,18 @@ export async function getRepoInfo(repoName: string) {
   if (cachedRepositories.has(repoName)) {
     return cachedRepositories.get(repoName)
   }
-  const response = await fetch(`https://api.github.com/repos/${repoName}`, { headers })
+  const requestOptions = { headers: new Headers(headerDict) }
+  const response = await fetch(`https://api.github.com/repos/${repoName}`, requestOptions)
   if (!response.ok) {
     if (response.headers.get('x-ratelimit-remaining') === '0') {
-      const retryIn = new Date(+response.headers.get('x-ratelimit-reset') * 1000)
+      const rateLimit = response.headers.get('x-ratelimit-reset')
+      if (!rateLimit) {
+        return {
+          state: 'RATE_LIMIT_EXCEEDED',
+          name: repoName,
+        }
+      }
+      const retryIn = new Date(+rateLimit * 1000)
       return {
         state: 'RATE_LIMIT_EXCEEDED',
         name: repoName,
@@ -95,8 +105,9 @@ export async function getRepoInfo(repoName: string) {
       try {
         const data = await response.json()
         if (data?.message) errorMessage.push('Message: ' + data.message)
-      } catch (e) {
+      } catch (e: unknown) {
         /* ignore */
+        console.error(e)
       }
       errorMessage.push('Status: ' + response.status)
 

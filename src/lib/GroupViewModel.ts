@@ -2,28 +2,32 @@ import { ref, nextTick, type Ref } from 'vue'
 import generateShortRandomId from './generateShortRandomId'
 import { sendChatRequest } from './openAIClient'
 
-interface chatMessage {
+export interface chatMessage {
   id: string | number
   isEdited: boolean
   role: string
   content: string
 }
-
+export interface Repositories {
+  name: string
+  lngLat: GeoJSON.Position
+  id: string
+}
 export default class GroupViewModel {
-  pendingRequest: Promise<void> & { cancel: () => void }
+  pendingRequest: { promise: Promise<void>; isCancelled: boolean } | undefined
   loading: Ref<boolean>
   error: Ref<string>
   chat: Ref<chatMessage[]>
-  largest: Ref<Array<{ name: string }>>
+  largest: Ref<Repositories[] | undefined>
   constructor() {
-    this.largest = ref(null)
+    this.largest = ref<Repositories[]>()
     this.chat = ref([])
     this.error = ref('')
     this.loading = ref(false)
-    this.pendingRequest = null
+    this.pendingRequest = undefined
   }
 
-  setLargest(currentLargest: Array<{ name: string }>) {
+  setLargest(currentLargest: Repositories[]) {
     this.largest.value = currentLargest
     if (this.chat.value.length === 0) {
       this.chat.value.push(
@@ -59,7 +63,7 @@ export default class GroupViewModel {
 
   submit(model: string) {
     this.error.value = ''
-    this.pendingRequest?.cancel()
+    if (this.pendingRequest) this.pendingRequest.isCancelled = true
     const request: { model: string; messages: { content: string; role: string }[] } = {
       model: model,
       messages: this.chat.value.map((message) => {
@@ -72,29 +76,28 @@ export default class GroupViewModel {
     this.chat.value.forEach((message: chatMessage) => {
       message.isEdited = false
     })
-    let isCancelled = false
     this.loading.value = true
-    const p = sendChatRequest([request])
-      .then((responseMessage) => {
-        if (isCancelled) return
-        this.loading.value = false
-        const newMessageId = generateShortRandomId()
-        responseMessage.id = newMessageId
-        this.chat.value.push(responseMessage)
-        nextTick(() => {
-          const newMessageEl = document.querySelector(`.add-message-link`)
-          if (newMessageEl) newMessageEl.scrollIntoView()
+    const p = {
+      promise: sendChatRequest([request])
+        .then((responseMessage) => {
+          if (this.pendingRequest?.isCancelled) return
+          this.loading.value = false
+          const newMessageId = generateShortRandomId()
+          responseMessage.id = newMessageId
+          this.chat.value.push(responseMessage)
+          nextTick(() => {
+            const newMessageEl = document.querySelector(`.add-message-link`)
+            if (newMessageEl) newMessageEl.scrollIntoView()
+          })
         })
-      })
-      .catch((err) => {
-        console.error(err)
-        this.error.value = 'Something went wrong. Open dev console for more details'
-      })
-      .finally(() => {
-        this.loading.value = false
-      })
-    p.cancel = () => {
-      isCancelled = true
+        .catch((err) => {
+          console.error(err)
+          this.error.value = 'Something went wrong. Open dev console for more details'
+        })
+        .finally(() => {
+          this.loading.value = false
+        }),
+      isCancelled: false,
     }
     this.pendingRequest = p
   }
@@ -105,6 +108,6 @@ export default class GroupViewModel {
 
   cancelQuery() {
     this.loading.value = false
-    this.pendingRequest?.cancel()
+    if (this.pendingRequest) this.pendingRequest.isCancelled = true
   }
 }

@@ -1,17 +1,18 @@
-export default function getComplimentaryColor(color: string | number, alpha = 0xaa) {
-  if (typeof color === 'string') {
-    if (color[0] === '#') {
-      color = parseInt(color.slice(1), 16)
-      color = (color << 8) | 0xff
-    } else {
-      console.error('getComplimentaryColor: color must be a number or a hex string', color)
-      return 0xffffff22
-    }
+export default function getComplimentaryColor(colorin: string, alpha = 0xaa) {
+  let color = 0
+  if (colorin[0] === '#') {
+    color = parseInt(colorin.slice(1), 16)
+    color = (color << 8) | 0xff
+  } else {
+    console.error('getComplimentaryColor: color must be a number or a hex string', colorin)
+    return 0xffffff22
   }
+
   const r = (color >> 24) & 0xff
   const g = (color >> 16) & 0xff
   const b = (color >> 8) & 0xff
 
+  // eslint-disable-next-line prefer-const
   let [h, s, l] = rgbToHsl(r, g, b)
   if (l > 0.5) l = Math.max(0, l - 0.2)
   else l = Math.min(1, l + 0.2)

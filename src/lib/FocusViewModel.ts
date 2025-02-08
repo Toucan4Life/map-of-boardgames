@@ -1,11 +1,11 @@
 import { ref, type Ref } from 'vue'
-import downloadGroupGraph from './downloadGroupGraph'
 import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
+import { GraphDownloader, type BoardgameData } from './downloadGroupGraph'
 interface Repo {
   name: NodeId
   lngLat: Ref<string>
-  isExternal: boolean
-  id: string
+  // isExternal: boolean
+  id: number
   linkWeight: number
 }
 interface IFocusViewModel {
@@ -31,19 +31,24 @@ export default class FocusViewModel implements IFocusViewModel {
     this.lngLat = ref('')
     this.id = ''
     this.loading = ref(true)
-    downloadGroupGraph(groupId).then((graph: Graph): void => {
+    new GraphDownloader().downloadGroupGraph(+groupId).then((graph: Graph<BoardgameData, { weight: number }>): void => {
       this.loading.value = false
       const neighgbors: Repo[] = []
-      const id = graph.getNode(repositoryName)?.id
-      if (id) this.id = id.toString()
-      this.lngLat.value = graph.getNode(repositoryName)?.data.l
+      const focusedNode = graph.getNode(repositoryName)
+      if (!focusedNode) {
+        console.warn('Focused node not found')
+        return
+      }
+      const id = focusedNode.id
+      this.id = id.toString()
+      this.lngLat.value = focusedNode.data.l
       graph.forEachLinkedNode(
         repositoryName,
-        (node: Node, link: Link) => {
+        (node: Node<BoardgameData>, link: Link<{ weight: number }>) => {
           neighgbors.push({
             name: node.id,
-            lngLat: node.data.l,
-            isExternal: !!link.data?.e,
+            lngLat: ref(node.data.l),
+            // isExternal: !!link.data?.e,
             id: node.data.id,
             linkWeight: link.data.weight,
           })

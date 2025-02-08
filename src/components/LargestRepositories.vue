@@ -1,14 +1,12 @@
 <script setup lang="ts">
+import type { Repositories } from '@/lib/GroupViewModel'
+import type GroupViewModel from '@/lib/GroupViewModel'
 import { defineProps, defineEmits } from 'vue'
-const props = defineProps({
-  repos: {
-    type: Object,
-    required: true,
-  },
-})
+
+const props = defineProps<{ repos: GroupViewModel }>()
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
+function showDetails(repo: Repositories) {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -20,7 +18,7 @@ function closePanel() {
   emit('close')
 }
 
-function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
+function getLink(repo: Repositories) {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>
@@ -48,8 +46,8 @@ function getLink(repo: { name: string; lngLat: GeoJSON.Position; id: string }) {
           </svg> </a
         >In this country
       </h2>
-      <ul v-if="props.repos.largest.length">
-        <li v-for="repo in props.repos.largest" :key="repo.name">
+      <ul v-if="props.repos.largest.value?.length">
+        <li v-for="repo in props.repos.largest.value" :key="repo.name">
           <a :href="getLink(repo)" @click.prevent="showDetails(repo)" target="_blank">{{ repo.name }}</a>
         </li>
       </ul>

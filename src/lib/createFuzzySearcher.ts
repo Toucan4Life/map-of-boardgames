@@ -1,5 +1,4 @@
 import fuzzysort from 'fuzzysort'
-import log from './log.ts'
 import config from './config.ts'
 import dedupingFetch from './dedupingFetch.ts'
 
@@ -49,7 +48,7 @@ export class FuzzySearcher {
           return this.find(query) // Try again, but now with the index.
         })
         .catch((err: unknown) => {
-          log.error('FuzzySearch', 'Failed to fetch index for ' + cacheKey, err)
+          console.error('FuzzySearch: Failed to fetch index for ' + cacheKey + '; Err: ' + err)
         })
       // p.cancel = () => {
       //   isCancelled = true;

@@ -11,9 +11,9 @@ import maplibregl, {
 import bus from './bus'
 import config from './config'
 import { getCustomLayer } from './gl/createLinesCollection.ts'
-import downloadGroupGraph from './downloadGroupGraph.ts'
 import getComplimentaryColor from './getComplimentaryColor'
 import createLabelEditor from './label-editor/createLabelEditor'
+import { GraphDownloader } from './downloadGroupGraph.ts'
 
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
@@ -43,7 +43,7 @@ const explorer = {
 const currentColorTheme = explorer
 
 export class BoardGameMap {
-  backgroundEdgesFetch: (Promise<void> & { cancel: () => void }) | undefined
+  backgroundEdgesFetch: GraphDownloader | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
   fastLinesLayer: getCustomLayer
@@ -120,8 +120,8 @@ export class BoardGameMap {
       if (!repo) return
       this.showDetails(nearestCity)
 
-      const includeExternal = e.originalEvent.altKey
-      this.drawBackgroundEdges(e.point, repo, !includeExternal)
+      //const includeExternal = e.originalEvent.altKey
+      this.drawBackgroundEdges(e.point, repo)
     })
     this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
@@ -274,27 +274,26 @@ export class BoardGameMap {
     return borderFeature[0]
   }
 
-  drawBackgroundEdges(point: PointLike, repo: string, ignoreExternal = true) {
+  drawBackgroundEdges(point: PointLike, repo: string) {
     // console.log("In drawBackgroundEdges")
     const bgFeature = this.getBackgroundNearPoint(point)
     // console.log("bgFeature :" + JSON.stringify(bgFeature))
-    if (!bgFeature) return
-    const groupId = bgFeature.id
+    if (!bgFeature?.id) return
+    const groupId = +bgFeature.id
     //console.log("groupId :" + JSON.stringify(groupId))
     if (groupId === undefined) return
 
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
     this.fastLinesLayer.clear()
-    this.backgroundEdgesFetch?.cancel()
-    let isCancelled = false
+    if (this.backgroundEdgesFetch) this.backgroundEdgesFetch.cancel()
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
     }
-
-    this.backgroundEdgesFetch = downloadGroupGraph(groupId).then((groupGraph) => {
-      if (isCancelled) return
+    this.backgroundEdgesFetch = new GraphDownloader()
+    this.backgroundEdgesFetch.downloadGroupGraph(groupId).then((groupGraph) => {
+      if (this.backgroundEdgesFetch?.isCancelled) return
       const firstLevelLinks: Array<{ from: [number, number]; to: [number, number]; color: number }> = []
       let primaryNodePosition: GeoJSON.Position
       const renderedNodesAdjustment = new Map()
@@ -313,10 +312,10 @@ export class BoardGameMap {
       //  console.log('Point : '+ JSON.stringify(point))
 
       groupGraph.forEachLink((link) => {
-        if (link.data?.e && ignoreExternal) return // external;
+        //if (link.data?.e && ignoreExternal) return // external;
         // console.log(link)
-        const fromGeo = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.l
-        const toGeo = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.l
+        const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
+        const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
         const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
         const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
@@ -354,9 +353,6 @@ export class BoardGameMap {
       ;(this.map.getSource('selected-nodes') as GeoJSONSource)?.setData(highlightedNodes)
       this.map.redraw()
     })
-    this.backgroundEdgesFetch.cancel = () => {
-      isCancelled = true
-    }
   }
 
   findNearestCity(point: { x: number; y: number }): MapGeoJSONFeature | undefined {
@@ -523,9 +519,9 @@ export class BoardGameMap {
                 23,
                 ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
               ],
+              'icon-ignore-placement': true,
+              'icon-allow-overlap': true,
             },
-            // "icon-allow-overlap": true,
-            // "icon-ignore-placement": true,
             paint: {
               // "icon-color": [
               //   "case",
