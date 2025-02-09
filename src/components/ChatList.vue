@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { defineProps, ref } from 'vue'
-import GroupViewModel from '../lib/GroupViewModel'
+import GroupViewModel, { type chatMessage } from '../lib/GroupViewModel'
 
 interface Props {
   vm: GroupViewModel
-  models: Array<Model>
-}
-interface Model {
-  id: string
+  models: Array<chatMessage>
 }
 
 const props = defineProps<Props>()

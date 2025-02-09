@@ -43,6 +43,9 @@ const explorer = {
 const currentColorTheme = explorer
 
 export class BoardGameMap {
+  dispose() {
+    this.map.remove()
+  }
   backgroundEdgesFetch: GraphDownloader | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map

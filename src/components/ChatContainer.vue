@@ -2,7 +2,7 @@
 import { defineProps, ref } from 'vue'
 import { getOpenAIModels, getStoredOpenAIKey, storeOpenAIKey } from '../lib/openAIClient.ts'
 import ChatList from './ChatList.vue'
-import GroupViewModel from '@/lib/GroupViewModel.ts'
+import GroupViewModel, { type chatMessage } from '@/lib/GroupViewModel.ts'
 
 const props = defineProps({
   vm: {
@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const loadingModels = ref(false)
-const models = ref([])
+const models = ref<chatMessage[]>()
 const errorMessage = ref('')
 
 const enteredToken = ref('')
@@ -71,7 +71,7 @@ function clearKey() {
 
     <div v-if="loadingModels">Loading models...</div>
     <div v-if="errorMessage">{{ errorMessage }}</div>
-    <chat-list :vm="props.vm" :models="models" v-if="models.length" />
+    <chat-list :vm="props.vm" :models="models" v-if="models?.length" />
   </div>
 </template>
 

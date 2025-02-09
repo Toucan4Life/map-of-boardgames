@@ -1,21 +1,7 @@
 <script setup lang="ts">
-import type { NodeId } from 'ngraph.graph'
-import { defineEmits, type Ref } from 'vue'
+import type { IFocusViewModel, Repo } from '@/lib/FocusViewModel'
+import { defineEmits } from 'vue'
 
-interface Repo {
-  name: NodeId
-  lngLat: Ref<string>
-  isExternal: boolean
-  id: string
-  linkWeight: number
-}
-interface IFocusViewModel {
-  id: string
-  name: string
-  repos: Ref<Repo[]>
-  lngLat: Ref<string>
-  loading: Ref<boolean>
-}
 const vm = defineProps<{ vm: IFocusViewModel }>()
 
 const emit = defineEmits(['selected', 'close'])
@@ -71,8 +57,9 @@ function getLink(repo: IFocusViewModel | Repo) {
 
       <ul v-if="vm.vm.repos">
         <li v-for="repo in vm.vm.repos.value" :key="repo.name">
-          <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank"
-            >{{ repo.name }} <span v-if="repo.isExternal" title="External country">E</span>
+          <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank">
+            {{ repo.name }}
+            <!-- <span v-if="repo.isExternal" title="External country">E</span> -->
           </a>
         </li>
       </ul>

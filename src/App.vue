@@ -8,7 +8,7 @@ import advSearch from './components/AdvSearch.vue'
 import UnsavedChanges from './components/UnsavedChanges.vue'
 import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
-import GroupViewModel from './lib/GroupViewModel'
+import GroupViewModel, { type Repositories } from './lib/GroupViewModel'
 import FocusViewModel from './lib/FocusViewModel'
 import bus from './lib/bus'
 import type { SearchResult } from './lib/createFuzzySearcher'
@@ -66,8 +66,10 @@ function findProject(x: SearchResult) {
   } else {
     lastSelected = x
   }
+  const coord: [number, number] = [x.lat, x.lon]
+
   const location = {
-    center: [x.lat, x.lon],
+    center: coord,
     zoom: 12,
   }
   window.mapOwner?.makeVisible(x.text, location, x.skipAnimation)
@@ -138,7 +140,7 @@ function onFocusOnRepo(repo: string, groupId: string | number) {
   currentFocus.value = focusViewModel
 }
 
-function onShowLargestInGroup(groupId: number, largest: { name: string }[]) {
+function onShowLargestInGroup(groupId: number, largest: Repositories[]) {
   let groupViewModel: GroupViewModel = groupCache.get(groupId)
   if (!groupViewModel) {
     groupViewModel = new GroupViewModel()

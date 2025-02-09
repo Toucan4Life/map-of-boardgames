@@ -6,8 +6,8 @@ const fetchedIndex = new Set()
 const seenWords = new Set()
 interface Word {
   name: string
-  lat: string
-  lon: string
+  lat: number
+  lon: number
   id: string
 }
 export interface SearchResult {
@@ -15,8 +15,8 @@ export interface SearchResult {
   skipAnimation: boolean
   html: string | null
   text: string
-  lat: string
-  lon: string
+  lat: number
+  lon: number
   id: string
 }
 export class FuzzySearcher {
@@ -37,7 +37,7 @@ export class FuzzySearcher {
         .then((data: string[][]) => {
           data.forEach((word: Array<string>) => {
             if (!seenWords.has(word[0])) {
-              this.words.push({ name: word[0], lat: word[1], lon: word[2], id: word[3] })
+              this.words.push({ name: word[0], lat: +word[1], lon: +word[2], id: word[3] })
               seenWords.add(word[0])
             }
           })

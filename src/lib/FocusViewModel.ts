@@ -1,14 +1,14 @@
 import { ref, type Ref } from 'vue'
 import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 import { GraphDownloader, type BoardgameData } from './downloadGroupGraph'
-interface Repo {
+export interface Repo {
   name: NodeId
   lngLat: Ref<string>
   // isExternal: boolean
   id: number
   linkWeight: number
 }
-interface IFocusViewModel {
+export interface IFocusViewModel {
   id: string
   name: string
   repos: Ref<Repo[]>

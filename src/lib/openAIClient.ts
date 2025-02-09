@@ -8,7 +8,7 @@ export function storeOpenAIKey(key: string) {
   localStorage.setItem('openai-token', key)
 }
 
-export async function getOpenAIModels(): Promise<chatMessage> {
+export async function getOpenAIModels(): Promise<chatMessage[]> {
   const headers = getAuthHeaders()
   return fetch('https://api.openai.com/v1/models', { headers })
     .then((response) => response.json())

@@ -3,7 +3,7 @@ import generateShortRandomId from './generateShortRandomId'
 import { sendChatRequest } from './openAIClient'
 
 export interface chatMessage {
-  id: string | number
+  id: string
   isEdited: boolean
   role: string
   content: string
@@ -32,7 +32,7 @@ export default class GroupViewModel {
     if (this.chat.value.length === 0) {
       this.chat.value.push(
         {
-          id: 0,
+          id: '0',
           isEdited: false,
           role: 'system',
           content:
@@ -44,7 +44,7 @@ export default class GroupViewModel {
         },
         {
           role: 'user',
-          id: 1,
+          id: '1',
           isEdited: false,
           content: '', // Please analyze these repository and detect a common theme (e.g. programming language, technology, domain). Pay attention to language too (english, chinese, korean, etc.). If there is no common theme found, please say so. Otherwise, If you can find a strong signal for a common theme please come up with a specific name for imaginary country that contains all these repositories. Give a few options. When you give an option prefer more specific over generic option (for example if repositories are about recommender systems, use that, instead of generic DeepLearning)'
         },
