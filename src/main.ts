@@ -1,6 +1,7 @@
 import './assets/main.css'
 import { FuzzySearcher } from './lib/createFuzzySearcher.ts'
 import { BoardGameMap } from './lib/createMap.ts'
+import { startApp } from './startVue'
 declare global {
   interface Window {
     mapOwner: BoardGameMap
@@ -21,39 +22,31 @@ if (!webglSupported()) {
 } else {
   if (vueLoader) vueLoader.innerText = 'Loading Vue containers...'
   if (mapLoader) mapLoader.innerText = 'Loading Map...'
-  import('./lib/createMap.ts')
-    .then(() => {
-      mapLoader?.remove()
-      mapLoader = null
-      window.mapOwner = new BoardGameMap()
-      cleanUpLoaderIfNeeded()
-    })
-    .catch((e) => {
-      console.error(e)
-      mapLoader?.remove()
-      mapLoader = null
-      showErrorMessage(e)
-    })
 
-  import('./startVue')
-    .then(({ default: startVue }) => {
-      vueLoader?.remove()
-      vueLoader = null
-      startVue()
-      cleanUpLoaderIfNeeded()
-    })
-    .catch((e) => {
-      console.error(e)
-      vueLoader?.remove()
-      vueLoader = null
-      showErrorMessage(e)
-    })
+  try {
+    mapLoader?.remove()
+    mapLoader = null
+    window.mapOwner = new BoardGameMap()
+    cleanUpLoaderIfNeeded()
+  } catch (e: unknown) {
+    console.error(e)
+    mapLoader?.remove()
+    mapLoader = null
+    showErrorMessage(e as { message: string })
+  }
 
-  import('./lib/createFuzzySearcher.ts').then(() => {
-    // This is kind of bad, but also make searching available in the console and easier to
-    // hook with type-ahead.
-    window.fuzzySearcher = new FuzzySearcher()
-  })
+  try {
+    vueLoader?.remove()
+    vueLoader = null
+    startApp()
+    cleanUpLoaderIfNeeded()
+  } catch (e: unknown) {
+    console.error(e)
+    vueLoader?.remove()
+    vueLoader = null
+    showErrorMessage(e as { message: string })
+  }
+  window.fuzzySearcher = new FuzzySearcher()
 }
 
 function cleanUpLoaderIfNeeded() {

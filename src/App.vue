@@ -17,7 +17,7 @@ const SM_SCREEN_BREAKPOINT = 600
 
 const sidebarVisible = ref(false)
 const currentProject = ref('')
-const currentId = ref('')
+const currentId = ref<number>()
 const smallPreviewName = ref('')
 const tooltip = ref<Tooltip>()
 const contextMenu = ref<ContextMenu>()
@@ -215,7 +215,12 @@ async function search(parameters: {
       @close="closeLargestRepositories()"
     ></largest-repositories>
     <focus-repository :vm="currentFocus" v-if="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView()"></focus-repository>
-    <github-repository :name="currentProject" :id="currentId" v-if="currentProject" @listConnections="listCurrentConnections()"></github-repository>
+    <github-repository
+      :name="currentProject"
+      :id="currentId"
+      v-if="currentProject && currentId"
+      @listConnections="listCurrentConnections()"
+    ></github-repository>
     <form @submit.prevent class="search-box" v-if="typeAheadVisible">
       <type-ahead
         placeholder="Find Game"
@@ -231,7 +236,7 @@ async function search(parameters: {
     </form>
     <transition name="slide-bottom">
       <small-preview
-        v-if="smallPreviewName"
+        v-if="smallPreviewName && currentId"
         :name="smallPreviewName"
         :id="currentId"
         class="small-preview"

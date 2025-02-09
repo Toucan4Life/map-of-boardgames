@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed, defineEmits } from 'vue'
-const props = defineProps({
-  name: {
-    type: String,
-    required: true,
-  },
-  id: {
-    type: String,
-    required: true,
-  },
-})
+
+interface Repo {
+  name: string
+  id: number
+}
+
+const props = defineProps<Repo>()
 
 const emit = defineEmits(['listConnections'])
 const repoLink = computed(() => {

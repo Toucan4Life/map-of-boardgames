@@ -41,7 +41,9 @@ const sliderMaxPl = ref(9)
 const selectedTags = ref([])
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
-const playersChoice = 0
+// reassigned in the template
+// eslint-disable-next-line prefer-const
+let playersChoice = 0
 </script>
 
 <template>

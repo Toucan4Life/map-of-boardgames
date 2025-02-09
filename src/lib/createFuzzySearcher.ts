@@ -8,7 +8,7 @@ interface Word {
   name: string
   lat: number
   lon: number
-  id: string
+  id: number
 }
 export interface SearchResult {
   selected: boolean
@@ -17,7 +17,7 @@ export interface SearchResult {
   text: string
   lat: number
   lon: number
-  id: string
+  id: number
 }
 export class FuzzySearcher {
   words: Array<Word> = []
@@ -37,7 +37,7 @@ export class FuzzySearcher {
         .then((data: string[][]) => {
           data.forEach((word: Array<string>) => {
             if (!seenWords.has(word[0])) {
-              this.words.push({ name: word[0], lat: +word[1], lon: +word[2], id: word[3] })
+              this.words.push({ name: word[0], lat: +word[1], lon: +word[2], id: +word[3] })
               seenWords.add(word[0])
             }
           })

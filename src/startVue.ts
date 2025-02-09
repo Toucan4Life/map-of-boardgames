@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import ClickOutside from './lib/clickOutside'
 
-export default function startApp() {
+export function startApp() {
   const app = createApp(App)
 
   app.directive('focus', {
