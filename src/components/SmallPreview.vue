@@ -1,48 +1,41 @@
-<script setup>
-import {defineProps, watch, reactive, defineEmits, ref} from 'vue';
-import {getRepoInfo} from '../lib/githubClient.js';
-import LoadingIcon from './LoadingIcon.vue'
+<script setup lang="ts">
+import { defineProps, defineEmits } from 'vue'
 
-const props = defineProps({
-  name: {
-    type: String,
-    required: true
-  },
-  id: {
-    type: Number,
-    required: true
-  }
-});
+interface Repo {
+  name: string
+  id: number
+}
 
-const emit = defineEmits(['show-full-preview']);
+const props = defineProps<Repo>()
 
-const repoInfo = reactive({
-  state: 'LOADING',
-  name: '',
-  description: '',
-  language: '',
-  stars: 0,
-  forks: 0,
-  watchers: 0,
-  branch: '',
-  topics: [],
-  license: '',
-  updated_at: '',
-  remainingRequests: 0
-});
+const emit = defineEmits(['show-full-preview'])
 
-const errorInfo = ref(null);
+// const repoInfo = reactive({
+//   state: 'LOADING',
+//   name: '',
+//   description: '',
+//   language: '',
+//   stars: 0,
+//   forks: 0,
+//   watchers: 0,
+//   branch: '',
+//   topics: [],
+//   license: '',
+//   updated_at: '',
+//   remainingRequests: 0,
+// })
+
+// const errorInfo = ref(null)
 
 function showFullPreview() {
   console.log(JSON.stringify(props))
-  emit('show-full-preview', props.name);
+  emit('show-full-preview', props.name)
 }
-
 </script>
 <template>
-  <a href='#' @click.prevent='showFullPreview' class='small-preview-container'>
-    <div class='header'>
-      <span>{{props.name}}</span>
+  <a href="#" @click.prevent="showFullPreview" class="small-preview-container">
+    <div class="header">
+      <span>{{ props.name }}</span>
     </div>
   </a>
 </template>
@@ -65,7 +58,7 @@ function showFullPreview() {
   color: var(--text-color);
 }
 div.error {
-  color: var(--critical-call-to-action)
+  color: var(--critical-call-to-action);
 }
 .info {
   margin-top: 4px;

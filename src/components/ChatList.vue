@@ -1,108 +1,115 @@
-<script setup>
-import { defineProps, ref} from 'vue';
+<script setup lang="ts">
+import { defineProps, ref } from 'vue'
+import GroupViewModel, { type chatMessage } from '../lib/GroupViewModel'
 
-const props = defineProps({
-  vm: {
-    type: Object,
-    required: true
-  },
-  models: {
-    type: Array,
-    required: true
-  }
-});
-
-const selectedModel = ref(props.models[0].id);
-
-function submit() {
-  props.vm.submit(selectedModel.value);
+interface Props {
+  vm: GroupViewModel
+  models: Array<chatMessage>
 }
 
-function getDisplayContent(message) {
+const props = defineProps<Props>()
+
+const selectedModel = ref(props.models[0].id)
+
+function submit(): void {
+  props.vm.submit(selectedModel.value)
+}
+
+function getDisplayContent(message: { content: string }): string {
   if (message.content.length > 0) {
-    return message.content;
+    return message.content
   }
-  return `Enter message here`;
+  return `Enter message here`
 }
 
-function submitOnCmdEnter(event) {
+function submitOnCmdEnter(event: KeyboardEvent): void {
   if (event.key === 'Enter' && event.metaKey) {
-    event.target.blur();
-    submit();
-    event.preventDefault();
+    if (event.target) (event.target as HTMLElement).blur()
+    submit()
+    event.preventDefault()
   } else if (event.key === 'Escape') {
-    event.target.blur();
-    event.preventDefault();
+    if (event.target) (event.target as HTMLElement).blur()
+    event.preventDefault()
   }
 }
 
-function cancelQuery() {
+function cancelQuery(): void {
   props.vm.cancelQuery()
 }
 
 const vTextareaFitContentSize = {
-  beforeMount(el) {
+  beforeMount(el: HTMLElement) {
     function resize() {
-      el.style.height = 'auto';
-      el.style.height = Math.max(48, el.scrollHeight) + 'px';
+      el.style.height = 'auto'
+      el.style.height = Math.max(48, el.scrollHeight) + 'px'
     }
-    el.addEventListener('input', resize);
-    el.addEventListener('focus', resize);
-    resize();
-    el._cleanup = () => {
-      el.removeEventListener('input', resize);
-      el.removeEventListener('focus', resize);
-    }
+    el.addEventListener('input', resize)
+    el.addEventListener('focus', resize)
+    resize()
   },
-  unmounted(el) {
-    el._cleanup();
-  }
+  unmounted(el: HTMLElement) {
+    function resize() {
+      el.style.height = 'auto'
+      el.style.height = Math.max(48, el.scrollHeight) + 'px'
+    }
+    el.removeEventListener('input', resize)
+    el.removeEventListener('focus', resize)
+  },
 }
-
 </script>
 <template>
-<div class="select-and-chat">
-  <select v-model="selectedModel">
-    <option v-for="model in models" :key="model.id" :value="model.id">{{ model.id }}</option>
-  </select>
-  <div class="container">
-    <ul class="message-list">
-      <li v-for="message in vm.chat" :key="message.id" class="message"
+  <div class="select-and-chat">
+    <select v-model="selectedModel">
+      <option v-for="model in models" :key="model.id" :value="model.id">{{ model.id }}</option>
+    </select>
+    <div class="container">
+      <ul class="message-list">
+        <li
+          v-for="message in vm.chat.value"
+          :key="message.id"
+          class="message"
           :class="{
             'user-role': message.role === 'user',
-            [message.id]: true
-          }">
-        <b class="user-role-name">{{ message.role }}</b>
-        <a v-if="!message.isEdited" 
-          href="#" @click.prevent="message.isEdited = !message.isEdited" 
-          class="content" 
-          :class="{'system-role': message.role === 'system'}">{{ getDisplayContent(message) }}</a>
-        <textarea v-model="message.content"
-          v-textarea-fit-content-size
-          v-if="message.isEdited" 
-          @blur="message.isEdited = !message.isEdited" 
-          @keydown="submitOnCmdEnter($event)"
-          v-focus 
-          placeholder="Enter message here">
-        </textarea>
-        <a href="#" @click.prevent="vm.deleteMessage(message.id)" class="delete" v-if="message.role !== 'system'">x</a>
-      </li>
-      <li>
-        <a href="#" @click.prevent="vm.addMessage()" class="normal add-message-link" v-if="!vm.loading">Add message</a>
-      </li>
-    </ul>
-    <div class='actions' v-if="!vm.loading">
-      <div class="error" v-if="vm.error">{{ vm.error }}</div>
-      <a href="#" @click.prevent="submit()" class="normal">Submit</a>
-    </div>
-    <div class="actions" v-if="vm.loading">
-      <div class="loader-container">
-        <div class="loader"></div>
-        <a href="#" @click.prevent="cancelQuery()" class="critical label">Cancel</a>
+            [message.id]: true,
+          }"
+        >
+          <b class="user-role-name">{{ message.role }}</b>
+          <a
+            v-if="!message.isEdited"
+            href="#"
+            @click.prevent="message.isEdited = !message.isEdited"
+            class="content"
+            :class="{ 'system-role': message.role === 'system' }"
+            >{{ getDisplayContent(message) }}</a
+          >
+          <textarea
+            v-model="message.content"
+            v-textarea-fit-content-size
+            v-if="message.isEdited"
+            @blur="message.isEdited = !message.isEdited"
+            @keydown="submitOnCmdEnter($event)"
+            v-focus
+            placeholder="Enter message here"
+          >
+          </textarea>
+          <a href="#" @click.prevent="vm.deleteMessage(message.id)" class="delete" v-if="message.role !== 'system'">x</a>
+        </li>
+        <li>
+          <a href="#" @click.prevent="vm.addMessage()" class="normal add-message-link" v-if="!vm.loading">Add message</a>
+        </li>
+      </ul>
+      <div class="actions" v-if="!vm.loading">
+        <div class="error" v-if="vm.error">{{ vm.error }}</div>
+        <a href="#" @click.prevent="submit()" class="normal">Submit</a>
+      </div>
+      <div class="actions" v-if="vm.loading">
+        <div class="loader-container">
+          <div class="loader"></div>
+          <a href="#" @click.prevent="cancelQuery()" class="critical label">Cancel</a>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <style scoped>
@@ -118,8 +125,12 @@ const vTextareaFitContentSize = {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loader-container .label {
@@ -180,8 +191,19 @@ textarea {
   font-size: 14px;
   line-height: 1.6;
   padding: 2px 8px;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
-    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
 }
 
 textarea:focus {

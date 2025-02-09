@@ -1,30 +1,29 @@
-<script setup>
-import { computed, defineEmits} from 'vue';
-const props = defineProps({
-  name: {
-    type: String,
-    required: true
-  },
-  id: {
-    type: Number,
-    required: true
-  }
-});
+<script setup lang="ts">
+import { computed, defineEmits } from 'vue'
 
-const emit = defineEmits(['listConnections']);
+interface Repo {
+  name: string
+  id: number
+}
+
+const props = defineProps<Repo>()
+
+const emit = defineEmits(['listConnections'])
 const repoLink = computed(() => {
-  return `https://boardgamegeek.com/boardgame/` + props.id;
-});
+  return `https://boardgamegeek.com/boardgame/` + props.id
+})
 
-function listConnections() {
-  emit('listConnections');
+function listConnections(): void {
+  emit('listConnections')
 }
 </script>
 
 <template>
   <div class="repo-viewer">
     <div>
-      <h2><a :href='repoLink' target="_blank">{{name}}</a></h2>
+      <h2>
+        <a :href="repoLink" target="_blank">{{ name }}</a>
+      </h2>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
       </div>
@@ -37,7 +36,7 @@ h2 {
   font-size: 24px;
   max-width: 100%;
   text-overflow: ellipsis;
-  overflow: hidden;;
+  overflow: hidden;
 }
 
 .repo-viewer {
@@ -53,7 +52,7 @@ h2 a {
   line-height: 1.2em;
   max-width: 100%;
   text-overflow: ellipsis;
-  overflow: hidden;;
+  overflow: hidden;
 }
 .byline {
   margin: 8px 0;
@@ -125,9 +124,7 @@ h2 a {
 }
 </style>
 
-
 <style>
-
 .readme-content {
   border-top: 1px solid var(--color-border);
   padding-top: 8px;

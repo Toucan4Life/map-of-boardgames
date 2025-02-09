@@ -20,8 +20,10 @@ a {
   color: var(--color-text);
 }
 
-a:hover, a:focus,
-.mini-label .accept:hover, .mini-label .accept:focus {
+a:hover,
+a:focus,
+.mini-label .accept:hover,
+.mini-label .accept:focus {
   color: var(--color-link-hover);
 }
 .mini-label .commands {
@@ -30,7 +32,7 @@ a:hover, a:focus,
 }
 
 .mini-label input::placeholder {
-  color: var(--color-border-hover)
+  color: var(--color-border-hover);
 }
 /* @media (hover: hover) {
   a:hover {
@@ -49,22 +51,31 @@ a:hover, a:focus,
   height: 100%;
 }
 
-.label-marker{
+.label-marker {
   font-size: 14px;
   padding: 8px;
-  background: var(--color-background)
+  background: var(--color-background);
 }
-.label-marker input[type="text"] {
+.label-marker input[type='text'] {
   padding: 0;
   text-align: center;
 }
-#map .mapboxgl-popup-content, #map .maplibregl-popup-content {
+#map .mapboxgl-popup-content,
+#map .maplibregl-popup-content {
   padding: 0;
 }
-#map .mapboxgl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--color-background); }
-#map .mapboxgl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--color-background); }
-#map .mapboxgl-popup-anchor-left .mapboxgl-popup-tip { border-right-color: var(--color-background); }
-#map .mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-left-color: var(--color-background); }
+#map .mapboxgl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--color-background);
+}
+#map .mapboxgl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--color-background);
+}
+#map .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: var(--color-background);
+}
+#map .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: var(--color-background);
+}
 
 .slider-cont {
   width: 300px;
@@ -76,7 +87,7 @@ a:hover, a:focus,
 }
 
 /* style the input element with type "range" */
-.custom-slider input[type="range"] {
+.custom-slider input[type='range'] {
   position: relative;
   appearance: none;
   background: none;
@@ -87,8 +98,8 @@ a:hover, a:focus,
 }
 
 /* ::before element to replace the slider track */
-.custom-slider input[type="range"]::before {
-  content: "";
+.custom-slider input[type='range']::before {
+  content: '';
   display: block;
   position: absolute;
   width: var(--ProgressPercent, 100%);
@@ -98,20 +109,20 @@ a:hover, a:focus,
 }
 
 /* `::-webkit-slider-runnable-track` targets the track (background) of a range slider in chrome and safari browsers. */
-.custom-slider input[type="range"]::-webkit-slider-runnable-track {
+.custom-slider input[type='range']::-webkit-slider-runnable-track {
   appearance: none;
   background: #005a3c;
   height: var(--trackHeight);
   border-radius: 999px;
 }
 
-.custom-slider input[type="range"]::-webkit-slider-thumb {
+.custom-slider input[type='range']::-webkit-slider-thumb {
   position: relative;
   width: var(--thumbRadius);
   height: var(--thumbRadius);
   margin-top: calc((var(--trackHeight) - var(--thumbRadius)) / 2);
   background: #005a3c;
-  border: 1px solid  #00865a;
+  border: 1px solid #00865a;
   border-radius: 999px;
   pointer-events: all;
   appearance: none;
@@ -119,21 +130,21 @@ a:hover, a:focus,
 }
 
 /* `::-moz-range-track` targets the track (background) of a range slider in Mozilla Firefox. */
-.custom-slider.default input[type="range"]::-moz-range-track {
+.custom-slider.default input[type='range']::-moz-range-track {
   appearance: none;
   background: #005a3c;
   height: var(--trackHeight);
   border-radius: 999px;
 }
 
-.custom-slider input[type="range"]::-moz-range-thumb {
+.custom-slider input[type='range']::-moz-range-thumb {
   position: relative;
   box-sizing: border-box;
   width: var(--thumbRadius);
   height: var(--thumbRadius);
   margin-top: calc((var(--trackHeight) - var(--thumbRadius)) / 2);
   background: #005a3c;
-  border: 1px solid  #00865a;
+  border: 1px solid #00865a;
   border-radius: 999px;
   pointer-events: all;
   appearance: none;
@@ -159,7 +170,7 @@ a:hover, a:focus,
 }
 
 .custom-slider .minmax-indicator::before {
-  content: "";
+  content: '';
   position: absolute;
   background: #00865a;
   height: 100%;
@@ -167,20 +178,20 @@ a:hover, a:focus,
   right: var(--progressRight);
 }
 
-.custom-slider.minmax input[type="range"] {
+.custom-slider.minmax input[type='range'] {
   position: absolute;
   width: calc(100% - var(--thumbRadius));
 }
 
-.custom-slider.minmax input[type="range"][name="max"] {
+.custom-slider.minmax input[type='range'][name='max'] {
   left: var(--thumbRadius);
 }
 
-.custom-slider.minmax input[type="range"]::-webkit-slider-runnable-track {
+.custom-slider.minmax input[type='range']::-webkit-slider-runnable-track {
   background: none;
 }
 
-.custom-slider.minmax input[type="range"]::before {
+.custom-slider.minmax input[type='range']::before {
   display: none;
 }
 
