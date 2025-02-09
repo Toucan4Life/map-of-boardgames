@@ -2,13 +2,13 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
   const vertexSource = `
   uniform mat4 modelViewProjection;
   uniform float width;
-  
+
   attribute vec2 from, to;
   attribute vec2 point;
   attribute vec4 color;
   varying vec2 vPoint;
   varying vec4 vColor;
-  
+
   void main() {
     vec2 xBasis = normalize(to - from);
     vec2 yBasis = vec2(-xBasis.y, xBasis.x);
@@ -21,7 +21,7 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
   const fragmentSource = `
       precision highp float;
       varying vec4 vColor;
-  
+
       void main() {
         gl_FragColor = vColor.abgr;
       }`
@@ -132,7 +132,7 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
     if (colorAttributeLocation > -1) gl.vertexAttribDivisor(colorAttributeLocation, 0)
   }
 
-  function compileShader(type: GLenum, shaderSource: string, gl: WebGLRenderingContext) {
+  function compileShader(type: GLenum, shaderSource: string, gl: WebGLRenderingContext): WebGLShader {
     const shader = gl.createShader(type)
     if (!shader) {
       throw new Error('Failed to create a shared ' + shaderSource)

@@ -6,7 +6,7 @@ import { defineProps, defineEmits } from 'vue'
 const props = defineProps<{ repos: GroupViewModel }>()
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: Repositories) {
+function showDetails(repo: Repositories): void {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat[1],
@@ -14,11 +14,11 @@ function showDetails(repo: Repositories) {
     id: repo.id,
   })
 }
-function closePanel() {
+function closePanel(): void {
   emit('close')
 }
 
-function getLink(repo: Repositories) {
+function getLink(repo: Repositories): string {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>

@@ -27,7 +27,7 @@ export class getCustomLayer implements CustomLayerInterface {
     this.program = MyRenderProgram(gl)
   }
 
-  render(gl: WebGLRenderingContext | WebGL2RenderingContext, matrix: CustomRenderMethodInput) {
+  render(gl: WebGLRenderingContext | WebGL2RenderingContext, matrix: CustomRenderMethodInput): void {
     if (this.count === 0) return
     if (gl instanceof WebGLRenderingContext) throw new Error('WebGL1 not supported')
     this.gl = gl
@@ -51,11 +51,11 @@ export class getCustomLayer implements CustomLayerInterface {
     })
   }
 
-  clear() {
+  clear(): void {
     this.count = 0
   }
 
-  addLine(lineDef: { from: [number, number]; to: [number, number]; color: number }) {
+  addLine(lineDef: { from: [number, number]; to: [number, number]; color: number }): void {
     if (!this.program) return
     this.count++
     this.program.add(lineDef)

@@ -11,18 +11,18 @@ const props = defineProps<Props>()
 
 const selectedModel = ref(props.models[0].id)
 
-function submit() {
+function submit(): void {
   props.vm.submit(selectedModel.value)
 }
 
-function getDisplayContent(message: { content: string }) {
+function getDisplayContent(message: { content: string }): string {
   if (message.content.length > 0) {
     return message.content
   }
   return `Enter message here`
 }
 
-function submitOnCmdEnter(event: KeyboardEvent) {
+function submitOnCmdEnter(event: KeyboardEvent): void {
   if (event.key === 'Enter' && event.metaKey) {
     if (event.target) (event.target as HTMLElement).blur()
     submit()
@@ -33,7 +33,7 @@ function submitOnCmdEnter(event: KeyboardEvent) {
   }
 }
 
-function cancelQuery() {
+function cancelQuery(): void {
   props.vm.cancelQuery()
 }
 

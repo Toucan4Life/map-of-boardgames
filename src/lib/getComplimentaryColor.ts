@@ -1,4 +1,4 @@
-export default function getComplimentaryColor(colorin: string, alpha = 0xaa) {
+export default function getComplimentaryColor(colorin: string, alpha = 0xaa): number {
   let color = 0
   if (colorin[0] === '#') {
     color = parseInt(colorin.slice(1), 16)
@@ -21,7 +21,7 @@ export default function getComplimentaryColor(colorin: string, alpha = 0xaa) {
   return (r0 << 24) | (g0 << 16) | (b0 << 8) | alpha
 }
 
-function rgbToHsl(r: number, g: number, b: number) {
+function rgbToHsl(r: number, g: number, b: number): number[] {
   r /= 255
   g /= 255
   b /= 255
@@ -55,7 +55,7 @@ function rgbToHsl(r: number, g: number, b: number) {
   return [h, s, l]
 }
 
-function hslToRgb(h: number, s: number, l: number) {
+function hslToRgb(h: number, s: number, l: number): number[] {
   let r, g, b
 
   if (s == 0) {
@@ -72,7 +72,7 @@ function hslToRgb(h: number, s: number, l: number) {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
 }
 
-function hue2rgb(p: number, q: number, t: number) {
+function hue2rgb(p: number, q: number, t: number): number {
   if (t < 0) t += 1
   if (t > 1) t -= 1
   if (t < 1 / 6) return p + (q - p) * 6 * t

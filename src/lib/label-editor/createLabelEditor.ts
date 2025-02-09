@@ -3,74 +3,72 @@ import { getPlaceLabels, addLabelToPlaces, editLabelInPlaces } from './labelsSto
 import createMarkerEditor from './createDOMMarkerEditor'
 import bus from '../bus'
 
-export default function createLabelEditor(map: Map) {
-  let places: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined
-  const placeLabelLayers = ['place-country-1']
-
-  getPlaceLabels().then((loadedPlaces) => {
-    if (!loadedPlaces) return
-    ;(map.getSource('place') as GeoJSONSource)?.setData(loadedPlaces)
-    places = loadedPlaces
-  })
-
-  return {
-    getContextMenuItems,
-    getPlaces: () => places,
+export class LabelEditor {
+  places: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined
+  map: Map
+  oldLabelProps: { [name: string]: string } | undefined
+  placeLabelLayers = ['place-country-1']
+  marker = new maplibregl.Popup({ closeButton: false })
+  borderOwnerId: string | number | undefined
+  constructor(map: maplibregl.Map) {
+    this.map = map
+    getPlaceLabels().then((loadedPlaces) => {
+      if (!loadedPlaces) return
+      ;(map.getSource('place') as GeoJSONSource)?.setData(loadedPlaces)
+      this.places = loadedPlaces
+    })
   }
-
-  function getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined): { text: string; click: () => void }[] {
-    const labelFeature = map.queryRenderedFeatures(e.point, { layers: placeLabelLayers })
+  getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined): { text: string; click: () => void }[] {
+    const labelFeature = this.map.queryRenderedFeatures(e.point, { layers: this.placeLabelLayers })
     const items = []
     if (labelFeature.length) {
       const label = labelFeature[0].properties
       const coordinates = (labelFeature[0].geometry as GeoJSON.Point).coordinates
       items.push({
         text: `Edit ${label.name}`,
-        click: () => editLabel(new LngLat(coordinates[0], coordinates[1]), label),
+        click: () => this.editLabel(new LngLat(coordinates[0], coordinates[1]), label),
       })
     } else {
       items.push({
         text: 'Add label',
-        click: () => addLabel(e.lngLat, borderOwnerId),
+        click: () => this.addLabel(e.lngLat, borderOwnerId),
       })
     }
 
     return items
   }
 
-  function addLabel(lngLat: LngLat, borderOwnerId: string | number | undefined) {
-    const markerEditor = createMarkerEditor(map, save, null)
+  addLabel(lngLat: LngLat, borderOwnerId: string | number | undefined): void {
+    const markerEditor = createMarkerEditor(this.map, this.saveAdd, null)
+    this.borderOwnerId = borderOwnerId
+    this.marker.setDOMContent(markerEditor.element)
+    this.marker.setLngLat(lngLat)
+    this.marker.addTo(this.map)
 
-    const marker = new maplibregl.Popup({ closeButton: false })
-    marker.setDOMContent(markerEditor.element)
-    marker.setLngLat(lngLat)
-    marker.addTo(map)
-
-    markerEditor.setMarker(marker)
-
-    function save(value: string) {
-      places = addLabelToPlaces(places, value, marker.getLngLat(), map.getZoom(), borderOwnerId)
-      if (!places) return
-      ;(map.getSource('place') as GeoJSONSource)?.setData(places)
-      bus.fire('unsaved-changes-detected', true)
-    }
+    markerEditor.setMarker(this.marker)
+  }
+  saveAdd(value: string): void {
+    this.places = addLabelToPlaces(this.places, value, this.marker.getLngLat(), this.map.getZoom(), this.borderOwnerId)
+    if (!this.places) return
+    ;(this.map.getSource('place') as GeoJSONSource)?.setData(this.places)
+    bus.fire('unsaved-changes-detected', true)
   }
 
-  function editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: string }) {
-    const markerEditor = createMarkerEditor(map, save, oldLabelProps.name)
+  editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: string }): void {
+    const markerEditor = createMarkerEditor(this.map, this.saveEdit, oldLabelProps.name)
+    this.oldLabelProps = oldLabelProps
+    this.marker.setDOMContent(markerEditor.element)
+    this.marker.setLngLat(lngLat)
+    this.marker.addTo(this.map)
 
-    const marker = new maplibregl.Popup({ closeButton: false })
-    marker.setDOMContent(markerEditor.element)
-    marker.setLngLat(lngLat)
-    marker.addTo(map)
+    markerEditor.setMarker(this.marker)
+  }
 
-    markerEditor.setMarker(marker)
-
-    function save(value: string) {
-      places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom())
-      if (!places) return
-      ;(map.getSource('place') as GeoJSONSource)?.setData(places)
-      bus.fire('unsaved-changes-detected', true)
-    }
+  saveEdit(value: string): void {
+    if (!this.oldLabelProps) return
+    this.places = editLabelInPlaces(this.oldLabelProps?.labelId, this.places, value, this.marker.getLngLat(), this.map.getZoom())
+    if (!this.places) return
+    ;(this.map.getSource('place') as GeoJSONSource)?.setData(this.places)
+    bus.fire('unsaved-changes-detected', true)
   }
 }

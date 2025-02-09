@@ -1,19 +1,11 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
-import maplibregl, {
-  GeoJSONSource,
-  MapMouseEvent,
-  type FilterSpecification,
-  type MapGeoJSONFeature,
-  type MapOptions,
-  type PointLike,
-} from 'maplibre-gl'
-
+import maplibregl, { GeoJSONSource, type FilterSpecification, type MapGeoJSONFeature, type MapOptions, type PointLike } from 'maplibre-gl'
 import bus from './bus'
 import config from './config'
 import { getCustomLayer } from './gl/createLinesCollection.ts'
 import getComplimentaryColor from './getComplimentaryColor'
-import createLabelEditor from './label-editor/createLabelEditor'
 import { GraphDownloader } from './downloadGroupGraph.ts'
+import { LabelEditor } from './label-editor/createLabelEditor.ts'
 
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
@@ -50,12 +42,7 @@ export class BoardGameMap {
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
   fastLinesLayer: getCustomLayer
-  labelEditor:
-    | {
-        getContextMenuItems: (e: MapMouseEvent & object, borderOwnerId: string | number | undefined) => { text: string; click: () => void }[]
-        getPlaces: () => GeoJSON.GeoJSON | undefined
-      }
-    | undefined
+  labelEditor: LabelEditor | undefined
 
   constructor() {
     this.map = new maplibregl.Map(this.getDefaultStyle())
@@ -73,9 +60,62 @@ export class BoardGameMap {
       this.map.addImage('triangle-icon', triangle.data, { sdf: true })
       const star = await this.map.loadImage(config.iconSource + '/star.png')
       this.map.addImage('star-icon', star.data, { sdf: true })
+      this.map.addLayer({
+        id: 'circle-layer',
+        type: 'symbol',
+        source: 'points-source',
+        'source-layer': 'points',
+        filter: ['==', '$type', 'Point'],
+        layout: {
+          'icon-image': [
+            'case',
+            ['>=', ['to-number', ['get', 'complexity']], 4],
+            'star-icon',
+            ['>=', ['to-number', ['get', 'complexity']], 3],
+            'diamond-icon',
+            ['>=', ['to-number', ['get', 'complexity']], 2],
+            'triangle-icon',
+            'circle-icon',
+          ],
+          'icon-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
+            23,
+            ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
+          ],
+          'icon-ignore-placement': true,
+          'icon-allow-overlap': true,
+        },
+        paint: {
+          'icon-color': [
+            'case',
+            ['>=', ['to-number', ['get', 'ratings']], 7.77],
+            '#00e9ff',
+            ['>=', ['to-number', ['get', 'ratings']], 7.46],
+            '#00f8d8',
+            ['>=', ['to-number', ['get', 'ratings']], 7.2],
+            '#00ff83',
+            ['>=', ['to-number', ['get', 'ratings']], 7.03],
+            '#62f25e',
+            ['>=', ['to-number', ['get', 'ratings']], 6.9],
+            '#87e539',
+            ['>=', ['to-number', ['get', 'ratings']], 6.76],
+            '#a2d600',
+            ['>=', ['to-number', ['get', 'ratings']], 6.6],
+            '#c3b700',
+            ['>=', ['to-number', ['get', 'ratings']], 6.4],
+            '#de9200',
+            ['>=', ['to-number', ['get', 'ratings']], 6.1],
+            '#f36300',
+            '#ff0000',
+          ],
+        },
+      })
       this.map.addLayer(this.fastLinesLayer, 'circle-layer')
-      // map.addLayer(createRadialGradient(), "polygon-layer");
-      this.labelEditor = createLabelEditor(this.map)
+      this.labelEditor = new LabelEditor(this.map)
     })
 
     this.map.on('contextmenu', (e) => {
@@ -128,6 +168,7 @@ export class BoardGameMap {
     })
     this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
+
   highlightNode(searchParameters: {
     minWeight: string
     maxWeight: string
@@ -138,7 +179,7 @@ export class BoardGameMap {
     playerChoice: number
     minPlayers: string
     maxPlayers: string
-  }) {
+  }): void {
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
@@ -180,18 +221,20 @@ export class BoardGameMap {
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
     this.map.redraw()
   }
-  getGroupIdAt(lat: number, lon: number) {
+
+  getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
     // find first group that contains the point.
     return this.bordersCollection.then((collection) => {
       const feature = collection.features.find((f: MapGeoJSONFeature) => {
         return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
       })
-      if (!feature) return
-      const id = feature.id
+      if (!feature?.id) return
+      const id = +feature.id
       return id
     })
   }
-  showDetails(nearestCity: MapGeoJSONFeature) {
+
+  showDetails(nearestCity: MapGeoJSONFeature): void {
     const repo = nearestCity.properties.label
     // console.log("showing details for :" + repo)
     if (!repo) return
@@ -200,7 +243,8 @@ export class BoardGameMap {
     bus.fire('show-tooltip')
     bus.fire('repo-selected', { text: repo, lat, lon, id: nearestCity.properties.id })
   }
-  showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature) {
+
+  showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature): { text: string; click: () => void } {
     return {
       text: 'Show largest projects',
       click: () => {
@@ -236,19 +280,19 @@ export class BoardGameMap {
     }
   }
 
-  getPlacesGeoJSON() {
+  getPlacesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined {
     if (!this.labelEditor) {
       console.warn('labelEditor not yet initialized')
       return
     }
-    return this.labelEditor.getPlaces()
+    return this.labelEditor.places
   }
 
-  clearBorderHighlights() {
+  clearBorderHighlights(): void {
     this.map.setLayoutProperty('border-highlight', 'visibility', 'none')
   }
 
-  clearHighlights() {
+  clearHighlights(): void {
     if (!this.fastLinesLayer) {
       console.warn('fastLinesLayer not yet initialized')
       return
@@ -261,7 +305,7 @@ export class BoardGameMap {
     this.map.redraw()
   }
 
-  makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false) {
+  makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false): void {
     if (disableAnimation) {
       this.map.jumpTo(location)
     } else {
@@ -272,12 +316,12 @@ export class BoardGameMap {
     })
   }
 
-  getBackgroundNearPoint(point: PointLike) {
+  getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature {
     const borderFeature = this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
     return borderFeature[0]
   }
 
-  drawBackgroundEdges(point: PointLike, repo: string) {
+  drawBackgroundEdges(point: PointLike, repo: string): void {
     // console.log("In drawBackgroundEdges")
     const bgFeature = this.getBackgroundNearPoint(point)
     // console.log("bgFeature :" + JSON.stringify(bgFeature))
@@ -489,96 +533,7 @@ export class BoardGameMap {
           //     ]
           //   }
           // },
-          {
-            id: 'circle-layer',
-            type: 'symbol',
-            source: 'points-source',
-            'source-layer': 'points',
-            filter: ['==', '$type', 'Point'],
-            // "icon-opacity": [
-            //   "interpolate",
-            //   ["linear"],
-            //   ["zoom"],
-            //   5, 0.1,
-            //   15, 0.9
-            // ],
-            layout: {
-              'icon-image': [
-                'case',
-                ['>=', ['to-number', ['get', 'complexity']], 4],
-                'star-icon',
-                ['>=', ['to-number', ['get', 'complexity']], 3],
-                'diamond-icon',
-                ['>=', ['to-number', ['get', 'complexity']], 2],
-                'triangle-icon',
-                'circle-icon',
-              ],
-              'icon-size': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                5,
-                ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
-                23,
-                ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
-              ],
-              'icon-ignore-placement': true,
-              'icon-allow-overlap': true,
-            },
-            paint: {
-              // "icon-color": [
-              //   "case",
-              //   [">=", ["to-number", ["get", 'ratings']], 7.77],
-              //   "#00ff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 7.46],
-              //   "#0fff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 7.2],
-              //   "#4bff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 7.03],
-              //   "#87ff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 6.9],
-              //   "#c3ff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 6.76],
-              //   "#ffff00",
-              //   [">=", ["to-number", ["get", 'ratings']], 6.6],
-              //   "#fff000",
-              //   [">=", ["to-number", ["get", 'ratings']], 6.4],
-              //   "#ffb400",
-              //   [">=", ["to-number", ["get", 'ratings']], 6.1],
-              //   "#ff7800",
-              //   "#ff3c00"
-              // ],
-              'icon-color': [
-                'case',
-                ['>=', ['to-number', ['get', 'ratings']], 7.77],
-                '#00e9ff',
-                ['>=', ['to-number', ['get', 'ratings']], 7.46],
-                '#00f8d8',
-                ['>=', ['to-number', ['get', 'ratings']], 7.2],
-                '#00ff83',
-                ['>=', ['to-number', ['get', 'ratings']], 7.03],
-                '#62f25e',
-                ['>=', ['to-number', ['get', 'ratings']], 6.9],
-                '#87e539',
-                ['>=', ['to-number', ['get', 'ratings']], 6.76],
-                '#a2d600',
-                ['>=', ['to-number', ['get', 'ratings']], 6.6],
-                '#c3b700',
-                ['>=', ['to-number', ['get', 'ratings']], 6.4],
-                '#de9200',
-                ['>=', ['to-number', ['get', 'ratings']], 6.1],
-                '#f36300',
-                '#ff0000',
-              ],
-              // "icon-opacity": [
-              //   "interpolate",
-              //   ["linear"],
-              //   ["zoom"],
-              //   5, 0.1,
-              //   15, 0.9
-              // ]
-            },
-          },
+
           {
             id: 'label-layer',
             type: 'symbol',

@@ -9,7 +9,7 @@ let originalPlaces: GeoJSON.FeatureCollection = {
 }
 const indexedPlaces = new Map()
 
-export async function getPlaceLabels() {
+export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined> {
   const r = await fetch(config.placesSource, { mode: 'cors' })
   originalPlaces = await r.json()
   originalPlaces.features.forEach((f) => {
@@ -24,7 +24,7 @@ export async function getPlaceLabels() {
   return mergedLabels
 }
 
-function savePlaceLabels(places: GeoJSON.GeoJSON | undefined) {
+function savePlaceLabels(places: GeoJSON.GeoJSON | undefined): void {
   localStorage.setItem('places', JSON.stringify(places))
 }
 
@@ -34,7 +34,7 @@ export function addLabelToPlaces(
   lngLat: LngLat,
   mapZoomLevel: number,
   borderOwnerId: string | number | undefined,
-) {
+): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined {
   let labelId = generateShortRandomId()
   while (indexedPlaces.has(labelId)) labelId = generateShortRandomId()
 
@@ -59,7 +59,7 @@ export function editLabelInPlaces(
   value: string,
   lngLat: LngLat,
   mapZoomLevel: number,
-) {
+): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined {
   if (!places) return
   if (!value) {
     places.features = places.features.filter((f) => f.properties?.labelId !== labelId)

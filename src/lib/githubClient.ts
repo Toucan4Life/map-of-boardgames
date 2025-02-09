@@ -40,14 +40,14 @@ if (document.cookie.includes('github_token')) {
   headerDict['Authorization'] = 'Bearer ' + document.cookie.split('github_token=')[1].split(';')[0]
 }
 
-export function setAuthToken(token: string) {
+export function setAuthToken(token: string): void {
   headerDict['Authorization'] = 'Bearer ' + token
   // also write to cookie:
   document.cookie = 'github_token=' + token
   bus.fire('auth-changed')
 }
 
-export function signOut() {
+export function signOut(): void {
   delete headerDict['Authorization']
   document.cookie = 'github_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
   currentUser = undefined
@@ -69,7 +69,9 @@ export function getCachedCurrentUser(): User | undefined {
   return currentUser
 }
 
-export async function getRepoInfo(repoName: string) {
+export async function getRepoInfo(
+  repoName: string,
+): Promise<Repository | { state: string; error?: string; name?: string; retryIn?: string } | undefined> {
   if (cachedRepositories.has(repoName)) {
     return cachedRepositories.get(repoName)
   }
@@ -137,7 +139,7 @@ export async function getRepoInfo(repoName: string) {
   return repository
 }
 
-export async function getReadme(repoName: string, default_branch: Array<string>) {
+export async function getReadme(repoName: string, default_branch: Array<string>): Promise<{ state: string; content: string } | undefined> {
   if (!default_branch) {
     default_branch = ['master', 'main']
   }
@@ -157,6 +159,6 @@ export async function getReadme(repoName: string, default_branch: Array<string>)
   }
 }
 
-function formatNiceNumber(x: number) {
+function formatNiceNumber(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }

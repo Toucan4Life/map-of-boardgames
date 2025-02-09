@@ -30,14 +30,14 @@ export default function createDOMarkerEditor(map: Map, onSave: { (value: string)
     },
   }
 
-  function submit(e: Event) {
+  function submit(e: Event): void {
     e.preventDefault()
     const input = element.querySelector('input')
     if (input) onSave(input.value)
     close()
   }
 
-  function listenToEvents() {
+  function listenToEvents(): void {
     document.addEventListener('keydown', onKeyDown)
     element.querySelector('form')?.addEventListener('submit', submit)
     element.querySelector('.cancel')?.addEventListener('click', (e) => {
@@ -60,23 +60,23 @@ export default function createDOMarkerEditor(map: Map, onSave: { (value: string)
     })
   }
 
-  function onPointerMove(e: PointerEvent) {
+  function onPointerMove(e: PointerEvent): void {
     const newLngLat = map.unproject([e.clientX + dx, e.clientY + dy])
     marker.setLngLat(newLngLat)
   }
 
-  function cleanUp() {
+  function cleanUp(): void {
     document.removeEventListener('keydown', onKeyDown)
     window.removeEventListener('pointermove', onPointerMove, true)
     window.removeEventListener('pointerup', cleanUp, true)
   }
 
-  function close() {
+  function close(): void {
     marker.remove()
     cleanUp()
   }
 
-  function onKeyDown(e: KeyboardEvent) {
+  function onKeyDown(e: KeyboardEvent): void {
     if (e.key === 'Escape') {
       close()
       e.preventDefault()

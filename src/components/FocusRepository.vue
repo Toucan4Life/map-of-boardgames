@@ -6,7 +6,7 @@ const vm = defineProps<{ vm: IFocusViewModel }>()
 
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: IFocusViewModel | Repo, event: MouseEvent) {
+function showDetails(repo: IFocusViewModel | Repo, event: MouseEvent): void {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat.value[1],
@@ -15,11 +15,11 @@ function showDetails(repo: IFocusViewModel | Repo, event: MouseEvent) {
     id: repo.id,
   })
 }
-function closePanel() {
+function closePanel(): void {
   emit('close')
 }
 
-function getLink(repo: IFocusViewModel | Repo) {
+function getLink(repo: IFocusViewModel | Repo): string {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>

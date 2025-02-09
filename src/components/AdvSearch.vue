@@ -3,11 +3,21 @@ import { defineEmits, ref } from 'vue'
 import CustomMinMaxSlider from './CustomMinMaxSlider.vue'
 const emit = defineEmits(['close', 'search'])
 
-function close() {
+function close(): void {
   emit('close')
 }
 
-function search(minW: number, maxW: number, minR: number, maxR: number, minP: number, maxP: number, minPl: number, maxPl: number, pChoice: number) {
+function search(
+  minW: number,
+  maxW: number,
+  minR: number,
+  maxR: number,
+  minP: number,
+  maxP: number,
+  minPl: number,
+  maxPl: number,
+  pChoice: number,
+): void {
   // console.log(JSON.stringify({
   //   minWeight: minW, maxWeight: maxW,
   //   minRating: minR, maxRating: maxR,

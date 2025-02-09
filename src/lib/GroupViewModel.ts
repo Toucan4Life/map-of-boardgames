@@ -27,7 +27,7 @@ export default class GroupViewModel {
     this.pendingRequest = undefined
   }
 
-  setLargest(currentLargest: Repositories[]) {
+  setLargest(currentLargest: Repositories[]): void {
     this.largest.value = currentLargest
     if (this.chat.value.length === 0) {
       this.chat.value.push(
@@ -52,7 +52,7 @@ export default class GroupViewModel {
     }
   }
 
-  addMessage() {
+  addMessage(): void {
     this.chat.value.push({
       id: generateShortRandomId(),
       content: '',
@@ -61,7 +61,7 @@ export default class GroupViewModel {
     })
   }
 
-  submit(model: string) {
+  submit(model: string): void {
     this.error.value = ''
     if (this.pendingRequest) this.pendingRequest.isCancelled = true
     const request: { model: string; messages: { content: string; role: string }[] } = {
@@ -102,11 +102,11 @@ export default class GroupViewModel {
     this.pendingRequest = p
   }
 
-  deleteMessage(id: string | number) {
+  deleteMessage(id: string | number): void {
     this.chat.value = this.chat.value.filter((message) => message.id !== id)
   }
 
-  cancelQuery() {
+  cancelQuery(): void {
     this.loading.value = false
     if (this.pendingRequest) this.pendingRequest.isCancelled = true
   }

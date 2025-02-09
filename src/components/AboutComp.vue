@@ -3,7 +3,7 @@ import { defineEmits } from 'vue'
 
 const emit = defineEmits(['close'])
 
-function close() {
+function close(): void {
   emit('close')
 }
 </script>
@@ -59,15 +59,12 @@ function close() {
 
       <p>The shape are related to the bgg complexity of the game:</p>
 
-      <!-- <ul class="legend">
-        <li><img src="../../public/circle.png" style="width:40px;height:auto;" alt="circle" class="map-image"> &lt;=2
-        </li>
-        <li><img src="../../public/triangle.png" style="width:40px;height:auto;" alt="triangle" class="map-image">
-          &lt;=3</li>
-        <li><img src="../../public/diamond.png" style="width:40px;height:auto;" alt="diamond" class="map-image"> &lt;=4
-        </li>
-        <li><img src="../../public/star.png" style="width:40px;height:auto;" alt="star" class="map-image"> &gt;4</li>
-      </ul> -->
+      <ul class="legend">
+        <li><img src="../../public/circle.png" style="width: 40px; height: auto" alt="circle" class="map-image" /> &lt;=2</li>
+        <li><img src="../../public/triangle.png" style="width: 40px; height: auto" alt="triangle" class="map-image" /> &lt;=3</li>
+        <li><img src="../../public/diamond.png" style="width: 40px; height: auto" alt="diamond" class="map-image" /> &lt;=4</li>
+        <li><img src="../../public/star.png" style="width: 40px; height: auto" alt="star" class="map-image" /> &gt;4</li>
+      </ul>
 
       <h2>Credits</h2>
       <p>A huge thanks to <b>Anvaka</b> which inspired me to do this project and did the tools that enabled me to come this far.</p>

@@ -13,7 +13,7 @@ const repoLink = computed(() => {
   return `https://boardgamegeek.com/boardgame/` + props.id
 })
 
-function listConnections() {
+function listConnections(): void {
   emit('listConnections')
 }
 </script>

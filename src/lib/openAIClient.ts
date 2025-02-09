@@ -1,10 +1,10 @@
 import type { chatMessage } from './GroupViewModel'
 
-export function getStoredOpenAIKey() {
+export function getStoredOpenAIKey(): string {
   return localStorage.getItem('openai-token') || ''
 }
 
-export function storeOpenAIKey(key: string) {
+export function storeOpenAIKey(key: string): void {
   localStorage.setItem('openai-token', key)
 }
 
@@ -33,13 +33,13 @@ export async function sendChatRequest(messagess: Array<{ model: string; messages
   return data.choices[0].message
 }
 
-function getStoredOpenAIKeyOrThrow() {
+function getStoredOpenAIKeyOrThrow(): string {
   const key = getStoredOpenAIKey()
   if (!key) throw new Error('No OpenAI API key provided')
 
   return key
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(): { Authorization: string; 'Content-Type': string } {
   return { Authorization: `Bearer ${getStoredOpenAIKeyOrThrow()}`, 'Content-Type': 'application/json' }
 }

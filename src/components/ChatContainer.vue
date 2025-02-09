@@ -25,13 +25,13 @@ if (openAIToken.value) {
   initializeChat()
 }
 
-function saveToken() {
+function saveToken(): void {
   openAIToken.value = enteredToken.value
   storeOpenAIKey(enteredToken.value)
   initializeChat()
 }
 
-function initializeChat() {
+function initializeChat(): void {
   loadingModels.value = true
   getOpenAIModels()
     .then((gptModels) => {
@@ -44,7 +44,7 @@ function initializeChat() {
     })
 }
 
-function clearKey() {
+function clearKey(): void {
   localStorage.removeItem('openai-token')
   openAIToken.value = ''
   enteredToken.value = ''

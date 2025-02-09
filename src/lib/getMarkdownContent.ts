@@ -4,7 +4,7 @@ import { baseUrl } from 'marked-base-url'
 let currentRepoURL = ''
 let currentRawRepoUrl = ''
 
-export async function getMarkdownContent(markdownString: string, repoName: string, branch: string) {
+export async function getMarkdownContent(markdownString: string, repoName: string, branch: string): Promise<string> {
   initMarkedRenderer()
 
   currentRepoURL = 'https://github.com/' + repoName
@@ -14,7 +14,7 @@ export async function getMarkdownContent(markdownString: string, repoName: strin
   return DOMPurify.sanitize(unsafeDOM)
 }
 
-function initMarkedRenderer() {
+function initMarkedRenderer(): void {
   const renderer = new marked.Renderer()
   // const repoUrl = 'https://github.com/' + repo + '/' + branch;
   renderer.link = function (link: Tokens.Link) {
