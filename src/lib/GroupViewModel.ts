@@ -1,6 +1,7 @@
 import { ref, nextTick, type Ref } from 'vue'
 import generateShortRandomId from './generateShortRandomId'
 import { sendChatRequest } from './openAIClient'
+import type { Repositories } from './FocusViewModel'
 
 export interface chatMessage {
   id: string
@@ -8,19 +9,14 @@ export interface chatMessage {
   role: string
   content: string
 }
-export interface Repositories {
-  name: string
-  lngLat: GeoJSON.Position
-  id: string
-}
 export default class GroupViewModel {
   pendingRequest: { promise: Promise<void>; isCancelled: boolean } | undefined
   loading: Ref<boolean>
   error: Ref<string>
   chat: Ref<chatMessage[]>
-  largest: Ref<Repositories[] | undefined>
+  largest: Ref<Repositories[]>
   constructor() {
-    this.largest = ref<Repositories[]>()
+    this.largest = ref([])
     this.chat = ref([])
     this.error = ref('')
     this.loading = ref(false)

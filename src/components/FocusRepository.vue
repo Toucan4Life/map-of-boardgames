@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { IFocusViewModel, Repo } from '@/lib/FocusViewModel'
+import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
 import { defineEmits } from 'vue'
 
 const vm = defineProps<{ vm: IFocusViewModel }>()
 
 const emit = defineEmits(['selected', 'close'])
 
-function showDetails(repo: IFocusViewModel | Repo, event: MouseEvent): void {
+function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
   emit('selected', {
     text: repo.name,
     lon: repo.lngLat.value[1],
@@ -19,7 +19,7 @@ function closePanel(): void {
   emit('close')
 }
 
-function getLink(repo: IFocusViewModel | Repo): string {
+function getLink(repo: IFocusViewModel | Repositories): string {
   return 'https://boardgamegeek.com/boardgame/' + repo.id
 }
 </script>

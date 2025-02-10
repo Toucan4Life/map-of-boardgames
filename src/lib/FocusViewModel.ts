@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 import { GraphDownloader, type BoardgameData } from './downloadGroupGraph'
-export interface Repo {
+export interface Repositories {
   name: NodeId
   lngLat: Ref<string>
   // isExternal: boolean
@@ -11,7 +11,7 @@ export interface Repo {
 export interface IFocusViewModel {
   id: string
   name: string
-  repos: Ref<Repo[]>
+  repos: Ref<Repositories[]>
   lngLat: Ref<string>
   loading: Ref<boolean>
 }
@@ -21,7 +21,7 @@ export interface IFocusViewModel {
  */
 export default class FocusViewModel implements IFocusViewModel {
   name: string
-  repos: Ref<Repo[]>
+  repos: Ref<Repositories[]>
   lngLat: Ref<string>
   loading: Ref<boolean>
   id: string
@@ -33,7 +33,7 @@ export default class FocusViewModel implements IFocusViewModel {
     this.loading = ref(true)
     new GraphDownloader().downloadGroupGraph(+groupId).then((graph: Graph<BoardgameData, { weight: number }>): void => {
       this.loading.value = false
-      const neighgbors: Repo[] = []
+      const neighgbors: Repositories[] = []
       const focusedNode = graph.getNode(repositoryName)
       if (!focusedNode) {
         console.warn('Focused node not found')

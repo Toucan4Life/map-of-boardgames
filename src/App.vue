@@ -8,8 +8,8 @@ import advSearch from './components/AdvSearch.vue'
 import UnsavedChanges from './components/UnsavedChanges.vue'
 import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
-import GroupViewModel, { type Repositories } from './lib/GroupViewModel'
-import FocusViewModel from './lib/FocusViewModel'
+import GroupViewModel from './lib/GroupViewModel'
+import FocusViewModel, { type Repositories } from './lib/FocusViewModel'
 import bus from './lib/bus'
 import type { SearchResult } from './lib/createFuzzySearcher'
 
@@ -205,7 +205,7 @@ async function search(parameters: {
       Made by
       <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life"> Toucan4Life, </a>
       inspired by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka, </a>
+      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka </a>
     </div>
     <largest-repositories
       :repos="currentGroup"

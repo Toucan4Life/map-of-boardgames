@@ -124,14 +124,10 @@ export class BoardGameMap {
       const bg = this.getBackgroundNearPoint(e.point)
       if (!bg) return
 
-      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
-        items: [this.showLargestProjectsContextMenuItem(bg)],
-        left: e.point.x + 'px',
-        top: e.point.y + 'px',
-      }
+      let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
 
       if (this.labelEditor) {
-        contextMenuItems.items.concat(this.labelEditor.getContextMenuItems(e, bg.id))
+        ctxMenuItems = ctxMenuItems.concat(this.labelEditor.getContextMenuItems(e, bg.id))
       }
 
       const nearestCity = this.findNearestCity(e.point)
@@ -140,7 +136,7 @@ export class BoardGameMap {
         const parts = name.split('/')
         const displayName = parts[parts.length - 1] || name
 
-        contextMenuItems.items.push({
+        ctxMenuItems.push({
           text: 'List connections of ' + displayName,
           click: () => {
             this.showDetails(nearestCity)
@@ -148,6 +144,11 @@ export class BoardGameMap {
             bus.fire('focus-on-repo', name, bg.id)
           },
         })
+      }
+      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
+        items: ctxMenuItems,
+        left: e.point.x + 'px',
+        top: e.point.y + 'px',
       }
 
       bus.fire('show-context-menu', contextMenuItems)
