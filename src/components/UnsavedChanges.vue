@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineEmits, ref } from 'vue'
+import { ref } from 'vue'
 
 const emit = defineEmits(['close'])
 const geojson = window.mapOwner.getPlacesGeoJSON()

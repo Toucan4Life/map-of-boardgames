@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { Repositories } from '@/lib/GroupViewModel'
+import type { Repositories } from '@/lib/FocusViewModel'
 import type GroupViewModel from '@/lib/GroupViewModel'
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps<{ repos: GroupViewModel }>()
 const emit = defineEmits(['selected', 'close'])
@@ -9,8 +8,8 @@ const emit = defineEmits(['selected', 'close'])
 function showDetails(repo: Repositories): void {
   emit('selected', {
     text: repo.name,
-    lon: repo.lngLat[1],
-    lat: repo.lngLat[0],
+    lon: repo.lngLat.value[1],
+    lat: repo.lngLat.value[0],
     id: repo.id,
   })
 }

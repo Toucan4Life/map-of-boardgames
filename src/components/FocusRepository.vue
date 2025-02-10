@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
-import { defineEmits } from 'vue'
 
 const vm = defineProps<{ vm: IFocusViewModel }>()
 

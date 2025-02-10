@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineEmits, ref } from 'vue'
+import { ref } from 'vue'
 import CustomMinMaxSlider from './CustomMinMaxSlider.vue'
 const emit = defineEmits(['close', 'search'])
 
