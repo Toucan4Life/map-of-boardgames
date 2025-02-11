@@ -8,8 +8,8 @@ const emit = defineEmits(['selected', 'close'])
 function showDetails(repo: Repositories): void {
   emit('selected', {
     text: repo.name,
-    lon: repo.lngLat.value[1],
-    lat: repo.lngLat.value[0],
+    lon: repo.lngLat[1],
+    lat: repo.lngLat[0],
     id: repo.id,
   })
 }

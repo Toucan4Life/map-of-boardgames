@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
 
-const vm = defineProps<{ vm: IFocusViewModel }>()
+const props = defineProps<{ vm: IFocusViewModel }>()
 
 const emit = defineEmits(['selected', 'close'])
 
 function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
   emit('selected', {
     text: repo.name,
-    lon: repo.lngLat.value[1],
-    lat: repo.lngLat.value[0],
+    lon: repo.lngLat[1],
+    lat: repo.lngLat[0],
     skipAnimation: event.altKey,
     id: repo.id,
   })
@@ -28,9 +28,9 @@ function getLink(repo: IFocusViewModel | Repositories): string {
       <div class="header-container">
         <div class="header">
           <h2>
-            <a :href="getLink(vm.vm)" @click.prevent="showDetails(vm.vm, $event)" class="normal">{{ vm.vm.name }}</a>
+            <a :href="getLink(props.vm)" @click.prevent="showDetails(props.vm, $event)" class="normal">{{ props.vm.name }}</a>
           </h2>
-          <h3 v-if="!vm.vm.loading">Direct connections ({{ vm.vm.repos.value.length }})</h3>
+          <h3 v-if="!props.vm.loading">Direct connections ({{ props.vm.repos.length }})</h3>
           <h3 v-else>Loading...</h3>
         </div>
         <a class="close-btn" href="#" @click.prevent="closePanel()">
@@ -54,8 +54,8 @@ function getLink(repo: IFocusViewModel | Repositories): string {
         </a>
       </div>
 
-      <ul v-if="vm.vm.repos">
-        <li v-for="repo in vm.vm.repos.value" :key="repo.name">
+      <ul v-if="props.vm.repos">
+        <li v-for="repo in props.vm.repos" :key="repo.name">
           <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank">
             {{ repo.name }}
             <!-- <span v-if="repo.isExternal" title="External country">E</span> -->

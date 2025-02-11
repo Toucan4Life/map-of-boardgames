@@ -223,7 +223,7 @@ export class BoardGameMap {
     this.map.redraw()
   }
 
-  getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
+  async getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
     // find first group that contains the point.
     return this.bordersCollection.then((collection) => {
       const feature = collection.features.find((f: MapGeoJSONFeature) => {
