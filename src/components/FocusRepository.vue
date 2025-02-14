@@ -1,17 +1,24 @@
 <script setup lang="ts">
+import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
 
 const props = defineProps<{ vm: IFocusViewModel }>()
 
-const emit = defineEmits(['selected', 'close'])
+const emit = defineEmits<{
+  selected: [id: SearchResult]
+  close: []
+}>()
 
 function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
+  if (!repo.id) return
   emit('selected', {
-    text: repo.name,
+    text: repo.name.toString(),
     lon: repo.lngLat[1],
     lat: repo.lngLat[0],
     skipAnimation: event.altKey,
     id: repo.id,
+    selected: false,
+    html: null,
   })
 }
 function closePanel(): void {

@@ -65,7 +65,7 @@ const vTextareaFitContentSize = {
     <div class="container">
       <ul class="message-list">
         <li
-          v-for="message in vm.chat.value"
+          v-for="message in vm.chat"
           :key="message.id"
           class="message"
           :class="{

@@ -133,11 +133,11 @@ export class BoardGameMap {
       const nearestCity = this.findNearestCity(e.point)
       if (nearestCity) {
         const name = nearestCity.properties.label
-        const parts = name.split('/')
-        const displayName = parts[parts.length - 1] || name
+        // const parts = name.split('/')
+        // const displayName = parts[parts.length - 1] || name
 
         ctxMenuItems.push({
-          text: 'List connections of ' + displayName,
+          text: 'List connections of ' + name,
           click: () => {
             this.showDetails(nearestCity)
             this.drawBackgroundEdges(e.point, name)
@@ -171,15 +171,15 @@ export class BoardGameMap {
   }
 
   highlightNode(searchParameters: {
-    minWeight: string
-    maxWeight: string
-    minRating: string
-    maxRating: string
-    minPlaytime: string
-    maxPlaytime: string
+    minWeight: number
+    maxWeight: number
+    minRating: number
+    maxRating: number
+    minPlaytime: number
+    maxPlaytime: number
     playerChoice: number
-    minPlayers: string
-    maxPlayers: string
+    minPlayers: number
+    maxPlayers: number
   }): void {
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
@@ -257,10 +257,10 @@ export class BoardGameMap {
             filter: ['==', 'parent', bg.id],
           })
           .sort((a, b) => {
+            //todo: investigate what is the properties size?
             return b.properties.size - a.properties.size
           })
-        // console.log(bg.id)
-        // console.log(largeRepositories)
+
         for (const repo of largeRepositories) {
           const v: { name: string; lngLat: GeoJSON.Position; id: string } = {
             name: repo.properties.label,

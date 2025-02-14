@@ -8,7 +8,7 @@ interface Repo {
 
 const props = defineProps<Repo>()
 
-const emit = defineEmits(['listConnections'])
+const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
   return `https://boardgamegeek.com/boardgame/` + props.id
 })

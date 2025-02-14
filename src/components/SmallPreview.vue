@@ -6,7 +6,7 @@ interface Repo {
 
 const props = defineProps<Repo>()
 
-const emit = defineEmits(['show-full-preview'])
+const emit = defineEmits<{ (e: 'show-full-preview', id: string): void }>()
 
 // const repoInfo = reactive({
 //   state: 'LOADING',

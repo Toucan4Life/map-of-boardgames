@@ -26,7 +26,10 @@ const { min, max, step, minValue, maxValue } = defineProps({
 })
 
 // define emits for the slider component
-const emit = defineEmits(['update:minValue', 'update:maxValue'])
+const emit = defineEmits<{
+  (e: 'update:minValue', value: number): void
+  (e: 'update:maxValue', value: number): void
+}>()
 
 // define refs for the slider element and the slider values
 const slider = ref<HTMLDivElement>()

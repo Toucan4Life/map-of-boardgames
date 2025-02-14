@@ -184,15 +184,15 @@ async function listCurrentConnections() {
   }
 }
 function search(parameters: {
-  minWeight: string
-  maxWeight: string
-  minRating: string
-  maxRating: string
-  minPlaytime: string
-  maxPlaytime: string
+  minWeight: number
+  maxWeight: number
+  minRating: number
+  maxRating: number
+  minPlaytime: number
+  maxPlaytime: number
   playerChoice: number
-  minPlayers: string
-  maxPlayers: string
+  minPlayers: number
+  maxPlayers: number
 }) {
   window.mapOwner?.highlightNode(parameters)
 }
