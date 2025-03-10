@@ -124,30 +124,31 @@ export class BoardGameMap {
       const bg = this.getBackgroundNearPoint(e.point)
       if (!bg) return
 
-      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
-        items: [this.showLargestProjectsContextMenuItem(bg)],
-        left: e.point.x + 'px',
-        top: e.point.y + 'px',
-      }
+      let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
 
       if (this.labelEditor) {
-        contextMenuItems.items.concat(this.labelEditor.getContextMenuItems(e, bg.id))
+        ctxMenuItems = ctxMenuItems.concat(this.labelEditor.getContextMenuItems(e, bg.id))
       }
 
       const nearestCity = this.findNearestCity(e.point)
       if (nearestCity) {
         const name = nearestCity.properties.label
-        const parts = name.split('/')
-        const displayName = parts[parts.length - 1] || name
+        // const parts = name.split('/')
+        // const displayName = parts[parts.length - 1] || name
 
-        contextMenuItems.items.push({
-          text: 'List connections of ' + displayName,
+        ctxMenuItems.push({
+          text: 'List connections of ' + name,
           click: () => {
             this.showDetails(nearestCity)
             this.drawBackgroundEdges(e.point, name)
             bus.fire('focus-on-repo', name, bg.id)
           },
         })
+      }
+      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
+        items: ctxMenuItems,
+        left: e.point.x + 'px',
+        top: e.point.y + 'px',
       }
 
       bus.fire('show-context-menu', contextMenuItems)
@@ -170,15 +171,15 @@ export class BoardGameMap {
   }
 
   highlightNode(searchParameters: {
-    minWeight: string
-    maxWeight: string
-    minRating: string
-    maxRating: string
-    minPlaytime: string
-    maxPlaytime: string
+    minWeight: number
+    maxWeight: number
+    minRating: number
+    maxRating: number
+    minPlaytime: number
+    maxPlaytime: number
     playerChoice: number
-    minPlayers: string
-    maxPlayers: string
+    minPlayers: number
+    maxPlayers: number
   }): void {
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
@@ -222,7 +223,7 @@ export class BoardGameMap {
     this.map.redraw()
   }
 
-  getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
+  async getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
     // find first group that contains the point.
     return this.bordersCollection.then((collection) => {
       const feature = collection.features.find((f: MapGeoJSONFeature) => {
@@ -256,10 +257,10 @@ export class BoardGameMap {
             filter: ['==', 'parent', bg.id],
           })
           .sort((a, b) => {
+            //todo: investigate what is the properties size?
             return b.properties.size - a.properties.size
           })
-        // console.log(bg.id)
-        // console.log(largeRepositories)
+
         for (const repo of largeRepositories) {
           const v: { name: string; lngLat: GeoJSON.Position; id: string } = {
             name: repo.properties.label,

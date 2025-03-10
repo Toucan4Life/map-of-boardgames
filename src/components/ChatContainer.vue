@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, ref } from 'vue'
+import { ref } from 'vue'
 import { getOpenAIModels, getStoredOpenAIKey, storeOpenAIKey } from '../lib/openAIClient.ts'
 import ChatList from './ChatList.vue'
 import GroupViewModel, { type chatMessage } from '@/lib/GroupViewModel.ts'

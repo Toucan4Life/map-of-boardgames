@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineEmits } from 'vue'
+import { computed } from 'vue'
 
 interface Repo {
   name: string
@@ -8,7 +8,7 @@ interface Repo {
 
 const props = defineProps<Repo>()
 
-const emit = defineEmits(['listConnections'])
+const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
   return `https://boardgamegeek.com/boardgame/` + props.id
 })

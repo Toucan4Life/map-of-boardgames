@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import type { Repositories } from '@/lib/GroupViewModel'
+import type { SearchResult } from '@/lib/createFuzzySearcher'
+import type { Repositories } from '@/lib/FocusViewModel'
 import type GroupViewModel from '@/lib/GroupViewModel'
-import { defineProps, defineEmits } from 'vue'
+import ChatContainer from './ChatContainer.vue'
 
 const props = defineProps<{ repos: GroupViewModel }>()
-const emit = defineEmits(['selected', 'close'])
+const emit = defineEmits<{
+  selected: [id: SearchResult]
+  close: []
+}>()
 
 function showDetails(repo: Repositories): void {
   emit('selected', {
-    text: repo.name,
+    text: repo.name.toString(),
     lon: repo.lngLat[1],
     lat: repo.lngLat[0],
     id: repo.id,
+    selected: false,
+    skipAnimation: false,
+    html: null,
   })
 }
 function closePanel(): void {
@@ -46,8 +53,8 @@ function getLink(repo: Repositories): string {
           </svg> </a
         >In this country
       </h2>
-      <ul v-if="props.repos.largest.value?.length">
-        <li v-for="repo in props.repos.largest.value" :key="repo.name">
+      <ul v-if="props.repos.largest.length">
+        <li v-for="repo in props.repos.largest" :key="repo.name">
           <a :href="getLink(repo)" @click.prevent="showDetails(repo)" target="_blank">{{ repo.name }}</a>
         </li>
       </ul>
@@ -55,14 +62,14 @@ function getLink(repo: Repositories): string {
         <p>No repositories found. Try zooming in?</p>
       </div>
     </div>
-    <!-- <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container"/> -->
+    <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container" />
   </div>
 </template>
 <style scoped>
-/* .group-view-container {
+.group-view-container {
   display: grid;
   grid-template-rows: minmax(0, 40%) minmax(0, 60%);
-} */
+}
 
 .names-container {
   display: flex;

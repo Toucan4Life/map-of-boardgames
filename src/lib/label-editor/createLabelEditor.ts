@@ -39,7 +39,7 @@ export class LabelEditor {
   }
 
   addLabel(lngLat: LngLat, borderOwnerId: string | number | undefined): void {
-    const markerEditor = createMarkerEditor(this.map, this.saveAdd, null)
+    const markerEditor = createMarkerEditor(this.map, (value) => this.saveAdd(value), null)
     this.borderOwnerId = borderOwnerId
     this.marker.setDOMContent(markerEditor.element)
     this.marker.setLngLat(lngLat)
@@ -55,7 +55,7 @@ export class LabelEditor {
   }
 
   editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: string }): void {
-    const markerEditor = createMarkerEditor(this.map, this.saveEdit, oldLabelProps.name)
+    const markerEditor = createMarkerEditor(this.map, (value) => this.saveEdit(value), oldLabelProps.name)
     this.oldLabelProps = oldLabelProps
     this.marker.setDOMContent(markerEditor.element)
     this.marker.setLngLat(lngLat)

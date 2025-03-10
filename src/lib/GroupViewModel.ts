@@ -1,6 +1,7 @@
-import { ref, nextTick, type Ref } from 'vue'
+import { nextTick } from 'vue'
 import generateShortRandomId from './generateShortRandomId'
 import { sendChatRequest } from './openAIClient'
+import type { Repositories } from './FocusViewModel'
 
 export interface chatMessage {
   id: string
@@ -8,29 +9,24 @@ export interface chatMessage {
   role: string
   content: string
 }
-export interface Repositories {
-  name: string
-  lngLat: GeoJSON.Position
-  id: string
-}
 export default class GroupViewModel {
   pendingRequest: { promise: Promise<void>; isCancelled: boolean } | undefined
-  loading: Ref<boolean>
-  error: Ref<string>
-  chat: Ref<chatMessage[]>
-  largest: Ref<Repositories[] | undefined>
+  loading: boolean
+  error: string
+  chat: chatMessage[]
+  largest: Repositories[]
   constructor() {
-    this.largest = ref<Repositories[]>()
-    this.chat = ref([])
-    this.error = ref('')
-    this.loading = ref(false)
+    this.largest = []
+    this.chat = []
+    this.error = ''
+    this.loading = false
     this.pendingRequest = undefined
   }
 
   setLargest(currentLargest: Repositories[]): void {
-    this.largest.value = currentLargest
-    if (this.chat.value.length === 0) {
-      this.chat.value.push(
+    this.largest = currentLargest
+    if (this.chat.length === 0) {
+      this.chat.push(
         {
           id: '0',
           isEdited: false,
@@ -53,7 +49,7 @@ export default class GroupViewModel {
   }
 
   addMessage(): void {
-    this.chat.value.push({
+    this.chat.push({
       id: generateShortRandomId(),
       content: '',
       role: 'user',
@@ -62,29 +58,29 @@ export default class GroupViewModel {
   }
 
   submit(model: string): void {
-    this.error.value = ''
+    this.error = ''
     if (this.pendingRequest) this.pendingRequest.isCancelled = true
     const request: { model: string; messages: { content: string; role: string }[] } = {
       model: model,
-      messages: this.chat.value.map((message) => {
+      messages: this.chat.map((message) => {
         return {
           content: message.content,
           role: message.role,
         }
       }),
     }
-    this.chat.value.forEach((message: chatMessage) => {
+    this.chat.forEach((message: chatMessage) => {
       message.isEdited = false
     })
-    this.loading.value = true
+    this.loading = true
     const p = {
       promise: sendChatRequest([request])
         .then((responseMessage) => {
           if (this.pendingRequest?.isCancelled) return
-          this.loading.value = false
+          this.loading = false
           const newMessageId = generateShortRandomId()
           responseMessage.id = newMessageId
-          this.chat.value.push(responseMessage)
+          this.chat.push(responseMessage)
           nextTick(() => {
             const newMessageEl = document.querySelector(`.add-message-link`)
             if (newMessageEl) newMessageEl.scrollIntoView()
@@ -92,10 +88,10 @@ export default class GroupViewModel {
         })
         .catch((err) => {
           console.error(err)
-          this.error.value = 'Something went wrong. Open dev console for more details'
+          this.error = 'Something went wrong. Open dev console for more details'
         })
         .finally(() => {
-          this.loading.value = false
+          this.loading = false
         }),
       isCancelled: false,
     }
@@ -103,11 +99,11 @@ export default class GroupViewModel {
   }
 
   deleteMessage(id: string | number): void {
-    this.chat.value = this.chat.value.filter((message) => message.id !== id)
+    this.chat = this.chat.filter((message) => message.id !== id)
   }
 
   cancelQuery(): void {
-    this.loading.value = false
+    this.loading = false
     if (this.pendingRequest) this.pendingRequest.isCancelled = true
   }
 }

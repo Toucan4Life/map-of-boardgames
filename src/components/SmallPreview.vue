@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
-
 interface Repo {
   name: string
   id: number
@@ -8,27 +6,9 @@ interface Repo {
 
 const props = defineProps<Repo>()
 
-const emit = defineEmits(['show-full-preview'])
-
-// const repoInfo = reactive({
-//   state: 'LOADING',
-//   name: '',
-//   description: '',
-//   language: '',
-//   stars: 0,
-//   forks: 0,
-//   watchers: 0,
-//   branch: '',
-//   topics: [],
-//   license: '',
-//   updated_at: '',
-//   remainingRequests: 0,
-// })
-
-// const errorInfo = ref(null)
+const emit = defineEmits<{ (e: 'show-full-preview', id: string): void }>()
 
 function showFullPreview() {
-  console.log(JSON.stringify(props))
   emit('show-full-preview', props.name)
 }
 </script>

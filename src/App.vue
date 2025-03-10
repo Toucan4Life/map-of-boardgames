@@ -8,8 +8,8 @@ import advSearch from './components/AdvSearch.vue'
 import UnsavedChanges from './components/UnsavedChanges.vue'
 import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
-import GroupViewModel, { type Repositories } from './lib/GroupViewModel'
-import FocusViewModel from './lib/FocusViewModel'
+import GroupViewModel from './lib/GroupViewModel'
+import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
 import bus from './lib/bus'
 import type { SearchResult } from './lib/createFuzzySearcher'
 
@@ -24,7 +24,8 @@ const contextMenu = ref<ContextMenu>()
 const aboutVisible = ref(false)
 const advSearchVisible = ref(false)
 const currentGroup = ref<GroupViewModel>()
-const currentFocus = ref<FocusViewModel>()
+// eslint-disable-next-line prefer-const
+let currentFocus = ref<FocusViewModel>()
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
@@ -134,8 +135,9 @@ function doContextMenuAction(menuItem: { text: string; click: () => void }) {
   menuItem.click()
 }
 
-function onFocusOnRepo(repo: string, groupId: string | number) {
-  const focusViewModel = new FocusViewModel(repo, groupId)
+async function onFocusOnRepo(repo: string, groupId: number) {
+  const focusViewModel = await new FocusViewModel(repo).create(groupId)
+  if (!focusViewModel) return
   currentGroup.value = undefined
   currentFocus.value = focusViewModel
 }
@@ -176,23 +178,23 @@ async function listCurrentConnections() {
   //console.log("listCurrentConnections");
   const groupId = await window.mapOwner?.getGroupIdAt(lastSelected.lat, lastSelected.lon)
   if (groupId !== undefined) {
-    const focusViewModel = new FocusViewModel(lastSelected.text, groupId)
+    const focusViewModel = await new FocusViewModel(lastSelected.text).create(groupId)
     currentGroup.value = undefined
     currentFocus.value = focusViewModel
   }
 }
-async function search(parameters: {
-  minWeight: string
-  maxWeight: string
-  minRating: string
-  maxRating: string
-  minPlaytime: string
-  maxPlaytime: string
+function search(parameters: {
+  minWeight: number
+  maxWeight: number
+  minRating: number
+  maxRating: number
+  minPlaytime: number
+  maxPlaytime: number
   playerChoice: number
-  minPlayers: string
-  maxPlayers: string
+  minPlayers: number
+  maxPlayers: number
 }) {
-  await window.mapOwner?.highlightNode(parameters)
+  window.mapOwner?.highlightNode(parameters)
 }
 </script>
 
@@ -205,7 +207,7 @@ async function search(parameters: {
       Made by
       <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life"> Toucan4Life, </a>
       inspired by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka, </a>
+      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka </a>
     </div>
     <largest-repositories
       :repos="currentGroup"

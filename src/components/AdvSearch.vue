@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { defineEmits, ref } from 'vue'
+import { ref } from 'vue'
 import CustomMinMaxSlider from './CustomMinMaxSlider.vue'
-const emit = defineEmits(['close', 'search'])
+const emit = defineEmits<{ close: []; search: [searchR: AdvSearchResult] }>()
 
 function close(): void {
   emit('close')
+}
+
+export interface AdvSearchResult {
+  minWeight: number
+  maxWeight: number
+  minRating: number
+  maxRating: number
+  minPlaytime: number
+  maxPlaytime: number
+  minPlayers: number
+  maxPlayers: number
+  playerChoice: number
+  tags: string[] | undefined
 }
 
 function search(
@@ -48,7 +61,7 @@ const sliderMinP = ref(0)
 const sliderMaxP = ref(13)
 const sliderMinPl = ref(0)
 const sliderMaxPl = ref(9)
-const selectedTags = ref([])
+const selectedTags = ref<string[]>()
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 // reassigned in the template

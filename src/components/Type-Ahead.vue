@@ -105,7 +105,14 @@ import type { SearchResult } from '@/lib/createFuzzySearcher.ts'
 import bus from '../lib/bus.ts'
 import { getCurrentUser, type User } from '../lib/githubClient.ts'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-const emit = defineEmits(['menuClicked', 'showAdvancedSearch', 'selected', 'beforeClear', 'cleared', 'inputChanged'])
+const emit = defineEmits<{
+  menuClicked: []
+  showAdvancedSearch: []
+  selected: [suggestion: SearchResult]
+  beforeClear: [payload: { shouldProceed: boolean }]
+  cleared: []
+  inputChanged: []
+}>()
 
 const props = defineProps({
   placeholder: {
@@ -167,7 +174,7 @@ function showIfNeeded(visible: boolean) {
   if (!pendingKeyToShow.value) showSuggestions.value = visible
 }
 
-function pickSuggestion(suggestion: { text: string }) {
+function pickSuggestion(suggestion: SearchResult) {
   currentQuery.value = suggestion.text
   hideSuggestions()
   emit('selected', suggestion)
@@ -236,22 +243,28 @@ function cycleTheList(e: KeyboardEvent): void {
   pendingKeyToShow.value = false
 
   let dx
-  if (e.which === 38) {
-    // UP
+
+  if (e.key === 'ArrowUp') {
     dx = -1
-  } else if (e.which === 40) {
-    // down
+  } else if (e.key === 'ArrowDown') {
     dx = 1
-  } else if (e.which === 13) {
-    // Enter === accept
+  } else if (e.key === 'Enter') {
     if (items.value[currentS]) {
       pickSuggestion(items.value[currentS])
     } else {
-      pickSuggestion({ text: currentQuery.value })
+      pickSuggestion({
+        text: currentQuery.value,
+        selected: false,
+        skipAnimation: false,
+        html: null,
+        lat: 0,
+        lon: 0,
+        id: 0,
+      })
     }
     e.preventDefault()
     return
-  } else if (e.which === 27) {
+  } else if (e.key === 'Escape') {
     // Esc === close
     hideSuggestions()
   }
