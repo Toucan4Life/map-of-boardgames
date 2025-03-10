@@ -225,7 +225,7 @@ function search(parameters: {
     ></github-repository>
     <form @submit.prevent class="search-box" v-if="typeAheadVisible">
       <type-ahead
-        placeholder="Find Game"
+        placeholder="Find Gome"
         @menuClicked="aboutVisible = true"
         @showAdvancedSearch="advSearchVisible = true"
         @selected="findProject"
