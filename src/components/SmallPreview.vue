@@ -8,25 +8,7 @@ const props = defineProps<Repo>()
 
 const emit = defineEmits<{ (e: 'show-full-preview', id: string): void }>()
 
-// const repoInfo = reactive({
-//   state: 'LOADING',
-//   name: '',
-//   description: '',
-//   language: '',
-//   stars: 0,
-//   forks: 0,
-//   watchers: 0,
-//   branch: '',
-//   topics: [],
-//   license: '',
-//   updated_at: '',
-//   remainingRequests: 0,
-// })
-
-// const errorInfo = ref(null)
-
 function showFullPreview() {
-  console.log(JSON.stringify(props))
   emit('show-full-preview', props.name)
 }
 </script>
