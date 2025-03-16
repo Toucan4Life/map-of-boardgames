@@ -1,16 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { getGameInfo, type GameDetail } from '@/lib/bggClient'
+import { computed, ref, watchEffect } from 'vue'
 
 interface Repo {
   name: string
   id: number
 }
 
+const gameDetail = ref<GameDetail>()
 const props = defineProps<Repo>()
 
 const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
   return `https://boardgamegeek.com/boardgame/` + props.id
+})
+
+watchEffect(async () => {
+  const response = await getGameInfo(props.id)
+  if (response) gameDetail.value = response
 })
 
 function listConnections(): void {
@@ -24,6 +31,9 @@ function listConnections(): void {
       <h2>
         <a :href="repoLink" target="_blank">{{ name }}</a>
       </h2>
+      <div class="game-header-image">
+        <img class="img-responsive" :src="gameDetail?.imageUrl" alt="" />
+      </div>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
       </div>
@@ -32,6 +42,19 @@ function listConnections(): void {
 </template>
 
 <style scoped>
+.game-header-image {
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+}
+
+.img-responsive {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+  max-height: 250px;
+}
+
 h2 {
   font-size: 24px;
   max-width: 100%;
