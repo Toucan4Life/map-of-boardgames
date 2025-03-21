@@ -28,11 +28,22 @@ function listConnections(): void {
 <template>
   <div class="repo-viewer">
     <div>
-      <h2>
-        <a :href="repoLink" target="_blank">{{ name }}</a>
-      </h2>
       <div class="game-header-image">
         <img class="img-responsive" :src="gameDetail?.imageUrl" alt="" />
+      </div>
+      <div class="game-header-title">
+        <div class="container">
+          <img src="../../public/circle.png" style="width: 40px" alt="circle" class="centered" />
+          <div class="centered">{{ gameDetail?.rating }}</div>
+        </div>
+        <div class="game-header-title-info">
+          <h2>
+            <a :href="repoLink" target="_blank">{{ name }}</a>
+          </h2>
+          <p>
+            <span>{{ gameDetail?.description }}</span>
+          </p>
+        </div>
       </div>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
@@ -42,6 +53,22 @@ function listConnections(): void {
 </template>
 
 <style scoped>
+.game-header-title {
+  display: flex;
+}
+.container {
+  position: relative;
+  text-align: center;
+  color: white;
+  flex-basis: 100px;
+  margin-right: 5px;
+}
+.centered {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
 .game-header-image {
   width: 100%;
   padding: 10px;
