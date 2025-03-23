@@ -45,6 +45,14 @@ function listConnections(): void {
           </p>
         </div>
       </div>
+      <div>
+        <ul class="gameplay">
+          <li class="gameplay-item"><h4>1-5 players</h4></li>
+          <li class="gameplay-item"><h4>40-70 minutes</h4></li>
+          <li class="gameplay-item"><h4>Age 10+</h4></li>
+          <li class="gameplay-item"><h4>Weight: 2.47/5</h4></li>
+        </ul>
+      </div>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
       </div>
@@ -53,6 +61,21 @@ function listConnections(): void {
 </template>
 
 <style scoped>
+.gameplay-item {
+  flex-basis: 50%;
+  padding: 10px;
+  text-align: center;
+  list-style: none;
+  box-sizing: border-box;
+}
+.gameplay {
+  display: flex;
+  flex-wrap: wrap;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 0;
+  width: 100%;
+}
 .game-header-title {
   display: flex;
 }
