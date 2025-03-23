@@ -114,7 +114,7 @@ export class BoardGameMap {
           ],
         },
       })
-      this.map.addLayer(this.fastLinesLayer, 'circle-layer')
+      this.map.addLayer(this.fastLinesLayer, 'selected-nodes-layer')
       this.labelEditor = new LabelEditor(this.map)
     })
 

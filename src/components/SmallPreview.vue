@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { getGameInfo, type GameDetail } from '@/lib/bggClient'
+import { ref, watchEffect } from 'vue'
+
 interface Repo {
   name: string
   id: number
 }
 
 const props = defineProps<Repo>()
-
+const gameDetail = ref<GameDetail>()
 const emit = defineEmits<{ (e: 'show-full-preview', id: string): void }>()
 
+watchEffect(async () => {
+  const response = await getGameInfo(props.id)
+  if (response) gameDetail.value = response
+})
 function showFullPreview() {
   emit('show-full-preview', props.name)
 }
@@ -17,10 +24,42 @@ function showFullPreview() {
     <div class="header">
       <span>{{ props.name }}</span>
     </div>
+    <div>
+      <ul class="gameplay">
+        <li class="gameplay-item" style="border-top: 1px solid #c6c6c6; border-right: 1px solid #716d6d">
+          <h4 v-if="gameDetail?.minPlayers != gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }}-{{ gameDetail?.maxPlayers }} players</h4>
+          <h4 v-if="gameDetail?.minPlayers == gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }} players</h4>
+        </li>
+        <li class="gameplay-item" style="border-top: 1px solid #c6c6c6; border-right: 1px solid #716d6d">
+          <h4 v-if="gameDetail?.minPlayTime != gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }}-{{ gameDetail?.maxPlayTime }} minutes</h4>
+          <h4 v-if="gameDetail?.minPlayTime == gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }} minutes</h4>
+        </li>
+        <li class="gameplay-item" style="border-top: 1px solid #c6c6c6; border-right: 1px solid #716d6d">
+          <h4>Age {{ gameDetail?.minAge }}+</h4>
+        </li>
+        <li class="gameplay-item" style="border-top: 1px solid #c6c6c6">
+          <h4>Weight: {{ gameDetail?.weight }}/5</h4>
+        </li>
+      </ul>
+    </div>
   </a>
 </template>
 
 <style scoped>
+.gameplay-item {
+  flex-basis: 50%;
+  padding: 5px;
+  text-align: center;
+  list-style: none;
+  box-sizing: border-box;
+}
+.gameplay {
+  display: flex;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 0;
+  width: 100%;
+}
 .loader {
   margin: 0px;
 }

@@ -1,16 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { getGameInfo, type GameDetail } from '@/lib/bggClient'
+import { computed, ref, watchEffect } from 'vue'
 
 interface Repo {
   name: string
   id: number
 }
 
+const gameDetail = ref<GameDetail>()
 const props = defineProps<Repo>()
 
 const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
   return `https://boardgamegeek.com/boardgame/` + props.id
+})
+
+watchEffect(async () => {
+  const response = await getGameInfo(props.id)
+  if (response) gameDetail.value = response
 })
 
 function listConnections(): void {
@@ -21,9 +28,45 @@ function listConnections(): void {
 <template>
   <div class="repo-viewer">
     <div>
-      <h2>
-        <a :href="repoLink" target="_blank">{{ name }}</a>
-      </h2>
+      <div class="game-header-image">
+        <img class="img-responsive" :src="gameDetail?.imageUrl" alt="" />
+      </div>
+      <div class="game-header-title">
+        <div class="container">
+          <img src="../../public/circle.png" style="width: 40px" alt="circle" class="centered" />
+          <div class="centered">{{ gameDetail?.rating }}</div>
+        </div>
+        <div class="game-header-title-info">
+          <h2>
+            <a :href="repoLink" target="_blank">{{ name }}</a>
+          </h2>
+          <p>
+            <span>{{ gameDetail?.description }}</span>
+          </p>
+        </div>
+      </div>
+      <div>
+        <ul class="gameplay">
+          <li class="gameplay-item" style="border-top: 1px solid #c6c6c6; border-right: 1px solid #716d6d">
+            <h4 v-if="gameDetail?.minPlayers != gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }}-{{ gameDetail?.maxPlayers }} players</h4>
+            <h4 v-if="gameDetail?.minPlayers == gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }} players</h4>
+            <h5>Community: {{ gameDetail?.recommendedPlayers }} -- Best: {{ gameDetail?.bestPlayers }}</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #c6c6c6">
+            <h4 v-if="gameDetail?.minPlayTime != gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }}-{{ gameDetail?.maxPlayTime }} minutes</h4>
+            <h4 v-if="gameDetail?.minPlayTime == gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }} minutes</h4>
+            <h5>Playing Time</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #716d6d; border-right: 1px solid #716d6d">
+            <h4>Age {{ gameDetail?.minAge }}+</h4>
+            <h5>Community: {{ gameDetail?.recommendedAge }}+</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #716d6d">
+            <h4>Weight: {{ gameDetail?.weight }}/5</h4>
+            <h5>Complexity Rating</h5>
+          </li>
+        </ul>
+      </div>
       <div class="actions row">
         <a href="#" @click.prevent="listConnections()">List connections</a>
       </div>
@@ -32,6 +75,51 @@ function listConnections(): void {
 </template>
 
 <style scoped>
+.gameplay-item {
+  flex-basis: 50%;
+  padding: 10px;
+  text-align: center;
+  list-style: none;
+  box-sizing: border-box;
+}
+.gameplay {
+  display: flex;
+  flex-wrap: wrap;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 0;
+  width: 100%;
+}
+.game-header-title {
+  display: flex;
+  margin-bottom: 10px;
+}
+.container {
+  position: relative;
+  text-align: center;
+  color: white;
+  flex-basis: 100px;
+  margin-right: 15px;
+}
+.centered {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.game-header-image {
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+}
+
+.img-responsive {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+  max-height: 250px;
+}
+
 h2 {
   font-size: 24px;
   max-width: 100%;
