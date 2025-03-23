@@ -47,10 +47,24 @@ function listConnections(): void {
       </div>
       <div>
         <ul class="gameplay">
-          <li class="gameplay-item"><h4>1-5 players</h4></li>
-          <li class="gameplay-item"><h4>40-70 minutes</h4></li>
-          <li class="gameplay-item"><h4>Age 10+</h4></li>
-          <li class="gameplay-item"><h4>Weight: 2.47/5</h4></li>
+          <li class="gameplay-item" style="border-top: 1px solid #c6c6c6; border-right: 1px solid #716d6d">
+            <h4 v-if="gameDetail?.minPlayers != gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }}-{{ gameDetail?.maxPlayers }} players</h4>
+            <h4 v-if="gameDetail?.minPlayers == gameDetail?.maxPlayers">{{ gameDetail?.minPlayers }} players</h4>
+            <h5>Community: {{ gameDetail?.recommendedPlayers }} -- Best: {{ gameDetail?.bestPlayers }}</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #c6c6c6">
+            <h4 v-if="gameDetail?.minPlayTime != gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }}-{{ gameDetail?.maxPlayTime }} minutes</h4>
+            <h4 v-if="gameDetail?.minPlayTime == gameDetail?.maxPlayTime">{{ gameDetail?.minPlayTime }} minutes</h4>
+            <h5>Playing Time</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #716d6d; border-right: 1px solid #716d6d">
+            <h4>Age {{ gameDetail?.minAge }}+</h4>
+            <h5>Community: {{ gameDetail?.recommendedAge }}+</h5>
+          </li>
+          <li class="gameplay-item" style="border-top: 1px solid #716d6d">
+            <h4>Weight: {{ gameDetail?.weight }}/5</h4>
+            <h5>Complexity Rating</h5>
+          </li>
         </ul>
       </div>
       <div class="actions row">
@@ -78,13 +92,14 @@ function listConnections(): void {
 }
 .game-header-title {
   display: flex;
+  margin-bottom: 10px;
 }
 .container {
   position: relative;
   text-align: center;
   color: white;
   flex-basis: 100px;
-  margin-right: 5px;
+  margin-right: 15px;
 }
 .centered {
   position: absolute;
