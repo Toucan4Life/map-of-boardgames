@@ -114,7 +114,7 @@ export class BoardGameMap {
           ],
         },
       })
-      this.map.addLayer(this.fastLinesLayer, 'selected-nodes-layer')
+      this.map.addLayer(this.fastLinesLayer, 'label-layer')
       this.labelEditor = new LabelEditor(this.map)
     })
 
@@ -493,48 +493,29 @@ export class BoardGameMap {
             },
           },
           // {
-          //   "id": "circle-layer",
-          //   "type": "circle",
-          //   "source": "points-source",
-          //   "source-layer": "points",
-          //   "filter": ["==", "$type", "Point"],
-          //   "paint": {
-          //     "circle-color": [
-          //       "case",
-          //       [">=", ["to-number", ["get", 'complexity']], 4],
-          //       "#9a0202",
-          //       [">=", ["to-number", ["get", 'complexity']], 3],
-          //       "#ffe612",
-          //       [">=", ["to-number", ["get", 'complexity']], 2],
-          //       "#28ff12",
-          //       "#12ffe2"
+          //   id: 'circle-layer',
+          //   type: 'circle',
+          //   source: 'points-source',
+          //   'source-layer': 'points',
+          //   filter: ['==', '$type', 'Point'],
+          //   paint: {
+          //     'circle-color': [
+          //       'case',
+          //       ['>=', ['to-number', ['get', 'complexity']], 4],
+          //       '#9a0202',
+          //       ['>=', ['to-number', ['get', 'complexity']], 3],
+          //       '#ffe612',
+          //       ['>=', ['to-number', ['get', 'complexity']], 2],
+          //       '#28ff12',
+          //       '#12ffe2',
           //     ],
-          //     "circle-opacity": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       5, 0.1,
-          //       15, 0.9
-          //     ],
-          //     "circle-stroke-color": currentColorTheme.circleStrokeColor,
-          //     "circle-stroke-width": 1,
-          //     "circle-stroke-opacity": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       8, 0.0,
-          //       15, 0.9
-          //     ],
-          //     "circle-radius": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       5, ["*", ["get", "size"], .1],
-          //       23, ["*", ["get", "size"], 1.5],
-          //     ]
-          //   }
+          //     'circle-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.1, 15, 0.9],
+          //     'circle-stroke-color': currentColorTheme.circleStrokeColor,
+          //     'circle-stroke-width': 1,
+          //     'circle-stroke-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.0, 15, 0.9],
+          //     'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['*', ['get', 'size'], 0.1], 23, ['*', ['get', 'size'], 1.5]],
+          //   },
           // },
-
           {
             id: 'label-layer',
             type: 'symbol',
