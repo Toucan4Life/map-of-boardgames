@@ -65,7 +65,7 @@ function showFullPreview() {
 }
 .header {
   font-size: 16px;
-  height: 36px;
+  max-height: 100px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
