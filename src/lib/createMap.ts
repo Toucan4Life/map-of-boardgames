@@ -60,61 +60,7 @@ export class BoardGameMap {
       this.map.addImage('triangle-icon', triangle.data, { sdf: true })
       const star = await this.map.loadImage(config.iconSource + '/star.png')
       this.map.addImage('star-icon', star.data, { sdf: true })
-      this.map.addLayer({
-        id: 'circle-layer',
-        type: 'symbol',
-        source: 'points-source',
-        'source-layer': 'points',
-        filter: ['==', '$type', 'Point'],
-        layout: {
-          'icon-image': [
-            'case',
-            ['>=', ['to-number', ['get', 'complexity']], 4],
-            'star-icon',
-            ['>=', ['to-number', ['get', 'complexity']], 3],
-            'diamond-icon',
-            ['>=', ['to-number', ['get', 'complexity']], 2],
-            'triangle-icon',
-            'circle-icon',
-          ],
-          'icon-size': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            5,
-            ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
-            23,
-            ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
-          ],
-          'icon-ignore-placement': true,
-          'icon-allow-overlap': true,
-        },
-        paint: {
-          'icon-color': [
-            'case',
-            ['>=', ['to-number', ['get', 'ratings']], 7.77],
-            '#00e9ff',
-            ['>=', ['to-number', ['get', 'ratings']], 7.46],
-            '#00f8d8',
-            ['>=', ['to-number', ['get', 'ratings']], 7.2],
-            '#00ff83',
-            ['>=', ['to-number', ['get', 'ratings']], 7.03],
-            '#62f25e',
-            ['>=', ['to-number', ['get', 'ratings']], 6.9],
-            '#87e539',
-            ['>=', ['to-number', ['get', 'ratings']], 6.76],
-            '#a2d600',
-            ['>=', ['to-number', ['get', 'ratings']], 6.6],
-            '#c3b700',
-            ['>=', ['to-number', ['get', 'ratings']], 6.4],
-            '#de9200',
-            ['>=', ['to-number', ['get', 'ratings']], 6.1],
-            '#f36300',
-            '#ff0000',
-          ],
-        },
-      })
-      this.map.addLayer(this.fastLinesLayer, 'selected-nodes-layer')
+      this.map.addLayer(this.fastLinesLayer, 'circle-layer')
       this.labelEditor = new LabelEditor(this.map)
     })
 
@@ -192,18 +138,31 @@ export class BoardGameMap {
       ['<=', ['to-number', ['get', 'complexity']], searchParameters.maxWeight],
       ['>=', ['to-number', ['get', 'ratings']], searchParameters.minRating],
       ['<=', ['to-number', ['get', 'ratings']], searchParameters.maxRating],
-      ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
-      ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
+      [
+        'all',
+        ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
+        ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
+      ],
     ]
+
     if (searchParameters.playerChoice == 0) {
-      selectedFilters.push(['>=', ['to-number', ['get', 'min_players']], searchParameters.minPlayers])
-      selectedFilters.push(['<=', ['to-number', ['get', 'max_players']], searchParameters.maxPlayers])
+      selectedFilters.push([
+        'all',
+        ['<=', ['to-number', ['get', 'min_players']], searchParameters.maxPlayers],
+        ['>=', ['to-number', ['get', 'max_players']], searchParameters.minPlayers],
+      ])
     } else if (searchParameters.playerChoice == 1) {
-      selectedFilters.push(['>=', ['to-number', ['get', 'min_players_rec']], searchParameters.minPlayers])
-      selectedFilters.push(['<=', ['to-number', ['get', 'max_players_rec']], searchParameters.maxPlayers])
+      selectedFilters.push([
+        'all',
+        ['<=', ['to-number', ['get', 'min_players_rec']], searchParameters.maxPlayers],
+        ['>=', ['to-number', ['get', 'max_players_rec']], searchParameters.minPlayers],
+      ])
     } else {
-      selectedFilters.push(['>=', ['to-number', ['get', 'min_players_best']], searchParameters.minPlayers])
-      selectedFilters.push(['<=', ['to-number', ['get', 'max_players_best']], searchParameters.maxPlayers])
+      selectedFilters.push([
+        'all',
+        ['<=', ['to-number', ['get', 'min_players_best']], searchParameters.maxPlayers],
+        ['>=', ['to-number', ['get', 'max_players_best']], searchParameters.minPlayers],
+      ])
     }
 
     this.map
@@ -492,49 +451,60 @@ export class BoardGameMap {
               'line-width': 4,
             },
           },
-          // {
-          //   "id": "circle-layer",
-          //   "type": "circle",
-          //   "source": "points-source",
-          //   "source-layer": "points",
-          //   "filter": ["==", "$type", "Point"],
-          //   "paint": {
-          //     "circle-color": [
-          //       "case",
-          //       [">=", ["to-number", ["get", 'complexity']], 4],
-          //       "#9a0202",
-          //       [">=", ["to-number", ["get", 'complexity']], 3],
-          //       "#ffe612",
-          //       [">=", ["to-number", ["get", 'complexity']], 2],
-          //       "#28ff12",
-          //       "#12ffe2"
-          //     ],
-          //     "circle-opacity": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       5, 0.1,
-          //       15, 0.9
-          //     ],
-          //     "circle-stroke-color": currentColorTheme.circleStrokeColor,
-          //     "circle-stroke-width": 1,
-          //     "circle-stroke-opacity": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       8, 0.0,
-          //       15, 0.9
-          //     ],
-          //     "circle-radius": [
-          //       "interpolate",
-          //       ["linear"],
-          //       ["zoom"],
-          //       5, ["*", ["get", "size"], .1],
-          //       23, ["*", ["get", "size"], 1.5],
-          //     ]
-          //   }
-          // },
-
+          {
+            id: 'circle-layer',
+            type: 'symbol',
+            source: 'points-source',
+            'source-layer': 'points',
+            filter: ['==', '$type', 'Point'],
+            layout: {
+              'icon-image': [
+                'case',
+                ['>=', ['to-number', ['get', 'complexity']], 4],
+                'star-icon',
+                ['>=', ['to-number', ['get', 'complexity']], 3],
+                'diamond-icon',
+                ['>=', ['to-number', ['get', 'complexity']], 2],
+                'triangle-icon',
+                'circle-icon',
+              ],
+              'icon-size': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                5,
+                ['+', ['*', ['to-number', ['get', 'size']], 0.0000025], 0.2],
+                23,
+                ['+', ['*', ['to-number', ['get', 'size']], 0.000037], 0.2],
+              ],
+              'icon-ignore-placement': true,
+              'icon-allow-overlap': true,
+            },
+            paint: {
+              'icon-color': [
+                'case',
+                ['>=', ['to-number', ['get', 'ratings']], 7.77],
+                '#00e9ff',
+                ['>=', ['to-number', ['get', 'ratings']], 7.46],
+                '#00f8d8',
+                ['>=', ['to-number', ['get', 'ratings']], 7.2],
+                '#00ff83',
+                ['>=', ['to-number', ['get', 'ratings']], 7.03],
+                '#62f25e',
+                ['>=', ['to-number', ['get', 'ratings']], 6.9],
+                '#87e539',
+                ['>=', ['to-number', ['get', 'ratings']], 6.76],
+                '#a2d600',
+                ['>=', ['to-number', ['get', 'ratings']], 6.6],
+                '#c3b700',
+                ['>=', ['to-number', ['get', 'ratings']], 6.4],
+                '#de9200',
+                ['>=', ['to-number', ['get', 'ratings']], 6.1],
+                '#f36300',
+                '#ff0000',
+              ],
+            },
+          },
           {
             id: 'label-layer',
             type: 'symbol',

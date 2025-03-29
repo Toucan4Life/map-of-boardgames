@@ -258,7 +258,7 @@ function search(parameters: {
       <about v-if="aboutVisible" @close="aboutVisible = false" class="about"></about>
     </transition>
     <transition name="slide-left">
-      <advSearch v-if="advSearchVisible" @search="search" @close="advSearchVisible = false" class="about"></advSearch>
+      <advSearch v-if="advSearchVisible" @search="search" @close="advSearchVisible = false" class="adv-search"></advSearch>
     </transition>
   </div>
 </template>
@@ -418,6 +418,20 @@ function search(parameters: {
   box-shadow: 0 -1px 24px rgb(0 0 0);
   display: flex;
   flex-direction: column;
+  max-width: 90%;
+}
+
+.adv-search {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--side-panel-width);
+  background: var(--color-background);
+  z-index: 2;
+  box-shadow: 0 -1px 24px rgb(0 0 0);
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
 }
 
 @media (max-width: 800px) {
