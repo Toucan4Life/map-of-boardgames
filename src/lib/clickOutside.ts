@@ -1,4 +1,4 @@
-// Based on https://github.com/ElemeFE/element/blob/dev/src/utils/clickoutside.js
+// Based on https://github.com/element-plus/element-plus/blob/master/packages/directives/click-outside/index.ts
 // The MIT License (MIT), Copyright (c) 2016 ElemeFE
 import type { ComponentPublicInstance, DirectiveBinding, ObjectDirective } from 'vue'
 
@@ -29,26 +29,39 @@ document.addEventListener('touchend', (e) => {
   }
 })
 
+const isElement = (e: unknown): e is Element => {
+  if (typeof Element === 'undefined') return false
+  return e instanceof Element
+}
 function createDocumentHandler(el: HTMLElement, binding: DirectiveBinding): DocumentHandler {
+  let excludes: HTMLElement[] = []
+  if (Array.isArray(binding.arg)) {
+    excludes = binding.arg
+  } else if (isElement(binding.arg)) {
+    // due to current implementation on binding type is wrong the type casting is necessary here
+    excludes.push(binding.arg as unknown as HTMLElement)
+  }
   return function (mouseup, mousedown) {
     const popperRef = (
       binding.instance as ComponentPublicInstance<{
         popperRef: HTMLElement
-      }>
-    ).popperRef
-    if (
-      !binding ||
-      !binding.instance ||
-      !mouseup.target ||
-      !mousedown.target ||
-      el.contains(mouseup.target as Node) ||
-      el.contains(mousedown.target as Node) ||
-      el === mouseup.target ||
-      (popperRef && (popperRef.contains(mouseup.target as Node) || popperRef.contains(mousedown.target as Node)))
-    ) {
+      }> | null
+    )?.popperRef
+    const mouseUpTarget = mouseup.target as Node | null
+    const mouseDownTarget = mousedown.target as Node
+    const isBound = !binding.instance
+    const isTargetExists = !mouseUpTarget || !mouseDownTarget
+    const isContainedByEl = el.contains(mouseUpTarget) || el.contains(mouseDownTarget)
+    const isSelf = el === mouseUpTarget
+
+    const isTargetExcluded =
+      (excludes.length && excludes.some((item) => item.contains(mouseUpTarget))) ||
+      (excludes.length && excludes.includes(mouseDownTarget as HTMLElement))
+    const isContainedByPopper = popperRef && (popperRef.contains(mouseUpTarget) || popperRef.contains(mouseDownTarget))
+    if (isBound || isTargetExists || isContainedByEl || isSelf || isTargetExcluded || isContainedByPopper) {
       return
     }
-    binding.value()
+    binding.value(mouseup, mousedown)
   }
 }
 

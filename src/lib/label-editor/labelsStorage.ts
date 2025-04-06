@@ -9,7 +9,7 @@ let originalPlaces: GeoJSON.FeatureCollection = {
 }
 const indexedPlaces = new Map()
 
-export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined> {
+export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSON.Point> | undefined> {
   const r = await fetch(config.placesSource, { mode: 'cors' })
   originalPlaces = await r.json()
   originalPlaces.features.forEach((f) => {
@@ -18,7 +18,6 @@ export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSO
   })
 
   const mergedLabels = mergePlacesWithLocalStorage()
-  if (mergedLabels == undefined) return
   const hasChanges = checkOriginalPlacesForChanges(mergedLabels)
   if (hasChanges) bus.fire('unsaved-changes-detected', hasChanges)
   return mergedLabels
@@ -29,16 +28,16 @@ function savePlaceLabels(places: GeoJSON.GeoJSON | undefined): void {
 }
 
 export function addLabelToPlaces(
-  places: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined,
+  places: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined,
   value: string,
   lngLat: LngLat,
   mapZoomLevel: number,
   borderOwnerId: string | number | undefined,
-): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined {
+): GeoJSON.FeatureCollection<GeoJSON.Point> | undefined {
   let labelId = generateShortRandomId()
   while (indexedPlaces.has(labelId)) labelId = generateShortRandomId()
 
-  const label: GeoJSON.Feature<GeoJSON.Point, GeoJSON.GeoJsonProperties> = {
+  const label: GeoJSON.Feature<GeoJSON.Point> = {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [lngLat.lng, lngLat.lat].map((x) => Math.round(x * 1000) / 1000) },
     properties: { symbolzoom: Math.ceil(mapZoomLevel), name: value, labelId },
@@ -55,11 +54,11 @@ export function addLabelToPlaces(
 
 export function editLabelInPlaces(
   labelId: string,
-  places: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined,
+  places: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined,
   value: string,
   lngLat: LngLat,
   mapZoomLevel: number,
-): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined {
+): GeoJSON.FeatureCollection<GeoJSON.Point> | undefined {
   if (!places) return
   if (!value) {
     places.features = places.features.filter((f) => f.properties?.labelId !== labelId)
@@ -77,7 +76,7 @@ export function editLabelInPlaces(
   return places
 }
 
-function mergePlacesWithLocalStorage(): GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> {
+function mergePlacesWithLocalStorage(): GeoJSON.FeatureCollection<GeoJSON.Point> {
   let savedPlaces: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 
   const places = localStorage.getItem('places')
@@ -109,8 +108,7 @@ function mergePlacesWithLocalStorage(): GeoJSON.FeatureCollection<GeoJSON.Point,
   }
 }
 
-function checkOriginalPlacesForChanges(mergedPlaces: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined) {
-  if (!originalPlaces) return false
+function checkOriginalPlacesForChanges(mergedPlaces: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined) {
   if (!mergedPlaces) return false
 
   for (const resolvedPlace of mergedPlaces.features) {
@@ -119,8 +117,8 @@ function checkOriginalPlacesForChanges(mergedPlaces: GeoJSON.FeatureCollection<G
     if (!place) return true
     if (place.properties.name !== resolvedPlace.properties?.name) return true
     if (place.properties.symbolzoom !== resolvedPlace.properties?.symbolzoom) return true
-    if (place.geometry.coordinates[0] !== resolvedPlace.geometry?.coordinates[0]) return true
-    if (place.geometry.coordinates[1] !== resolvedPlace.geometry?.coordinates[1]) return true
+    if (place.geometry.coordinates[0] !== resolvedPlace.geometry.coordinates[0]) return true
+    if (place.geometry.coordinates[1] !== resolvedPlace.geometry.coordinates[1]) return true
   }
 
   return false

@@ -1,5 +1,5 @@
 import { Map, Popup } from 'maplibre-gl'
-export default function createDOMarkerEditor(map: Map, onSave: { (value: string): void }, defaultText: string | null) {
+export default function createDOMarkerEditor(map: Map, onSave: (value: string) => void, defaultText: string | null) {
   const element = document.createElement('div')
   element.className = 'label-marker'
   element.innerHTML = `<form class="mini-label">

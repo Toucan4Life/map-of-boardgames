@@ -4,19 +4,23 @@ import createMarkerEditor from './createDOMMarkerEditor'
 import bus from '../bus'
 
 export class LabelEditor {
-  places: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined
+  places: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined
   map: Map
-  oldLabelProps: { [name: string]: string } | undefined
+  oldLabelProps: Record<string, string> | undefined
   placeLabelLayers = ['place-country-1']
   marker = new maplibregl.Popup({ closeButton: false })
   borderOwnerId: string | number | undefined
   constructor(map: maplibregl.Map) {
     this.map = map
-    getPlaceLabels().then((loadedPlaces) => {
-      if (!loadedPlaces) return
-      ;(map.getSource('place') as GeoJSONSource)?.setData(loadedPlaces)
-      this.places = loadedPlaces
-    })
+    getPlaceLabels()
+      .then((loadedPlaces) => {
+        if (!loadedPlaces) return
+        ;(map.getSource('place') as GeoJSONSource).setData(loadedPlaces)
+        this.places = loadedPlaces
+      })
+      .catch((err: unknown) => {
+        console.error('Error loading places:', err)
+      })
   }
   getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined): { text: string; click: () => void }[] {
     const labelFeature = this.map.queryRenderedFeatures(e.point, { layers: this.placeLabelLayers })
@@ -25,13 +29,17 @@ export class LabelEditor {
       const label = labelFeature[0].properties
       const coordinates = (labelFeature[0].geometry as GeoJSON.Point).coordinates
       items.push({
-        text: `Edit ${label.name}`,
-        click: () => this.editLabel(new LngLat(coordinates[0], coordinates[1]), label),
+        text: `Edit ${label.name as string}`,
+        click: () => {
+          this.editLabel(new LngLat(coordinates[0], coordinates[1]), label)
+        },
       })
     } else {
       items.push({
         text: 'Add label',
-        click: () => this.addLabel(e.lngLat, borderOwnerId),
+        click: () => {
+          this.addLabel(e.lngLat, borderOwnerId)
+        },
       })
     }
 
@@ -39,7 +47,13 @@ export class LabelEditor {
   }
 
   addLabel(lngLat: LngLat, borderOwnerId: string | number | undefined): void {
-    const markerEditor = createMarkerEditor(this.map, (value) => this.saveAdd(value), null)
+    const markerEditor = createMarkerEditor(
+      this.map,
+      (value) => {
+        this.saveAdd(value)
+      },
+      null,
+    )
     this.borderOwnerId = borderOwnerId
     this.marker.setDOMContent(markerEditor.element)
     this.marker.setLngLat(lngLat)
@@ -50,12 +64,18 @@ export class LabelEditor {
   saveAdd(value: string): void {
     this.places = addLabelToPlaces(this.places, value, this.marker.getLngLat(), this.map.getZoom(), this.borderOwnerId)
     if (!this.places) return
-    ;(this.map.getSource('place') as GeoJSONSource)?.setData(this.places)
+    ;(this.map.getSource('place') as GeoJSONSource).setData(this.places)
     bus.fire('unsaved-changes-detected', true)
   }
 
-  editLabel(lngLat: LngLatLike, oldLabelProps: { [name: string]: string }): void {
-    const markerEditor = createMarkerEditor(this.map, (value) => this.saveEdit(value), oldLabelProps.name)
+  editLabel(lngLat: LngLatLike, oldLabelProps: Record<string, string>): void {
+    const markerEditor = createMarkerEditor(
+      this.map,
+      (value) => {
+        this.saveEdit(value)
+      },
+      oldLabelProps.name,
+    )
     this.oldLabelProps = oldLabelProps
     this.marker.setDOMContent(markerEditor.element)
     this.marker.setLngLat(lngLat)
@@ -66,9 +86,9 @@ export class LabelEditor {
 
   saveEdit(value: string): void {
     if (!this.oldLabelProps) return
-    this.places = editLabelInPlaces(this.oldLabelProps?.labelId, this.places, value, this.marker.getLngLat(), this.map.getZoom())
+    this.places = editLabelInPlaces(this.oldLabelProps.labelId, this.places, value, this.marker.getLngLat(), this.map.getZoom())
     if (!this.places) return
-    ;(this.map.getSource('place') as GeoJSONSource)?.setData(this.places)
+    ;(this.map.getSource('place') as GeoJSONSource).setData(this.places)
     bus.fire('unsaved-changes-detected', true)
   }
 }

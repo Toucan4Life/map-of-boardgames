@@ -33,14 +33,14 @@ function initMarkedRenderer(): void {
   }
   renderer.html = function (HtmlTag: Tokens.HTML | Tokens.Tag) {
     const imgRegex = /<img.*?src="(.*?)".*?>/g
-    HtmlTag.text = HtmlTag.text.replace(imgRegex, (match, src) => {
+    HtmlTag.text = HtmlTag.text.replace(imgRegex, (match, src: Tokens.Image) => {
       src = getNormalizedImageLink(src)
-      return match.replace(/src="(.*?)"/, `src="${src}"`)
+      return match.replace(/src="(.*?)"/, `src="${src.href}"`)
     })
     return marked.Renderer.prototype.html.call(this, HtmlTag)
   }
 
-  function getNormalizedImageLink(image: Tokens.Image) {
+  function getNormalizedImageLink(image: Tokens.Image): Tokens.Image {
     const isRelative = !(
       image.href.startsWith('http') ||
       image.href.startsWith('data:') ||

@@ -21,7 +21,7 @@ const options = {
 }
 const parser = new XMLParser(options)
 
-export async function getGameInfo(thingId: number): Promise<GameDetail | undefined> {
+export async function getGameInfo(thingId: string): Promise<GameDetail | undefined> {
   const response = await fetch(`${rawBGGUrl}/thing?id=${thingId}&stats=1`)
   if (response.ok) {
     const parsedResponse = await response.text()
@@ -36,17 +36,17 @@ export async function getGameInfo(thingId: number): Promise<GameDetail | undefin
       weight: parseFloat(p.items.item.statistics.ratings.averageweight['@_value']).toFixed(2),
       minAge: p.items.item.minage['@_value'],
       recommendedAge: p.items.item.poll
-        .filter((t: { [x: string]: string }) => t['@_name'] == 'suggested_playerage')[0]
-        .results.result.sort(function (a: { [x: string]: number }, b: { [x: string]: number }) {
+        .filter((t: Record<string, string>) => t['@_name'] == 'suggested_playerage')[0]
+        .results.result.sort(function (a: Record<string, number>, b: Record<string, number>) {
           return b['@_numvotes'] - a['@_numvotes']
         })[0]['@_value'],
       minPlayers: p.items.item.minplayers['@_value'],
       maxPlayers: p.items.item.maxplayers['@_value'],
       recommendedPlayers: p.items.item['poll-summary'].result
-        .filter((t: { [x: string]: string }) => t['@_name'] == 'recommmendedwith')[0]
+        .filter((t: Record<string, string>) => t['@_name'] == 'recommmendedwith')[0]
         ['@_value'].match('Recommended with (.*?) players')[1],
       bestPlayers: p.items.item['poll-summary'].result
-        .filter((t: { [x: string]: string }) => t['@_name'] == 'bestwith')[0]
+        .filter((t: Record<string, string>) => t['@_name'] == 'bestwith')[0]
         ['@_value'].match('Best with (.*?) players')[1],
     }
   }

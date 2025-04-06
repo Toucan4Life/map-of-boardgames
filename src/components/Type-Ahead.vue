@@ -1,7 +1,7 @@
 <template>
-  <div class="ak-typeahead" v-click-outside="hideSuggestions">
+  <div v-click-outside="hideSuggestions" class="ak-typeahead">
     <a href="#" class="menu-opener" @click.prevent="menuClicked">
-      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser" />
+      <img v-if="currentUser" :src="currentUser.avatar_url" class="avatar" />
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg
         v-else
@@ -22,14 +22,14 @@
       </svg>
     </a>
     <a href="#" class="menu-opener" @click.prevent="showAdvancedSearch">
-      <img :src="currentUser.avatar_url" class="avatar" v-if="currentUser" />
+      <img v-if="currentUser" :src="currentUser.avatar_url" class="avatar" />
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg
+        id="Layer_1"
         fill="currentColor"
         height="24"
         width="24"
         version="1.1"
-        id="Layer_1"
         xmlns="http://www.w3.org/2000/svg"
         xmlns:xlink="http://www.w3.org/1999/xlink"
         viewBox="0 0 300.906 300.906"
@@ -61,7 +61,7 @@
       @input="handleInput"
       @keydown="cycleTheList"
     />
-    <a type="submit" class="search-submit" href="#" @click.prevent="clearSearch" v-if="currentQuery || showClearButton">
+    <a v-if="currentQuery || showClearButton" type="submit" class="search-submit" href="#" @click.prevent="clearSearch">
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -82,13 +82,9 @@
     </a>
     <ul v-if="showSuggestions" class="suggestions">
       <li v-for="(suggestion, index) in suggestions" :key="index">
-        <a
-          @click.prevent="pickSuggestion(suggestion)"
-          class="suggestion"
-          :class="{ selected: suggestion.selected }"
-          href="#"
-          v-html="suggestion.html"
-        ></a>
+        <a class="suggestion" :class="{ selected: suggestion.selected }" href="#" @click.prevent="pickSuggestion(suggestion)">{{
+          suggestion.text
+        }}</a>
       </li>
     </ul>
 
@@ -124,22 +120,26 @@ const emit = defineEmits<{
 const props = defineProps({
   placeholder: {
     default: 'Type here',
+    type: String,
   },
   showClearButton: {
     default: '',
+    type: String,
   },
   query: {
     default: '',
+    type: String,
   },
   delay: {
     default: 80,
+    type: Number,
   },
 })
 
 const currentSelected = ref(-1)
 const showSuggestions = ref(false)
 const showLoading = ref(false)
-const loadingError = ref(null)
+const loadingError = ref<string>('')
 const suggestions = ref(new Array<SearchResult>())
 const currentUser = ref<User>()
 const currentQuery = ref(props.query)
@@ -156,9 +156,13 @@ onBeforeUnmount(() => {
 })
 
 function updateCurrentUser() {
-  getCurrentUser().then((user) => {
-    currentUser.value = user
-  })
+  getCurrentUser()
+    .then((user) => {
+      currentUser.value = user
+    })
+    .catch((err: unknown) => {
+      console.error('Failed to get current user:', err)
+    })
 }
 
 function menuClicked() {
@@ -215,31 +219,21 @@ function getSuggestionsInternal() {
   }
 
   previous.value = window.setTimeout(() => {
-    const p = window.fuzzySearcher.find(currentQuery.value.toLowerCase())
-
-    if (Array.isArray(p)) {
-      suggestions.value = p.map(toOwnSuggestion)
-      currentSelected.value = -1
-      showIfNeeded(p && p.length > 0)
-    } else if (p) {
-      loadingError.value = null
-      showLoading.value = true
-      p.then(
-        (sug: void | SearchResult[]) => {
-          if (sug === undefined) return // resolution of cancelled promise
-          showLoading.value = false
-          suggestions.value = sug || []
-          suggestions.value = sug.map(toOwnSuggestion)
-          currentSelected.value = -1
-          showIfNeeded(suggestions.value && suggestions.value.length > 0)
-        },
-        (err) => {
-          loadingError.value = err
-        },
-      )
-    } else {
-      throw new Error('Could not parse suggestions response')
-    }
+    showLoading.value = true
+    window.fuzzySearcher.find(currentQuery.value.toLowerCase()).then(
+      (sug: undefined | SearchResult[]) => {
+        if (sug === undefined) return // resolution of cancelled promise
+        showLoading.value = false
+        suggestions.value = sug.map(toOwnSuggestion)
+        currentSelected.value = -1
+        showIfNeeded(suggestions.value.length > 0)
+      },
+      (err: unknown) => {
+        if (err instanceof Error) {
+          loadingError.value = err.message
+        }
+      },
+    )
   }, props.delay)
 }
 

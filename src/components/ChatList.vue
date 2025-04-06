@@ -4,7 +4,7 @@ import GroupViewModel, { type chatMessage } from '../lib/GroupViewModel'
 
 interface Props {
   vm: GroupViewModel
-  models: Array<chatMessage>
+  models: chatMessage[]
 }
 
 const props = defineProps<Props>()
@@ -41,7 +41,7 @@ const vTextareaFitContentSize = {
   beforeMount(el: HTMLElement) {
     function resize() {
       el.style.height = 'auto'
-      el.style.height = Math.max(48, el.scrollHeight) + 'px'
+      el.style.height = Math.max(48, el.scrollHeight).toString() + 'px'
     }
     el.addEventListener('input', resize)
     el.addEventListener('focus', resize)
@@ -50,7 +50,7 @@ const vTextareaFitContentSize = {
   unmounted(el: HTMLElement) {
     function resize() {
       el.style.height = 'auto'
-      el.style.height = Math.max(48, el.scrollHeight) + 'px'
+      el.style.height = Math.max(48, el.scrollHeight).toString() + 'px'
     }
     el.removeEventListener('input', resize)
     el.removeEventListener('focus', resize)
@@ -77,35 +77,35 @@ const vTextareaFitContentSize = {
           <a
             v-if="!message.isEdited"
             href="#"
-            @click.prevent="message.isEdited = !message.isEdited"
             class="content"
             :class="{ 'system-role': message.role === 'system' }"
+            @click.prevent="message.isEdited = !message.isEdited"
             >{{ getDisplayContent(message) }}</a
           >
           <textarea
+            v-if="message.isEdited"
             v-model="message.content"
             v-textarea-fit-content-size
-            v-if="message.isEdited"
-            @blur="message.isEdited = !message.isEdited"
-            @keydown="submitOnCmdEnter($event)"
             v-focus
             placeholder="Enter message here"
+            @blur="message.isEdited = !message.isEdited"
+            @keydown="submitOnCmdEnter($event)"
           >
           </textarea>
-          <a href="#" @click.prevent="vm.deleteMessage(message.id)" class="delete" v-if="message.role !== 'system'">x</a>
+          <a v-if="message.role !== 'system'" href="#" class="delete" @click.prevent="vm.deleteMessage(message.id)">x</a>
         </li>
         <li>
-          <a href="#" @click.prevent="vm.addMessage()" class="normal add-message-link" v-if="!vm.loading">Add message</a>
+          <a v-if="!vm.loading" href="#" class="normal add-message-link" @click.prevent="vm.addMessage()">Add message</a>
         </li>
       </ul>
-      <div class="actions" v-if="!vm.loading">
-        <div class="error" v-if="vm.error">{{ vm.error }}</div>
-        <a href="#" @click.prevent="submit()" class="normal">Submit</a>
+      <div v-if="!vm.loading" class="actions">
+        <div v-if="vm.error" class="error">{{ vm.error }}</div>
+        <a href="#" class="normal" @click.prevent="submit()">Submit</a>
       </div>
-      <div class="actions" v-if="vm.loading">
+      <div v-if="vm.loading" class="actions">
         <div class="loader-container">
           <div class="loader"></div>
-          <a href="#" @click.prevent="cancelQuery()" class="critical label">Cancel</a>
+          <a href="#" class="critical label" @click.prevent="cancelQuery()">Cancel</a>
         </div>
       </div>
     </div>

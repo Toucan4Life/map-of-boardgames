@@ -106,12 +106,12 @@ export async function getRepoInfo(
       const errorMessage = ['HTTP error']
       try {
         const data = await response.json()
-        if (data?.message) errorMessage.push('Message: ' + data.message)
+        if (data?.message) errorMessage.push('Message: ' + (data.message as string))
       } catch (e: unknown) {
         /* ignore */
         console.error(e)
       }
-      errorMessage.push('Status: ' + response.status)
+      errorMessage.push('Status: ' + response.status.toString())
 
       return {
         state: 'ERROR',
@@ -139,8 +139,8 @@ export async function getRepoInfo(
   return repository
 }
 
-export async function getReadme(repoName: string, default_branch: Array<string>): Promise<{ state: string; content: string } | undefined> {
-  if (!default_branch) {
+export async function getReadme(repoName: string, default_branch: string[]): Promise<{ state: string; content: string } | undefined> {
+  if (default_branch.length === 0) {
     default_branch = ['master', 'main']
   }
 

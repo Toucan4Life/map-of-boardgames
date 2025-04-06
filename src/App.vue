@@ -38,7 +38,7 @@ interface Tooltip {
 }
 
 interface ContextMenu {
-  click(): void
+  click: () => void
   left: string
   top: string
   items: { text: string; click: () => void }[]
@@ -46,15 +46,13 @@ interface ContextMenu {
 
 let lastSelected: SearchResult
 
-function onTypeAheadInput() {}
-
-const groupCache = new Map()
+const groupCache: Map<number, GroupViewModel | undefined> = new Map()
 
 function closeSideBarViewer() {
   sidebarVisible.value = false
   currentProject.value = ''
   smallPreviewName.value = ''
-  window.mapOwner?.clearHighlights()
+  window.mapOwner.clearHighlights()
 }
 
 function closeSideBarOnSmallScreen() {
@@ -62,7 +60,7 @@ function closeSideBarOnSmallScreen() {
 }
 
 function findProject(x: SearchResult) {
-  if (x.lat === undefined && lastSelected && x.text === lastSelected.text) {
+  if (x.text === lastSelected.text) {
     x = lastSelected
   } else {
     lastSelected = x
@@ -73,7 +71,7 @@ function findProject(x: SearchResult) {
     center: coord,
     zoom: 12,
   }
-  window.mapOwner?.makeVisible(x.text, location, x.skipAnimation)
+  window.mapOwner.makeVisible(x.text, location, x.skipAnimation)
   // console.log(x)
   currentProject.value = x.text
   currentId.value = x.id
@@ -106,7 +104,7 @@ function onShowContextMenu(newContextMenu: ContextMenu) {
 }
 
 onBeforeUnmount(() => {
-  window.mapOwner?.dispose()
+  window.mapOwner.dispose()
   bus.off('repo-selected', onRepoSelected)
   bus.off('show-tooltip', onShowTooltip)
   bus.off('show-context-menu', onShowContextMenu)
@@ -135,15 +133,22 @@ function doContextMenuAction(menuItem: { text: string; click: () => void }) {
   menuItem.click()
 }
 
-async function onFocusOnRepo(repo: string, groupId: number) {
-  const focusViewModel = await new FocusViewModel(repo).create(groupId)
-  if (!focusViewModel) return
-  currentGroup.value = undefined
-  currentFocus.value = focusViewModel
+function onFocusOnRepo(repo: string, groupId: number) {
+  new FocusViewModel(repo)
+    .create(groupId)
+    .then((focusViewModel) => {
+      if (focusViewModel) {
+        currentGroup.value = undefined
+        currentFocus.value = focusViewModel
+      }
+    })
+    .catch((error: unknown) => {
+      console.error('Error creating FocusViewModel:', error)
+    })
 }
 
 function onShowLargestInGroup(groupId: number, largest: Repositories[]) {
-  let groupViewModel: GroupViewModel = groupCache.get(groupId)
+  let groupViewModel = groupCache.get(groupId)
   if (!groupViewModel) {
     groupViewModel = new GroupViewModel()
     groupCache.set(groupId, groupViewModel)
@@ -159,7 +164,7 @@ function onUnsavedChangesDetected(hasChanges: boolean) {
 
 function closeLargestRepositories() {
   currentGroup.value = undefined
-  window.mapOwner?.clearBorderHighlights()
+  window.mapOwner.clearBorderHighlights()
 }
 
 function closeFocusView() {
@@ -176,7 +181,7 @@ function showUnsavedChanges() {
 
 async function listCurrentConnections() {
   //console.log("listCurrentConnections");
-  const groupId = await window.mapOwner?.getGroupIdAt(lastSelected.lat, lastSelected.lon)
+  const groupId = await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon)
   if (groupId !== undefined) {
     const focusViewModel = await new FocusViewModel(lastSelected.text).create(groupId)
     currentGroup.value = undefined
@@ -194,14 +199,14 @@ function search(parameters: {
   minPlayers: number
   maxPlayers: number
 }) {
-  window.mapOwner?.highlightNode(parameters)
+  window.mapOwner.highlightNode(parameters)
 }
 </script>
 
 <template>
   <div>
-    <div class="unsaved-changes" v-if="hasUnsavedChanges">
-      You have unsaved labels in local storage. <a href="#" @click.prevent="showUnsavedChanges()" class="normal">Click here</a> to see them.
+    <div v-if="hasUnsavedChanges" class="unsaved-changes">
+      You have unsaved labels in local storage. <a href="#" class="normal" @click.prevent="showUnsavedChanges()">Click here</a> to see them.
     </div>
     <div class="made-by">
       Made by
@@ -210,55 +215,54 @@ function search(parameters: {
       <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka </a>
     </div>
     <largest-repositories
-      :repos="currentGroup"
       v-if="currentGroup"
+      :repos="currentGroup"
       class="right-panel"
       @selected="findProject"
       @close="closeLargestRepositories()"
     ></largest-repositories>
-    <focus-repository :vm="currentFocus" v-if="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView()"></focus-repository>
+    <focus-repository v-if="currentFocus" :vm="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView()"></focus-repository>
     <github-repository
-      :name="currentProject"
-      :id="currentId"
       v-if="currentProject && currentId"
-      @listConnections="listCurrentConnections()"
+      :id="currentId"
+      :name="currentProject"
+      @list-connections="listCurrentConnections()"
     ></github-repository>
-    <form @submit.prevent class="search-box" v-if="typeAheadVisible">
+    <form v-if="typeAheadVisible" class="search-box" @submit.prevent>
       <type-ahead
         placeholder="Find Game"
-        @menuClicked="aboutVisible = true"
-        @showAdvancedSearch="advSearchVisible = true"
-        @selected="findProject"
-        @beforeClear="closeSideBarOnSmallScreen"
-        @cleared="closeSideBarViewer"
-        @inputChanged="onTypeAheadInput"
-        :showClearButton="currentProject"
+        :show-clear-button="currentProject"
         :query="currentProject"
+        @menu-clicked="aboutVisible = true"
+        @show-advanced-search="advSearchVisible = true"
+        @selected="findProject"
+        @before-clear="closeSideBarOnSmallScreen"
+        @cleared="closeSideBarViewer"
       ></type-ahead>
     </form>
     <transition name="slide-bottom">
       <small-preview
         v-if="smallPreviewName && currentId"
-        :name="smallPreviewName"
         :id="currentId"
+        :name="smallPreviewName"
         class="small-preview"
-        @showFullPreview="showFullPreview()"
+        @show-full-preview="showFullPreview()"
       ></small-preview>
     </transition>
-    <div class="tooltip" v-if="tooltip" :style="{ left: tooltip.left, top: tooltip.top, background: tooltip.background }">
+    <div v-if="tooltip" class="tooltip" :style="{ left: tooltip.left, top: tooltip.top, background: tooltip.background }">
       {{ tooltip.text }}
     </div>
-    <div class="context-menu" v-if="contextMenu" :style="{ left: contextMenu.left, top: contextMenu.top }">
-      <a href="#" v-for="(item, key) in contextMenu.items" :key="key" @click.prevent="doContextMenuAction(item)">{{ item.text }}</a>
+    <div v-if="contextMenu" class="context-menu" :style="{ left: contextMenu.left, top: contextMenu.top }">
+      <a v-for="(item, key) in contextMenu.items" :key="key" href="#" @click.prevent="doContextMenuAction(item)">{{ item.text }}</a>
     </div>
     <transition name="slide-top">
-      <unsaved-changes v-if="unsavedChangesVisible" @close="unsavedChangesVisible = false" class="changes-window"></unsaved-changes>
+      <unsaved-changes v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false"></unsaved-changes>
     </transition>
     <transition name="slide-left">
-      <about v-if="aboutVisible" @close="aboutVisible = false" class="about"></about>
+      <about v-if="aboutVisible" class="about" @close="aboutVisible = false"></about>
     </transition>
     <transition name="slide-left">
-      <advSearch v-if="advSearchVisible" @search="search" @close="advSearchVisible = false" class="adv-search"></advSearch>
+      <advSearch v-if="advSearchVisible" class="adv-search" @search="search" @close="advSearchVisible = false"></advSearch>
     </transition>
   </div>
 </template>

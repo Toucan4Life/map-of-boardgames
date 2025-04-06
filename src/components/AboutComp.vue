@@ -10,7 +10,7 @@ function close(): void {
     <div class="row">
       <h2>Map of Boardgames</h2>
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <a href="#" @click.prevent="close" class="close-btn">
+      <a href="#" class="close-btn" @click.prevent="close">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"

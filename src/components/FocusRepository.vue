@@ -12,7 +12,7 @@ const emit = defineEmits<{
 function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
   if (!repo.id) return
   emit('selected', {
-    text: repo.name.toString(),
+    text: repo.name?.toString() ?? '',
     lon: repo.lngLat[1],
     lat: repo.lngLat[0],
     skipAnimation: event.altKey,
@@ -26,7 +26,11 @@ function closePanel(): void {
 }
 
 function getLink(repo: IFocusViewModel | Repositories): string {
-  return 'https://boardgamegeek.com/boardgame/' + repo.id
+  if (!repo.id) {
+    console.error('No ID found for the repository.')
+    return ''
+  }
+  return 'https://boardgamegeek.com/boardgame/' + repo.id.toString()
 }
 </script>
 <template>
@@ -35,7 +39,7 @@ function getLink(repo: IFocusViewModel | Repositories): string {
       <div class="header-container">
         <div class="header">
           <h2>
-            <a :href="getLink(props.vm)" @click.prevent="showDetails(props.vm, $event)" class="normal">{{ props.vm.name }}</a>
+            <a :href="getLink(props.vm)" class="normal" @click.prevent="showDetails(props.vm, $event)">{{ props.vm.name }}</a>
           </h2>
           <h3 v-if="!props.vm.loading">Direct connections ({{ props.vm.repos.length }})</h3>
           <h3 v-else>Loading...</h3>
@@ -63,7 +67,7 @@ function getLink(repo: IFocusViewModel | Repositories): string {
 
       <ul v-if="props.vm.repos">
         <li v-for="repo in props.vm.repos" :key="repo.name">
-          <a :href="getLink(repo)" @click.prevent="showDetails(repo, $event)" target="_blank">
+          <a :href="getLink(repo)" target="_blank" @click.prevent="showDetails(repo, $event)">
             {{ repo.name }}
             <!-- <span v-if="repo.isExternal" title="External country">E</span> -->
           </a>

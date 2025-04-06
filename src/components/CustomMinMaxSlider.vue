@@ -26,10 +26,7 @@ const { min, max, step, minValue, maxValue } = defineProps({
 })
 
 // define emits for the slider component
-const emit = defineEmits<{
-  (e: 'update:minValue', value: number): void
-  (e: 'update:maxValue', value: number): void
-}>()
+const emit = defineEmits<(e: 'update:minValue' | 'update:maxValue', value: number) => void>()
 
 // define refs for the slider element and the slider values
 const slider = ref<HTMLDivElement>()
@@ -44,7 +41,7 @@ const getPercent = (value: number, min: number, max: number) => {
 }
 
 // function to set the css variables for width, left and right
-const setCSSProps = (left: number, right: number) => {
+const setCSSProps = (left: string, right: string) => {
   if (slider.value) slider.value.style.setProperty('--progressLeft', `${left}%`)
   if (slider.value) slider.value.style.setProperty('--progressRight', `${right}%`)
 }
@@ -62,13 +59,13 @@ watchEffect(() => {
     const rightPercent = 100 - getPercent(sliderMaxValue.value, min, max)
 
     // set the CSS variables
-    setCSSProps(leftPercent, rightPercent)
+    setCSSProps(leftPercent.toString(), rightPercent.toString())
   }
 })
 
 // validation sliderMinValue do not greater than sliderMaxValue and opposite
 const onInput = (payload: Event) => {
-  const target = payload.target as HTMLInputElement
+  const target = payload.target as HTMLInputElement | null
   if (!target) return
   if (target.name === 'min') {
     if (parseFloat(target.value) > sliderMaxValue.value) target.value = sliderMaxValue.value.toString()
@@ -82,8 +79,8 @@ const onInput = (payload: Event) => {
 <template>
   <div ref="slider" class="custom-slider minmax">
     <div class="minmax-indicator"></div>
-    <input ref="inputMin" type="range" name="min" id="min" :min="min" :max="max" :value="minValue" :step="step" @input="onInput" />
-    <input ref="inputMax" type="range" name="max" id="max" :min="min" :max="max" :value="maxValue" :step="step" @input="onInput" />
+    <input id="min" ref="inputMin" type="range" name="min" :min="min" :max="max" :value="minValue" :step="step" @input="onInput" />
+    <input id="max" ref="inputMax" type="range" name="max" :min="min" :max="max" :value="maxValue" :step="step" @input="onInput" />
   </div>
   <!-- <div class="minmax-inputs">
     <input type="number" :step="step" v-model="sliderMinValue" />
