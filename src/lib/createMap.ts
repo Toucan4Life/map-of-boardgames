@@ -50,7 +50,6 @@ export class BoardGameMap {
     this.map.touchZoomRotate.disableRotation()
     this.fastLinesLayer = new getCustomLayer()
     // collection of labels.
-
     this.map.on('load', () => {
       this.LoadMap()
         .then(() => {

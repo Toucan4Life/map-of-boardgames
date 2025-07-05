@@ -271,7 +271,7 @@ function search(parameters: {
     <transition name="slide-left">
       <about v-if="aboutVisible" class="about" @close="aboutVisible = false"></about>
     </transition>
-    <transition name="slide-right">
+ <transition name="slide-right">
       <advSearch v-if="advSearchVisible" class="adv-search" @search="search" @close="advSearchVisible = false"></advSearch>
     </transition>
   </div>
@@ -448,7 +448,7 @@ function search(parameters: {
 .adv-search {
   position: fixed;
   top: 0;
-  right: 0;
+right: 0;
   width: var(--side-panel-width);
   background: var(--color-background);
   z-index: 2;
