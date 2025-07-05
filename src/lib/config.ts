@@ -1,5 +1,5 @@
 const server = 'https://Toucan4Life.github.io/graph-start/src/server/data'
-const version = '/v1'
+const version = '/v2'
 
 export default {
   serverUrl: '',
