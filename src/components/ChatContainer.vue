@@ -12,6 +12,7 @@ const props = defineProps({
   description: {
     type: String,
     required: false,
+    default: 'Chat with ChatGPT',
   },
 })
 
@@ -38,9 +39,11 @@ function initializeChat(): void {
       loadingModels.value = false
       models.value = gptModels
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       loadingModels.value = false
-      errorMessage.value = err
+      if (err instanceof Error) {
+        errorMessage.value = err.message
+      }
     })
 }
 
@@ -54,7 +57,7 @@ function clearKey(): void {
 </script>
 <template>
   <div>
-    <h2>Chat with ChatGPT <a href="#" @click="clearKey()" v-if="openAIToken" class="clear-key">clear key</a></h2>
+    <h2>Chat with ChatGPT <a v-if="openAIToken" href="#" class="clear-key" @click="clearKey()">clear key</a></h2>
     <form v-if="!openAIToken" @submit.prevent="saveToken">
       <div>{{ props.description }}</div>
       Enter your <a href="https://platform.openai.com/account/api-keys" target="_blank" class="critical">OpenAI API token</a>
@@ -71,7 +74,7 @@ function clearKey(): void {
 
     <div v-if="loadingModels">Loading models...</div>
     <div v-if="errorMessage">{{ errorMessage }}</div>
-    <chat-list :vm="props.vm" :models="models" v-if="models?.length" />
+    <chat-list v-if="models?.length" :vm="props.vm" :models="models" />
   </div>
 </template>
 

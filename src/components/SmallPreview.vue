@@ -9,18 +9,24 @@ interface Repo {
 
 const props = defineProps<Repo>()
 const gameDetail = ref<GameDetail>()
-const emit = defineEmits<{ (e: 'show-full-preview', id: string): void }>()
+const emit = defineEmits<(e: 'show-full-preview', id: string) => void>()
 
-watchEffect(async () => {
-  const response = await getGameInfo(props.id)
-  if (response) gameDetail.value = response
+watchEffect(() => {
+  getGameInfo(props.id.toString())
+    .then((resp) => {
+      if (resp) gameDetail.value = resp
+    })
+    .catch((error: unknown) => {
+      console.error('Error fetching game info:', error)
+    })
 })
+
 function showFullPreview() {
   emit('show-full-preview', props.name)
 }
 </script>
 <template>
-  <a href="#" @click.prevent="showFullPreview" class="small-preview-container">
+  <a href="#" class="small-preview-container" @click.prevent="showFullPreview">
     <div class="header">
       <span>{{ props.name }}</span>
     </div>
@@ -83,6 +89,7 @@ div.error {
   margin-top: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

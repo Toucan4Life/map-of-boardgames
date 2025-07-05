@@ -20,12 +20,11 @@ export interface SearchResult {
   id: number
 }
 export class FuzzySearcher {
-  words: Array<Word> = []
+  words: Word[] = []
   lastPromise: Fuzzysort.CancelablePromise<Fuzzysort.KeyResults<Word>> | undefined
   lastQuery: string | undefined
 
-  constructor() {}
-  find(query: string): Promise<SearchResult[] | void> {
+  find(query: string): Promise<SearchResult[] | undefined> {
     if (this.lastPromise) {
       this.lastPromise.cancel()
     }
@@ -35,7 +34,7 @@ export class FuzzySearcher {
     if (!fetchedIndex.has(cacheKey)) {
       const p = dedupingFetch(new URL(`${config.namesEndpoint}/${cacheKey}.json`))
         .then((data: string[][]) => {
-          data.forEach((word: Array<string>) => {
+          data.forEach((word: string[]) => {
             if (!seenWords.has(word[0])) {
               this.words.push({ name: word[0], lat: +word[1], lon: +word[2], id: +word[3] })
               seenWords.add(word[0])
@@ -43,12 +42,15 @@ export class FuzzySearcher {
           })
           fetchedIndex.add(cacheKey)
           if (/*isCancelled ||*/ this.lastQuery !== query) {
-            return // Nobody cares, but lets keep the index.
+            return undefined // Nobody cares, but lets keep the index.
           }
           return this.find(query) // Try again, but now with the index.
         })
         .catch((err: unknown) => {
-          console.error('FuzzySearch: Failed to fetch index for ' + cacheKey + '; Err: ' + err)
+          if (err instanceof Error) {
+            console.error('FuzzySearch: Failed to fetch index for ' + cacheKey + '; Err: ' + err.message)
+          }
+          return undefined
         })
       // p.cancel = () => {
       //   isCancelled = true;

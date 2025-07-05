@@ -35,7 +35,10 @@ export default class GroupViewModel {
             'A user is looking at the following github repositories:' +
             currentLargest
               .slice(0, 20)
-              .map((repo) => '\n- ' + repo.name)
+              .map((repo) => {
+                if (repo.name === undefined) return ''
+                return '\n- ' + repo.name.toString()
+              })
               .join(''),
         },
         {
@@ -84,9 +87,12 @@ export default class GroupViewModel {
           nextTick(() => {
             const newMessageEl = document.querySelector(`.add-message-link`)
             if (newMessageEl) newMessageEl.scrollIntoView()
+          }).catch((err: unknown) => {
+            console.error(err)
+            this.error = 'Something went wrong. Open dev console for more details'
           })
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error(err)
           this.error = 'Something went wrong. Open dev console for more details'
         })

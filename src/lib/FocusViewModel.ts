@@ -1,7 +1,7 @@
 import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 import { GraphDownloader, type BoardgameData } from './downloadGroupGraph'
 export interface Repositories {
-  name: NodeId
+  name: NodeId | undefined
   lngLat: [number, number]
   // isExternal: boolean
   id: number

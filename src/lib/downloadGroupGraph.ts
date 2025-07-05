@@ -17,7 +17,7 @@ export class GraphDownloader {
     if (graphsCache.has(groupId)) {
       return graphsCache.get(groupId)
     }
-    const response = await fetch(`${config.graphsEndpoint}/${groupId}.dot`)
+    const response = await fetch(`${config.graphsEndpoint}/${groupId.toString()}.dot`)
     const text = await response.text()
 
     const fromDot = await import('ngraph.fromdot')

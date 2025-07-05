@@ -18,6 +18,8 @@ export interface AdvSearchResult {
   maxPlayers: number
   playerChoice: number
   tags: string[] | undefined
+  minYear: number
+  maxYear: number
 }
 
 function search(
@@ -30,6 +32,8 @@ function search(
   minPl: number,
   maxPl: number,
   pChoice: number,
+  minYear: number,
+  maxYear: number,
 ): void {
   // console.log(JSON.stringify({
   //   minWeight: minW, maxWeight: maxW,
@@ -50,6 +54,8 @@ function search(
     maxPlayers: playersScale[maxPl],
     playerChoice: pChoice,
     tags: selectedTags.value,
+    minYear: yearscale[minYear],
+    maxYear: yearscale[maxYear],
   })
 }
 
@@ -61,7 +67,10 @@ const sliderMinP = ref(0)
 const sliderMaxP = ref(13)
 const sliderMinPl = ref(0)
 const sliderMaxPl = ref(9)
+const sliderMinY = ref(0)
+const sliderMaxY = ref(16)
 const selectedTags = ref<string[]>()
+const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2020, 2021, 2022, 2023, 2024, 2025]
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 // reassigned in the template
@@ -74,7 +83,7 @@ let playersChoice = 0
     <div class="row">
       <h2>Advanced Search</h2>
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <a href="#" @click.prevent="close" class="close-btn">
+      <a href="#" class="close-btn" @click.prevent="close">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"
@@ -95,25 +104,29 @@ let playersChoice = 0
     </div>
     <div class="container">
       <div class="slider-cont">
+        <h3>Year Published: {{ yearscale[sliderMinY] }} - {{ yearscale[sliderMaxY] }}</h3>
+        <CustomMinMaxSlider v-model:min-value="sliderMinY" v-model:max-value="sliderMaxY" :min="0" :max="16" />
+      </div>
+      <div class="slider-cont">
         <h3>Game rating: {{ sliderMinR }} - {{ sliderMaxR }}</h3>
-        <CustomMinMaxSlider :min="0" :max="10" :step="0.1" v-model:min-value="sliderMinR" v-model:max-value="sliderMaxR" />
+        <CustomMinMaxSlider v-model:min-value="sliderMinR" v-model:max-value="sliderMaxR" :min="0" :max="10" :step="0.1" />
       </div>
       <div class="slider-cont">
         <h3>Game complexity: {{ sliderMin }} - {{ sliderMax }}</h3>
-        <CustomMinMaxSlider :min="1" :max="5" :step="0.1" v-model:min-value="sliderMin" v-model:max-value="sliderMax" />
+        <CustomMinMaxSlider v-model:min-value="sliderMin" v-model:max-value="sliderMax" :min="1" :max="5" :step="0.1" />
       </div>
       <div class="slider-cont">
         <h3>Player count: {{ playersScale[sliderMinPl] }} - {{ playersScale[sliderMaxPl] }}</h3>
-        <div class="segmented-control" ref="segm">
-          <input id="radio1" name="segmented" type="radio" v-model="playersChoice" value="0" checked /><label for="radio1">Theorical</label>
-          <input id="radio2" name="segmented" type="radio" v-model="playersChoice" value="1" /><label for="radio2">Recommended</label>
-          <input id="radio3" name="segmented" type="radio" v-model="playersChoice" value="2" /><label for="radio3">Best</label>
+        <div ref="segm" class="segmented-control">
+          <input id="radio1" v-model="playersChoice" name="segmented" type="radio" value="0" checked /><label for="radio1">Theorical</label>
+          <input id="radio2" v-model="playersChoice" name="segmented" type="radio" value="1" /><label for="radio2">Recommended</label>
+          <input id="radio3" v-model="playersChoice" name="segmented" type="radio" value="2" /><label for="radio3">Best</label>
         </div>
-        <CustomMinMaxSlider :min="0" :max="9" v-model:min-value="sliderMinPl" v-model:max-value="sliderMaxPl" />
+        <CustomMinMaxSlider v-model:min-value="sliderMinPl" v-model:max-value="sliderMaxPl" :min="0" :max="9" />
       </div>
       <div class="slider-cont">
         <h3>Game length (min): {{ timescale[sliderMinP] }} - {{ timescale[sliderMaxP] }}</h3>
-        <CustomMinMaxSlider :min="0" :max="13" v-model:min-value="sliderMinP" v-model:max-value="sliderMaxP" />
+        <CustomMinMaxSlider v-model:min-value="sliderMinP" v-model:max-value="sliderMaxP" :min="0" :max="13" />
       </div>
       <!-- <div>
         <label class="typo__label" for="ajax">Tags:</label>
@@ -139,7 +152,21 @@ let playersChoice = 0
       <div class="actions row">
         <a
           href="#"
-          @click.prevent="search(sliderMin, sliderMax, sliderMinR, sliderMaxR, sliderMinP, sliderMaxP, sliderMinPl, sliderMaxPl, playersChoice)"
+          @click.prevent="
+            search(
+              sliderMin,
+              sliderMax,
+              sliderMinR,
+              sliderMaxR,
+              sliderMinP,
+              sliderMaxP,
+              sliderMinPl,
+              sliderMaxPl,
+              playersChoice,
+              sliderMinY,
+              sliderMaxY,
+            )
+          "
           >Search</a
         >
       </div>

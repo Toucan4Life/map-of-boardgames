@@ -10,7 +10,9 @@ function onClose() {
 }
 
 function copyJSON() {
-  navigator.clipboard.writeText(JSON.stringify(geojson, null, 2))
+  navigator.clipboard.writeText(JSON.stringify(geojson, null, 2)).catch((err: unknown) => {
+    console.error('Failed to copy: ', err)
+  })
   copiedTooltipVisible.value = true
   setTimeout(() => {
     copiedTooltipVisible.value = false
@@ -22,7 +24,7 @@ function copyJSON() {
   <div>
     <h3>Local changes</h3>
     <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-    <a href="#" @click.prevent="onClose()" class="close-btn">
+    <a href="#" class="close-btn" @click.prevent="onClose()">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="24"
@@ -47,7 +49,7 @@ function copyJSON() {
     </p>
     <p>
       Here is the content of the `places.geojson` with your changes.
-      <a href="#" class="critical" @click.prevent="copyJSON()" :class="{ 'copy-notification': copiedTooltipVisible }">{{
+      <a href="#" class="critical" :class="{ 'copy-notification': copiedTooltipVisible }" @click.prevent="copyJSON()">{{
         copiedTooltipVisible ? 'Copied!' : 'Copy'
       }}</a>
       them to clipboard and paste them in

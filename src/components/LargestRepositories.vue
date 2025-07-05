@@ -12,7 +12,7 @@ const emit = defineEmits<{
 
 function showDetails(repo: Repositories): void {
   emit('selected', {
-    text: repo.name.toString(),
+    text: repo.name?.toString() ?? '',
     lon: repo.lngLat[1],
     lat: repo.lngLat[0],
     id: repo.id,
@@ -26,7 +26,11 @@ function closePanel(): void {
 }
 
 function getLink(repo: Repositories): string {
-  return 'https://boardgamegeek.com/boardgame/' + repo.id
+  if (!repo.id) {
+    console.error('No ID found for the repository.')
+    return ''
+  }
+  return 'https://boardgamegeek.com/boardgame/' + repo.id.toString()
 }
 </script>
 <template>
@@ -55,21 +59,21 @@ function getLink(repo: Repositories): string {
       </h2>
       <ul v-if="props.repos.largest.length">
         <li v-for="repo in props.repos.largest" :key="repo.name">
-          <a :href="getLink(repo)" @click.prevent="showDetails(repo)" target="_blank">{{ repo.name }}</a>
+          <a :href="getLink(repo)" target="_blank" @click.prevent="showDetails(repo)">{{ repo.name }}</a>
         </li>
       </ul>
       <div v-else>
         <p>No repositories found. Try zooming in?</p>
       </div>
     </div>
-    <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container" />
+    <!-- <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container" /> -->
   </div>
 </template>
 <style scoped>
-.group-view-container {
+/* .group-view-container {
   display: grid;
   grid-template-rows: minmax(0, 40%) minmax(0, 60%);
-}
+} */
 
 .names-container {
   display: flex;

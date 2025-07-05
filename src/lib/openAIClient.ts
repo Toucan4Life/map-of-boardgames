@@ -19,7 +19,7 @@ export async function getOpenAIModels(): Promise<chatMessage[]> {
     })
 }
 
-export async function sendChatRequest(messagess: Array<{ model: string; messages: { content: string; role: string }[] }>): Promise<chatMessage> {
+export async function sendChatRequest(messagess: { model: string; messages: { content: string; role: string }[] }[]): Promise<chatMessage> {
   const headers = getAuthHeaders()
   const body = JSON.stringify(messagess)
 

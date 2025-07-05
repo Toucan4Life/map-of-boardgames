@@ -12,12 +12,17 @@ const props = defineProps<Repo>()
 
 const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
-  return `https://boardgamegeek.com/boardgame/` + props.id
+  return `https://boardgamegeek.com/boardgame/` + props.id.toString()
 })
 
-watchEffect(async () => {
-  const response = await getGameInfo(props.id)
-  if (response) gameDetail.value = response
+watchEffect(() => {
+  getGameInfo(props.id.toString())
+    .then((resp) => {
+      if (resp) gameDetail.value = resp
+    })
+    .catch((error: unknown) => {
+      console.error('Error fetching game info:', error)
+    })
 })
 
 function listConnections(): void {
@@ -38,7 +43,7 @@ function listConnections(): void {
         </div>
         <div class="game-header-title-info">
           <h2>
-            <a :href="repoLink" target="_blank">{{ name }}</a>
+            <a :href="repoLink" target="_blank">{{ name + ' (' + gameDetail?.yearPublished + ')' }}</a>
           </h2>
           <p>
             <span>{{ gameDetail?.description }}</span>
