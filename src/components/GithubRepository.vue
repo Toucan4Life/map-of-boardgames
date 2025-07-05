@@ -43,7 +43,7 @@ function listConnections(): void {
         </div>
         <div class="game-header-title-info">
           <h2>
-            <a :href="repoLink" target="_blank">{{ name }}</a>
+            <a :href="repoLink" target="_blank">{{ name + ' (' + gameDetail?.yearPublished + ')' }}</a>
           </h2>
           <p>
             <span>{{ gameDetail?.description }}</span>

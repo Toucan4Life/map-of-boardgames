@@ -66,14 +66,14 @@ function getLink(repo: Repositories): string {
         <p>No repositories found. Try zooming in?</p>
       </div>
     </div>
-    <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container" />
+    <!-- <chat-container description="Wanna learn more about these projects?" :vm="props.repos" class="chat-container" /> -->
   </div>
 </template>
 <style scoped>
-.group-view-container {
+/* .group-view-container {
   display: grid;
   grid-template-rows: minmax(0, 40%) minmax(0, 60%);
-}
+} */
 
 .names-container {
   display: flex;

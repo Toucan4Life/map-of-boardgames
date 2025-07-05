@@ -1,6 +1,6 @@
-export default function getComplimentaryColor(colorin: string, alpha = 0xaa): number {
+export default function getComplimentaryColor(colorin: string | undefined, alpha = 0xaa): number {
   let color = 0
-  if (colorin[0] === '#') {
+  if (colorin !== undefined && colorin[0] === '#') {
     color = parseInt(colorin.slice(1), 16)
     color = (color << 8) | 0xff
   } else {

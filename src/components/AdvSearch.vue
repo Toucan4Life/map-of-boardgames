@@ -18,6 +18,8 @@ export interface AdvSearchResult {
   maxPlayers: number
   playerChoice: number
   tags: string[] | undefined
+  minYear: number
+  maxYear: number
 }
 
 function search(
@@ -30,6 +32,8 @@ function search(
   minPl: number,
   maxPl: number,
   pChoice: number,
+  minYear: number,
+  maxYear: number,
 ): void {
   // console.log(JSON.stringify({
   //   minWeight: minW, maxWeight: maxW,
@@ -50,6 +54,8 @@ function search(
     maxPlayers: playersScale[maxPl],
     playerChoice: pChoice,
     tags: selectedTags.value,
+    minYear: yearscale[minYear],
+    maxYear: yearscale[maxYear],
   })
 }
 
@@ -61,7 +67,10 @@ const sliderMinP = ref(0)
 const sliderMaxP = ref(13)
 const sliderMinPl = ref(0)
 const sliderMaxPl = ref(9)
+const sliderMinY = ref(0)
+const sliderMaxY = ref(16)
 const selectedTags = ref<string[]>()
+const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2020, 2021, 2022, 2023, 2024, 2025]
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 // reassigned in the template
@@ -94,6 +103,10 @@ let playersChoice = 0
       </a>
     </div>
     <div class="container">
+      <div class="slider-cont">
+        <h3>Year Published: {{ yearscale[sliderMinY] }} - {{ yearscale[sliderMaxY] }}</h3>
+        <CustomMinMaxSlider v-model:min-value="sliderMinY" v-model:max-value="sliderMaxY" :min="0" :max="16" />
+      </div>
       <div class="slider-cont">
         <h3>Game rating: {{ sliderMinR }} - {{ sliderMaxR }}</h3>
         <CustomMinMaxSlider v-model:min-value="sliderMinR" v-model:max-value="sliderMaxR" :min="0" :max="10" :step="0.1" />
@@ -139,7 +152,21 @@ let playersChoice = 0
       <div class="actions row">
         <a
           href="#"
-          @click.prevent="search(sliderMin, sliderMax, sliderMinR, sliderMaxR, sliderMinP, sliderMaxP, sliderMinPl, sliderMaxPl, playersChoice)"
+          @click.prevent="
+            search(
+              sliderMin,
+              sliderMax,
+              sliderMinR,
+              sliderMaxR,
+              sliderMinP,
+              sliderMaxP,
+              sliderMinPl,
+              sliderMaxPl,
+              playersChoice,
+              sliderMinY,
+              sliderMaxY,
+            )
+          "
           >Search</a
         >
       </div>

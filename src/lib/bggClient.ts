@@ -14,6 +14,7 @@ export interface GameDetail {
   weight: string
   minAge: string
   recommendedAge: string
+  yearPublished: string
 }
 const options = {
   ignoreAttributes: false,
@@ -42,12 +43,19 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
         })[0]['@_value'],
       minPlayers: p.items.item.minplayers['@_value'],
       maxPlayers: p.items.item.maxplayers['@_value'],
-      recommendedPlayers: p.items.item['poll-summary'].result
-        .filter((t: Record<string, string>) => t['@_name'] == 'recommmendedwith')[0]
-        ['@_value'].match('Recommended with (.*?) players')[1],
-      bestPlayers: p.items.item['poll-summary'].result
-        .filter((t: Record<string, string>) => t['@_name'] == 'bestwith')[0]
-        ['@_value'].match('Best with (.*?) players')[1],
+      recommendedPlayers:
+        p.items.item['poll'].filter((t: Record<string, string>) => t['@_name'] == 'suggested_numplayers')[0]['@_totalvotes'] == '0'
+          ? undefined
+          : p.items.item['poll-summary'].result
+              .filter((t: Record<string, string>) => t['@_name'] == 'recommmendedwith')[0]
+              ['@_value'].match('Recommended with (.*?) players')[1],
+      bestPlayers:
+        p.items.item['poll'].filter((t: Record<string, string>) => t['@_name'] == 'suggested_numplayers')[0]['@_totalvotes'] == '0'
+          ? undefined
+          : p.items.item['poll-summary'].result
+              .filter((t: Record<string, string>) => t['@_name'] == 'bestwith')[0]
+              ['@_value'].match('Best with (.*?) players')[1],
+      yearPublished: p.items.item.yearpublished['@_value'],
     }
   }
 }

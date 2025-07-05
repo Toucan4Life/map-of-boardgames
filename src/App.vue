@@ -44,7 +44,7 @@ interface ContextMenu {
   items: { text: string; click: () => void }[]
 }
 
-let lastSelected: SearchResult
+let lastSelected: SearchResult | undefined
 
 const groupCache: Map<number, GroupViewModel | undefined> = new Map()
 
@@ -60,11 +60,12 @@ function closeSideBarOnSmallScreen() {
 }
 
 function findProject(x: SearchResult) {
-  if (x.text === lastSelected.text) {
+  if (lastSelected !== undefined && x.text === lastSelected.text) {
     x = lastSelected
   } else {
     lastSelected = x
   }
+
   const coord: [number, number] = [x.lat, x.lon]
 
   const location = {
@@ -72,7 +73,6 @@ function findProject(x: SearchResult) {
     zoom: 12,
   }
   window.mapOwner.makeVisible(x.text, location, x.skipAnimation)
-  // console.log(x)
   currentProject.value = x.text
   currentId.value = x.id
 }
@@ -91,6 +91,10 @@ function onRepoSelected(repo: SearchResult) {
 }
 
 function showFullPreview() {
+  if (!lastSelected) {
+    console.warn('No last selected repository to show full preview for.')
+    return
+  }
   smallPreviewName.value = ''
   currentProject.value = lastSelected.text
 }
@@ -181,6 +185,10 @@ function showUnsavedChanges() {
 
 async function listCurrentConnections() {
   //console.log("listCurrentConnections");
+  if (!lastSelected) {
+    console.warn('No last selected repository to list connections for.')
+    return
+  }
   const groupId = await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon)
   if (groupId !== undefined) {
     const focusViewModel = await new FocusViewModel(lastSelected.text).create(groupId)
@@ -261,7 +269,7 @@ function search(parameters: {
     <transition name="slide-left">
       <about v-if="aboutVisible" class="about" @close="aboutVisible = false"></about>
     </transition>
-    <transition name="slide-left">
+    <transition name="slide-right">
       <advSearch v-if="advSearchVisible" class="adv-search" @search="search" @close="advSearchVisible = false"></advSearch>
     </transition>
   </div>
@@ -401,6 +409,16 @@ function search(parameters: {
   transform: translateX(-100%);
 }
 
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 150ms cubic-bezier(0, 0, 0.58, 1);
+}
+
+.slide-right-enter,
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
 .small-preview {
   position: fixed;
   bottom: 0;
@@ -428,7 +446,7 @@ function search(parameters: {
 .adv-search {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   width: var(--side-panel-width);
   background: var(--color-background);
   z-index: 2;
