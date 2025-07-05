@@ -206,6 +206,8 @@ function search(parameters: {
   playerChoice: number
   minPlayers: number
   maxPlayers: number
+  minYear: number
+  maxYear: number
 }) {
   window.mapOwner.highlightNode(parameters)
 }
