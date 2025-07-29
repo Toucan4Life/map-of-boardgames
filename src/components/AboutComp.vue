@@ -32,11 +32,12 @@ function close(): void {
     <div class="container">
       <p>
         <!-- <img src="../../public/apple-touch-icon.png" alt="GitHub Map" class="map-image"> -->
-        Each dot is a boardgame. Two dots within the same cluster are connected if multiple users frequently gave review to both games. The size of
-        the dot indicates the number of review the game has received, the shape indicate the complexity and the color indicate the user's ratings
+        Each dot is a boardgame. Two dots within the same cluster are connected if multiple users frequently reviewed both games in a similar fashion.
+        The size of the dot indicates the number of reviews the game has received, the shape indicate the complexity and the color indicate the user's
+        ratings
       </p>
-      <p>Only games with over 500 ratings were taken into account for now, and clusters of less than 20 games have been dropped</p>
-      <p>The map has more than <b>4000</b> games, clustered into <b>11</b> countries.</p>
+      <p>Only games with over 100 ratings were taken into account for now</p>
+      <p>The map has more than <b>15906</b> games, clustered into <b>27</b> countries.</p>
       <p>The code for this project can be found <a href=" https://github.com/Toucan4Life/map-of-boardgames" class="normal">here</a></p>
 
       <div class="row-horizontal">
