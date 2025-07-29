@@ -63,7 +63,7 @@ export class BoardGameMap {
     this.map.on('contextmenu', (e) => {
       bus.fire('show-tooltip')
 
-      const bg = this.getBackgroundNearPoint(e.point)
+      const bg = this.getBackgroundNearPoint(e.point)[0]
 
       let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
 
@@ -285,21 +285,22 @@ export class BoardGameMap {
     })
   }
 
-  getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature {
+  getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature[] {
     const borderFeature = this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
-    return borderFeature[0]
+    return borderFeature
   }
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
     // console.log("In drawBackgroundEdges")
-    const bgFeature = this.getBackgroundNearPoint(point)
+    const bgFeature = this.getBackgroundNearPoint(point)[0]
     // console.log("bgFeature :" + JSON.stringify(bgFeature))
-    if (bgFeature === undefined || !bgFeature.id) return
+    if (bgFeature.id === undefined) return
     const groupId = +bgFeature.id
     //console.log("groupId :" + JSON.stringify(groupId))
 
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
+    // console.log('Complimentary color: ' + complimentaryColor)
     this.fastLinesLayer.clear()
     if (this.backgroundEdgesFetch) this.backgroundEdgesFetch.cancel()
     const highlightedNodes: GeoJSON.GeoJSON = {
@@ -417,7 +418,7 @@ export class BoardGameMap {
             type: 'vector',
             tiles: [config.vectorTilesTiles],
             minzoom: 0,
-            maxzoom: 3,
+            maxzoom: 4,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
           place: {
@@ -532,10 +533,18 @@ export class BoardGameMap {
               'text-field': ['get', 'label'],
               'text-anchor': 'top',
               'text-max-width': 10,
-              'symbol-sort-key': ['-', 0, ['get', 'size']],
+              'symbol-sort-key': ['-', 0, ['to-number', ['get', 'size']]],
               'symbol-spacing': 500,
               'text-offset': [0, 0.5],
-              'text-size': ['interpolate', ['linear'], ['zoom'], 6, ['/', ['get', 'size'], 20], 20, ['+', ['get', 'size'], 20]],
+              'text-size': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0,
+                ['*', ['to-number', ['get', 'size']], 80],
+                20,
+                ['+', ['to-number', ['get', 'size']], 60],
+              ],
             },
             paint: {
               'text-color': currentColorTheme.circleLabelsColor,
@@ -557,15 +566,23 @@ export class BoardGameMap {
             source: 'selected-nodes',
             layout: {
               'text-allow-overlap': true,
-              'text-ignore-placement': true,
+              'text-ignore-placement': false,
               'text-font': ['Roboto Condensed Regular'],
               'text-field': ['get', 'name'],
               'text-anchor': 'top',
               'text-max-width': 10,
-              'symbol-sort-key': ['-', 0, ['get', 'size']],
+              'symbol-sort-key': ['-', 0, ['to-number', ['get', 'size']]],
               'symbol-spacing': 500,
               'text-offset': [0, 0.5],
-              'text-size': ['interpolate', ['linear'], ['zoom'], 3, ['/', ['get', 'size'], 20], 20, ['+', ['get', 'size'], 20]],
+              'text-size': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0,
+                ['*', ['to-number', ['get', 'size']], 80],
+                20,
+                ['+', ['to-number', ['get', 'size']], 60],
+              ],
             },
             paint: {
               'text-color': '#fff',
