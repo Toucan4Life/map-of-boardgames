@@ -217,28 +217,42 @@ function getSuggestionsInternal() {
     showSuggestions.value = false
     return
   }
-
   previous.value = window.setTimeout(() => {
+    loadingError.value = ''
     showLoading.value = true
-    window.fuzzySearcher.find(currentQuery.value.toLowerCase()).then(
-      (sug: undefined | SearchResult[]) => {
-        if (sug === undefined) return // resolution of cancelled promise
+    window.fuzzySearcher
+      .find(currentQuery.value)
+      .then(
+        (sug: undefined | SearchResult[]) => {
+          if (sug === undefined) return
+          showLoading.value = false
+          suggestions.value = sug.map(toOwnSuggestion)
+
+          currentSelected.value = sug.length > 0 ? 0 : -1
+          if (sug.length > 0) {
+            suggestions.value[0].selected = true
+          }
+
+          showIfNeeded(suggestions.value.length > 0)
+        },
+        (err: unknown) => {
+          showLoading.value = false
+          if (err instanceof Error) {
+            loadingError.value = err instanceof Error ? err.message : 'Unknown error'
+          }
+        },
+      )
+      .catch((err: unknown) => {
         showLoading.value = false
-        suggestions.value = sug.map(toOwnSuggestion)
-        currentSelected.value = -1
-        showIfNeeded(suggestions.value.length > 0)
-      },
-      (err: unknown) => {
         if (err instanceof Error) {
-          loadingError.value = err.message
+          loadingError.value = err instanceof Error ? err.message : 'Unknown error'
         }
-      },
-    )
+      })
   }, props.delay)
 }
 
 function cycleTheList(e: KeyboardEvent): void {
-  const items = suggestions
+  const items = suggestions.value
   let currentS = currentSelected.value
   // Any key is alright for the suggestions
   pendingKeyToShow.value = false
@@ -250,8 +264,9 @@ function cycleTheList(e: KeyboardEvent): void {
   } else if (e.key === 'ArrowDown') {
     dx = 1
   } else if (e.key === 'Enter') {
-    if (items.value[currentS]) {
-      pickSuggestion(items.value[currentS])
+    console.log('Enter pressed', currentS, items.length, items[currentS])
+    if (items[currentS]) {
+      pickSuggestion(items[currentS])
     } else {
       pickSuggestion({
         text: currentQuery.value,
@@ -270,16 +285,16 @@ function cycleTheList(e: KeyboardEvent): void {
     hideSuggestions()
   }
 
-  if (!dx || items.value.length === 0) return
+  if (!dx || items.length === 0) return
 
   e.preventDefault()
 
-  if (currentSelected.value >= 0) {
+  if (currentS >= 0) {
     suggestions.value[currentS].selected = false
   }
-  currentSelected.value += dx
-  if (currentS < 0) currentS = items.value.length - 1
-  if (currentS >= items.value.length) currentS = 0
+  currentS += dx
+  if (currentS < 0) currentS = items.length - 1
+  if (currentS >= items.length) currentS = 0
 
   suggestions.value[currentS].selected = true
   currentSelected.value = currentS

@@ -76,6 +76,7 @@ function showFullPreview() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  color: var(--color-link-hover);
 }
 .small-preview-container {
   padding: 4px 8px;
