@@ -22,16 +22,52 @@ const options = {
 }
 const parser = new XMLParser(options)
 
+function decodeMixedMojibake(text: string) {
+  return text
+    .replace(/(?:&#\d+;)+/g, (match) => {
+      // Check if this looks like UTF-8 encoded Japanese (or other multibyte chars)
+      const entities = match.match(/&#(\d+);/g)
+      const bytes = entities
+        ? entities.map((entity) => {
+            return parseInt(entity.slice(2, -1), 10)
+          })
+        : []
+
+      try {
+        // Try to decode as UTF-8
+        const uint8Array = new Uint8Array(bytes)
+        const decoder = new TextDecoder('utf-8', { fatal: true })
+        const decoded = decoder.decode(uint8Array)
+
+        // Check if the decoded text looks like valid characters
+        if (decoded && !decoded.includes('\uFFFD') && decoded.length > 0) {
+          return decoded
+        }
+      } catch {
+        // If UTF-8 decoding fails, fall through to regular HTML entity decoding
+      }
+
+      // Fallback to regular HTML entity decoding for non-UTF-8 sequences
+      const temp = document.createElement('div')
+      temp.innerHTML = match
+      return temp.textContent || temp.innerText || match
+    })
+    .replace(/&([a-zA-Z]+|#\d+);/g, (match) => {
+      // Handle remaining HTML entities (like &mdash;, &#10;, etc.)
+      const temp = document.createElement('div')
+      temp.innerHTML = match
+      return temp.textContent || temp.innerText || match
+    })
+}
 export async function getGameInfo(thingId: string): Promise<GameDetail | undefined> {
   const response = await fetch(`${rawBGGUrl}/thing?id=${thingId}&stats=1`)
   if (response.ok) {
     const parsedResponse = await response.text()
     const p = parser.parse(parsedResponse)
-
     return {
       imageUrl: p.items.item.image,
       rating: parseFloat(p.items.item.statistics.ratings.average['@_value']).toFixed(1),
-      description: htmlDecode(p.items.item.description).split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s+/)[0],
+      description: decodeMixedMojibake(p.items.item.description).split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s+/)[0],
       minPlayTime: p.items.item.minplaytime['@_value'],
       maxPlayTime: p.items.item.maxplaytime['@_value'],
       weight: parseFloat(p.items.item.statistics.ratings.averageweight['@_value']).toFixed(2),
@@ -58,9 +94,4 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
       yearPublished: p.items.item.yearpublished['@_value'],
     }
   }
-}
-function htmlDecode(input: string) {
-  const doc = new DOMParser().parseFromString(input, 'text/html')
-  if (doc.documentElement.textContent) return doc.documentElement.textContent
-  else return ''
 }
