@@ -26,7 +26,10 @@ export class FuzzySearcher {
 
   async find(query: string): Promise<SearchResult[] | undefined> {
     // Load index for first letter if not already loaded
-    const indexKey = query[0]
+    let indexKey = query[0]
+    if (indexKey >= 'A' && indexKey <= 'Z') {
+      indexKey = indexKey.toLowerCase()
+    }
     if (!this.fetchedIndices.has(indexKey)) {
       await this.loadIndex(indexKey)
     }
