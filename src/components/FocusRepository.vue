@@ -19,6 +19,7 @@ function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): v
     id: repo.id,
     selected: false,
     html: null,
+    year: '0',
   })
 }
 function closePanel(): void {
