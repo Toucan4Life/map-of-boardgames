@@ -7,6 +7,7 @@ interface Word {
   lat: number
   lon: number
   id: number
+  year: string
 }
 
 export interface SearchResult {
@@ -22,7 +23,6 @@ export interface SearchResult {
 export class FuzzySearcher {
   private words: Word[] = []
   private fetchedIndices = new Set<string>()
-  private seenWords = new Set<string>()
 
   async find(query: string): Promise<SearchResult[] | undefined> {
     // Load index for first letter if not already loaded
@@ -45,7 +45,6 @@ export class FuzzySearcher {
     try {
       const url = new URL(`${config.namesEndpoint}/${indexKey}.json`)
       const data: string[][] = await dedupingFetch(url)
-
       this.addWordsToIndex(data)
       this.fetchedIndices.add(indexKey)
     } catch (error) {
@@ -56,23 +55,21 @@ export class FuzzySearcher {
   }
 
   private addWordsToIndex(data: string[][]): void {
-    data.forEach(([name, lat, lon, id]) => {
-      if (!this.seenWords.has(name)) {
-        this.words.push({
-          name,
-          lat: +lat,
-          lon: +lon,
-          id: +id,
-        })
-        this.seenWords.add(name)
-      }
+    data.forEach(([name, lat, lon, id, year]) => {
+      this.words.push({
+        name: name,
+        lat: +lat,
+        lon: +lon,
+        id: +id,
+        year: year,
+      })
     })
   }
 
   private formatResults(results: Fuzzysort.KeyResults<Word>): SearchResult[] {
     return results.map((result) => ({
-      html: result.highlight ? result.highlight('<b>', '</b>') : null,
-      text: result.target,
+      html: result.highlight('<b>', '</b>'),
+      text: result.target + ' (' + result.obj.year.toString() + ')',
       lat: result.obj.lat,
       lon: result.obj.lon,
       id: result.obj.id,
