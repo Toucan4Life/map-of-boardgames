@@ -18,6 +18,7 @@ export interface SearchResult {
   lat: number
   lon: number
   id: number
+  year: string
 }
 
 export class FuzzySearcher {
@@ -69,12 +70,13 @@ export class FuzzySearcher {
   private formatResults(results: Fuzzysort.KeyResults<Word>): SearchResult[] {
     return results.map((result) => ({
       html: result.highlight('<b>', '</b>'),
-      text: result.target + ' (' + result.obj.year.toString() + ')',
+      text: result.target,
       lat: result.obj.lat,
       lon: result.obj.lon,
       id: result.obj.id,
       skipAnimation: false,
       selected: false,
+      year: result.obj.year,
     }))
   }
 }

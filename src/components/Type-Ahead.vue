@@ -83,7 +83,7 @@
     <ul v-if="showSuggestions" class="suggestions">
       <li v-for="(suggestion, index) in suggestions" :key="index">
         <a class="suggestion" :class="{ selected: suggestion.selected }" href="#" @click.prevent="pickSuggestion(suggestion)">{{
-          suggestion.text
+          suggestion.text + ' (' + suggestion.year + ')'
         }}</a>
       </li>
     </ul>
@@ -276,6 +276,7 @@ function cycleTheList(e: KeyboardEvent): void {
         lat: 0,
         lon: 0,
         id: 0,
+        year: '0',
       })
     }
     e.preventDefault()
@@ -309,6 +310,7 @@ function toOwnSuggestion(x: SearchResult): SearchResult {
     lat: x.lat,
     id: x.id,
     skipAnimation: false,
+    year: x.year,
   }
 }
 </script>
