@@ -1,5 +1,4 @@
 import config from '../config'
-import generateShortRandomId from '../generateShortRandomId'
 import bus from '../bus'
 import { LngLat } from 'maplibre-gl'
 
@@ -122,4 +121,8 @@ function checkOriginalPlacesForChanges(mergedPlaces: GeoJSON.FeatureCollection<G
   }
 
   return false
+}
+
+function generateShortRandomId(): string {
+  return Math.random().toString(36).substring(2, 5)
 }

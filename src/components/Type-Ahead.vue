@@ -1,10 +1,8 @@
 <template>
   <div v-click-outside="hideSuggestions" class="ak-typeahead">
-    <a href="#" class="menu-opener" @click.prevent="menuClicked">
-      <img v-if="currentUser" :src="currentUser.avatar_url" class="avatar" />
+    <a href="#" class="menu-opener" @click.prevent="emit('menuClicked')">
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg
-        v-else
         xmlns="http://www.w3.org/2000/svg"
         width="24"
         height="24"
@@ -14,54 +12,35 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="feather feather-info"
       >
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="16" x2="12" y2="12"></line>
-        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
       </svg>
     </a>
-    <a href="#" class="menu-opener" @click.prevent="showAdvancedSearch">
-      <img v-if="currentUser" :src="currentUser.avatar_url" class="avatar" />
+    <a href="#" class="menu-opener" @click.prevent="emit('showAdvancedSearch')">
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg
-        id="Layer_1"
-        fill="currentColor"
-        height="24"
-        width="24"
-        version="1.1"
-        xmlns="http://www.w3.org/2000/svg"
-        xmlns:xlink="http://www.w3.org/1999/xlink"
-        viewBox="0 0 300.906 300.906"
-        xml:space="preserve"
-      >
-        <g>
-          <g>
-            <path
-              d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978
-			c0,3.688,2.03,7.076,5.281,8.816c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33
-			c2.782-1.854,4.453-4.977,4.453-8.32v-80.978l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0
-			z M167.587,166.77c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531
-			h199.736L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
-            />
-          </g>
-        </g>
+      <svg fill="currentColor" height="24" width="24" viewBox="0 0 300.906 300.906" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978c0,3.688,2.03,7.076,5.281,8.816c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33c2.782-1.854,4.453-4.977,4.453-8.32v-80.978l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0z M167.587,166.77c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531h199.736L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
+        />
       </svg>
     </a>
+
     <input
       ref="input"
+      v-model="currentQuery"
       autofocus
       type="text"
       autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"
-      :value="currentQuery"
       :placeholder="placeholder"
-      @input="handleInput"
-      @keydown="cycleTheList"
+      @keydown="handleKeydown"
     />
-    <a v-if="currentQuery || showClearButton" type="submit" class="search-submit" href="#" @click.prevent="clearSearch">
+
+    <a v-if="shouldShowClearButton" class="search-submit" href="#" @click.prevent="clearSearch">
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -73,28 +52,28 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="feather feather-x-circle"
       >
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="15" y1="9" x2="9" y2="15"></line>
-        <line x1="9" y1="9" x2="15" y2="15"></line>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
       </svg>
     </a>
-    <ul v-if="showSuggestions" class="suggestions">
-      <li v-for="(suggestion, index) in suggestions" :key="index">
-        <a class="suggestion" :class="{ selected: suggestion.selected }" href="#" @click.prevent="pickSuggestion(suggestion)">{{
-          suggestion.text + ' (' + suggestion.year + ')'
-        }}</a>
+
+    <ul v-if="suggestions.length" class="suggestions">
+      <li v-for="(s, i) in suggestions" :key="i">
+        <a class="suggestion" :class="{ selected: s.selected }" href="#" @click.prevent="pickSuggestion(s)">
+          {{ `${s.text} (${s.year})` }}
+        </a>
       </li>
     </ul>
 
     <ul v-if="showLoading" class="suggestions">
       <li class="searching">
-        <span v-if="!loadingError"
-          >Downloading search index for letter <b>{{ currentQuery[0] }}</b
-          >...</span
-        >
-        <div v-if="loadingError" class="loading-error">
+        <span v-if="!loadingError">
+          Downloading search index for letter <b>{{ currentQuery[0] }}</b
+          >...
+        </span>
+        <div v-else class="loading-error">
           <div>Failed to get project completions:</div>
           <pre>{{ loadingError }}</pre>
         </div>
@@ -105,213 +84,145 @@
 
 <script setup lang="ts">
 import type { SearchResult } from '@/lib/createFuzzySearcher.ts'
-import bus from '../lib/bus.ts'
-import { getCurrentUser, type User } from '../lib/githubClient.ts'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { find } from '@/lib/createFuzzySearcher.ts'
+import { computed, ref, watch } from 'vue'
+
 const emit = defineEmits<{
   menuClicked: []
   showAdvancedSearch: []
-  selected: [suggestion: SearchResult]
+  selected: [searchResult: SearchResult]
   beforeClear: [payload: { shouldProceed: boolean }]
   cleared: []
-  inputChanged: []
 }>()
 
-const props = defineProps({
-  placeholder: {
-    default: 'Type here',
-    type: String,
+const props = withDefaults(
+  defineProps<{
+    placeholder?: string
+    showClearButton?: string
+    query?: string
+    delay?: number
+  }>(),
+  {
+    placeholder: 'Type here',
+    showClearButton: '',
+    query: '',
+    delay: 80,
   },
-  showClearButton: {
-    default: '',
-    type: String,
-  },
-  query: {
-    default: '',
-    type: String,
-  },
-  delay: {
-    default: 80,
-    type: Number,
-  },
-})
+)
 
-const currentSelected = ref(-1)
-const showSuggestions = ref(false)
+const currentSelectedIndex = ref(-1)
 const showLoading = ref(false)
-const loadingError = ref<string>('')
-const suggestions = ref(new Array<SearchResult>())
-const currentUser = ref<User>()
+const loadingError = ref('')
+const suggestions = ref<SearchResult[]>([])
 const currentQuery = ref(props.query)
 const pendingKeyToShow = ref(false)
-const previous = ref<number>()
-const input = ref(null)
+const searchTimeoutId = ref<number>()
 
-onMounted(() => {
-  updateCurrentUser()
-  bus.on('auth-changed', updateCurrentUser)
+const hasActiveSuggestions = computed(() => suggestions.value.length > 0)
+const shouldShowClearButton = computed(() => currentQuery.value || props.showClearButton)
+
+watch(currentQuery, (query) => {
+  if (searchTimeoutId.value) clearTimeout(searchTimeoutId.value)
+  if (!query) {
+    suggestions.value = []
+    return
+  }
+  searchTimeoutId.value = window.setTimeout(() => performSearch(query), props.delay)
 })
-onBeforeUnmount(() => {
-  bus.off('auth-changed', updateCurrentUser)
-})
-
-function updateCurrentUser() {
-  getCurrentUser()
-    .then((user) => {
-      currentUser.value = user
-    })
-    .catch((err: unknown) => {
-      console.error('Failed to get current user:', err)
-    })
-}
-
-function menuClicked() {
-  emit('menuClicked')
-}
-
-function showAdvancedSearch() {
-  emit('showAdvancedSearch')
-}
 
 function hideSuggestions() {
-  showSuggestions.value = false
+  suggestions.value = []
   showLoading.value = false
   pendingKeyToShow.value = true
+  currentQuery.value = ''
 }
 
-function showIfNeeded(visible: boolean) {
-  // we need to wait until next key press before we can show suggestion.
-  // This avoids race conditions between search results and form submission
-  if (!pendingKeyToShow.value) showSuggestions.value = visible
-}
-
-function pickSuggestion(suggestion: SearchResult) {
-  currentQuery.value = suggestion.text
+function pickSuggestion(searchResult: SearchResult) {
+  currentQuery.value = searchResult.text
   hideSuggestions()
-  emit('selected', suggestion)
+  emit('selected', searchResult)
 }
 
 function clearSearch() {
   const payload = { shouldProceed: true }
   emit('beforeClear', payload)
   if (!payload.shouldProceed) return
-
   currentQuery.value = ''
-  getSuggestionsInternal()
-  // focus();
   emit('cleared')
 }
 
-function handleInput(event: Event) {
-  currentQuery.value = (event.target as HTMLInputElement).value
-  emit('inputChanged')
-  getSuggestionsInternal()
-}
-
-function getSuggestionsInternal() {
-  if (previous.value) {
-    window.clearTimeout(previous.value)
-    previous.value = undefined
-  }
-  if (!currentQuery.value) {
-    showSuggestions.value = false
-    return
-  }
-  previous.value = window.setTimeout(() => {
-    loadingError.value = ''
-    showLoading.value = true
-    window.fuzzySearcher
-      .find(currentQuery.value)
-      .then(
-        (sug: undefined | SearchResult[]) => {
-          if (sug === undefined) return
-          showLoading.value = false
-          suggestions.value = sug.map(toOwnSuggestion)
-
-          currentSelected.value = sug.length > 0 ? 0 : -1
-          if (sug.length > 0) {
-            suggestions.value[0].selected = true
-          }
-
-          showIfNeeded(suggestions.value.length > 0)
-        },
-        (err: unknown) => {
-          showLoading.value = false
-          if (err instanceof Error) {
-            loadingError.value = err instanceof Error ? err.message : 'Unknown error'
-          }
-        },
-      )
-      .catch((err: unknown) => {
-        showLoading.value = false
-        if (err instanceof Error) {
-          loadingError.value = err instanceof Error ? err.message : 'Unknown error'
-        }
-      })
-  }, props.delay)
-}
-
-function cycleTheList(e: KeyboardEvent): void {
-  const items = suggestions.value
-  let currentS = currentSelected.value
-  // Any key is alright for the suggestions
-  pendingKeyToShow.value = false
-
-  let dx
-
-  if (e.key === 'ArrowUp') {
-    dx = -1
-  } else if (e.key === 'ArrowDown') {
-    dx = 1
-  } else if (e.key === 'Enter') {
-    console.log('Enter pressed', currentS, items.length, items[currentS])
-    if (items[currentS]) {
-      pickSuggestion(items[currentS])
-    } else {
-      pickSuggestion({
-        text: currentQuery.value,
-        selected: false,
-        skipAnimation: false,
-        html: null,
-        lat: 0,
-        lon: 0,
-        id: 0,
-        year: '0',
-      })
+async function performSearch(query: string) {
+  loadingError.value = ''
+  showLoading.value = true
+  try {
+    const results = await find(query)
+    showLoading.value = false
+    if (!results) {
+      suggestions.value = []
+      return
     }
-    e.preventDefault()
-    return
-  } else if (e.key === 'Escape') {
-    // Esc === close
-    hideSuggestions()
+    suggestions.value = results.map((result) => ({ ...result, selected: false }))
+    const hasResults = results.length > 0
+    currentSelectedIndex.value = hasResults ? 0 : -1
+    if (hasResults) suggestions.value[0].selected = true
+  } catch (error) {
+    showLoading.value = false
+    loadingError.value = error instanceof Error ? error.message : 'Unknown error'
   }
-
-  if (!dx || items.length === 0) return
-
-  e.preventDefault()
-
-  if (currentS >= 0) {
-    suggestions.value[currentS].selected = false
-  }
-  currentS += dx
-  if (currentS < 0) currentS = items.length - 1
-  if (currentS >= items.length) currentS = 0
-
-  suggestions.value[currentS].selected = true
-  currentSelected.value = currentS
 }
 
-function toOwnSuggestion(x: SearchResult): SearchResult {
-  return {
-    selected: false,
-    text: x.text,
-    html: x.html,
-    lon: x.lon,
-    lat: x.lat,
-    id: x.id,
-    skipAnimation: false,
-    year: x.year,
+function navigateSuggestions(event: KeyboardEvent, direction: number) {
+  if (!hasActiveSuggestions.value) return
+  event.preventDefault()
+  if (currentSelectedIndex.value >= 0) {
+    suggestions.value[currentSelectedIndex.value].selected = false
   }
+
+  const modulo = (currentSelectedIndex.value + direction) % suggestions.value.length
+  const newIndex = modulo < 0 ? modulo + suggestions.value.length : modulo
+
+  suggestions.value[newIndex].selected = true
+  currentSelectedIndex.value = newIndex
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  pendingKeyToShow.value = false
+  switch (event.key) {
+    case 'ArrowUp': {
+      navigateSuggestions(event, -1)
+      return
+    }
+    case 'ArrowDown': {
+      navigateSuggestions(event, 1)
+      return
+    }
+    case 'Enter': {
+      handleEnterKey(event)
+      return
+    }
+    case 'Escape': {
+      hideSuggestions()
+      return
+    }
+    default:
+      return
+  }
+}
+
+function handleEnterKey(event: KeyboardEvent) {
+  event.preventDefault()
+  pickSuggestion(
+    suggestions.value[currentSelectedIndex.value] || {
+      text: currentQuery.value,
+      selected: false,
+      skipAnimation: false,
+      html: null,
+      lat: 0,
+      lon: 0,
+      id: 0,
+      year: '0',
+    },
+  )
 }
 </script>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, onBeforeMount, computed } from 'vue'
+import { ref, onBeforeUnmount, onBeforeMount, computed, reactive } from 'vue'
 import TypeAhead from './components/Type-Ahead.vue'
 import GithubRepository from './components/GithubRepository.vue'
 import SmallPreview from './components/SmallPreview.vue'
@@ -12,23 +12,30 @@ import GroupViewModel from './lib/GroupViewModel'
 import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
 import bus from './lib/bus'
 import type { SearchResult } from './lib/createFuzzySearcher'
+import type { AdvSearchResult } from './components/AdvSearch.vue'
 
 const SM_SCREEN_BREAKPOINT = 600
 
-const sidebarVisible = ref(false)
-const currentProject = ref('')
-const currentId = ref<number>()
-const smallPreviewName = ref('')
+const ui = reactive({
+  sidebarVisible: false,
+  aboutVisible: false,
+  advSearchVisible: false,
+  unsavedChangesVisible: false,
+  hasUnsavedChanges: false,
+  isSmallScreen: window.innerWidth < SM_SCREEN_BREAKPOINT,
+})
+
+const defaultProjectState = {
+  current: '',
+  currentId: undefined as number | undefined,
+  smallPreviewName: '',
+}
+const project = reactive({ ...defaultProjectState })
+
+const currentGroup = ref<GroupViewModel>()
+const currentFocus = ref<FocusViewModel>()
 const tooltip = ref<Tooltip>()
 const contextMenu = ref<ContextMenu>()
-const aboutVisible = ref(false)
-const advSearchVisible = ref(false)
-const currentGroup = ref<GroupViewModel>()
-// eslint-disable-next-line prefer-const
-let currentFocus = ref<FocusViewModel>()
-const unsavedChangesVisible = ref(false)
-const hasUnsavedChanges = ref(false)
-const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
 
 interface Tooltip {
   left: string
@@ -36,7 +43,6 @@ interface Tooltip {
   background: string
   text: string
 }
-
 interface ContextMenu {
   click: () => void
   left: string
@@ -45,234 +51,197 @@ interface ContextMenu {
 }
 
 let lastSelected: SearchResult | undefined
+const groupCache = new Map<number, GroupViewModel>()
 
-const groupCache: Map<number, GroupViewModel | undefined> = new Map()
+const typeAheadVisible = computed(() => !(ui.isSmallScreen && currentGroup.value && !project.current))
 
-function closeSideBarViewer() {
-  sidebarVisible.value = false
-  currentProject.value = ''
-  smallPreviewName.value = ''
+const clearProjectState = () => {
+  ui.sidebarVisible = false
+  Object.assign(project, defaultProjectState)
   window.mapOwner.clearHighlights()
 }
 
-function closeSideBarOnSmallScreen() {
-  closeSideBarViewer()
-}
-
-function findProject(x: SearchResult) {
-  if (lastSelected !== undefined && x.text === lastSelected.text) {
-    x = lastSelected
-  } else {
-    lastSelected = x
-  }
-
-  const coord: [number, number] = [x.lat, x.lon]
-
-  const location = {
-    center: coord,
-    zoom: 12,
-  }
-  window.mapOwner.makeVisible(x.text, location, x.skipAnimation)
-  currentProject.value = x.text
-  currentId.value = x.id
-}
-
-function onRepoSelected(repo: SearchResult) {
+const setProjectFromRepo = (repo: SearchResult, fullView = false) => {
   lastSelected = repo
-  if (isSmallScreen.value) {
-    // move panel to the bottom
-    smallPreviewName.value = repo.text
-    currentId.value = repo.id
-    currentProject.value = ''
+  if (ui.isSmallScreen && !fullView) {
+    Object.assign(project, { current: '', currentId: repo.id, smallPreviewName: repo.text })
   } else {
-    currentProject.value = repo.text
-    currentId.value = repo.id
+    Object.assign(project, { current: repo.text, currentId: repo.id, smallPreviewName: '' })
   }
 }
 
-function showFullPreview() {
-  if (!lastSelected) {
-    console.warn('No last selected repository to show full preview for.')
-    return
+const createFocusViewModel = async (repo: string, groupId: number) => {
+  try {
+    const vm = await new FocusViewModel(repo).create(groupId)
+    if (vm) {
+      currentGroup.value = undefined
+      currentFocus.value = vm
+    }
+  } catch (err) {
+    console.error('Error creating FocusViewModel:', err)
   }
-  smallPreviewName.value = ''
-  currentProject.value = lastSelected.text
 }
 
-function onShowTooltip(newTooltip: Tooltip) {
-  tooltip.value = newTooltip
+const getOrCreateGroupViewModel = (groupId: number) => {
+  if (!groupCache.has(groupId)) groupCache.set(groupId, new GroupViewModel())
+  const group = groupCache.get(groupId)
+  if (!group) throw new Error(`GroupViewModel for groupId ${groupId.toString()} not found`)
+  return group
 }
 
-function onShowContextMenu(newContextMenu: ContextMenu) {
-  contextMenu.value = newContextMenu
+const findProject = (x: SearchResult) => {
+  lastSelected = lastSelected?.text === x.text ? lastSelected : x
+  window.mapOwner.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
+  Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
 }
 
-onBeforeUnmount(() => {
-  window.mapOwner.dispose()
-  bus.off('repo-selected', onRepoSelected)
-  bus.off('show-tooltip', onShowTooltip)
-  bus.off('show-context-menu', onShowContextMenu)
-  bus.off('show-largest-in-group', onShowLargestInGroup)
-  bus.off('focus-on-repo', onFocusOnRepo)
-  bus.off('unsaved-changes-detected', onUnsavedChangesDetected)
-  window.removeEventListener('resize', onResize)
-})
-
-onBeforeMount(() => {
-  bus.on('repo-selected', onRepoSelected)
-  bus.on('show-context-menu', onShowContextMenu)
-  bus.on('show-tooltip', onShowTooltip)
-  bus.on('show-largest-in-group', onShowLargestInGroup)
-  bus.on('focus-on-repo', onFocusOnRepo)
-  bus.on('unsaved-changes-detected', onUnsavedChangesDetected)
-  window.addEventListener('resize', onResize)
-})
-
-function onResize() {
-  isSmallScreen.value = window.innerWidth < SM_SCREEN_BREAKPOINT
+const showFullPreview = () => {
+  if (lastSelected) setProjectFromRepo(lastSelected, true)
 }
 
-function doContextMenuAction(menuItem: { text: string; click: () => void }) {
+const doContextMenuAction = (item: { text: string; click: () => void }) => {
   contextMenu.value = undefined
-  menuItem.click()
+  item.click()
 }
 
-function onFocusOnRepo(repo: string, groupId: number) {
-  new FocusViewModel(repo)
-    .create(groupId)
-    .then((focusViewModel) => {
-      if (focusViewModel) {
-        currentGroup.value = undefined
-        currentFocus.value = focusViewModel
-      }
-    })
-    .catch((error: unknown) => {
-      console.error('Error creating FocusViewModel:', error)
-    })
-}
-
-function onShowLargestInGroup(groupId: number, largest: Repositories[]) {
-  let groupViewModel = groupCache.get(groupId)
-  if (!groupViewModel) {
-    groupViewModel = new GroupViewModel()
-    groupCache.set(groupId, groupViewModel)
+const closeView = (view: 'group' | 'focus') => {
+  if (view === 'group') {
+    currentGroup.value = undefined
+    window.mapOwner.clearBorderHighlights()
+  } else {
+    currentFocus.value = undefined
   }
-  groupViewModel.setLargest(largest)
-  currentFocus.value = undefined
-  currentGroup.value = groupViewModel
 }
 
-function onUnsavedChangesDetected(hasChanges: boolean) {
-  hasUnsavedChanges.value = hasChanges
-}
-
-function closeLargestRepositories() {
-  currentGroup.value = undefined
-  window.mapOwner.clearBorderHighlights()
-}
-
-function closeFocusView() {
-  currentFocus.value = undefined
-}
-
-const typeAheadVisible = computed(() => {
-  return !(isSmallScreen.value && currentGroup.value && !currentProject.value)
-})
-
-function showUnsavedChanges() {
-  unsavedChangesVisible.value = true
-}
-
-async function listCurrentConnections() {
-  //console.log("listCurrentConnections");
+const listCurrentConnections = async () => {
   if (!lastSelected) {
     console.warn('No last selected repository to list connections for.')
     return
   }
   const groupId = await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon)
-  if (groupId !== undefined) {
-    const focusViewModel = await new FocusViewModel(lastSelected.text).create(groupId)
-    currentGroup.value = undefined
-    currentFocus.value = focusViewModel
+  if (groupId !== undefined) await createFocusViewModel(lastSelected.text, groupId)
+}
+
+const search = (params: AdvSearchResult) => {
+  // Map params to the required structure, providing defaults if necessary
+  const highlightParams = {
+    minWeight: params.minWeight ?? 0,
+    maxWeight: params.maxWeight ?? 10,
+    minRating: params.minRating ?? 0,
+    maxRating: params.maxRating ?? 10,
+    minPlaytime: params.minPlaytime ?? 0,
+    maxPlaytime: params.maxPlaytime ?? 1000,
+    playerChoice: params.playerChoice ?? 0,
+    minPlayers: params.minPlayers ?? 1,
+    maxPlayers: params.maxPlayers ?? 20,
+    minYear: params.minYear ?? 1900,
+    maxYear: params.maxYear ?? new Date().getFullYear(),
   }
+  window.mapOwner.highlightNode(highlightParams)
 }
-function search(parameters: {
-  minWeight: number
-  maxWeight: number
-  minRating: number
-  maxRating: number
-  minPlaytime: number
-  maxPlaytime: number
-  playerChoice: number
-  minPlayers: number
-  maxPlayers: number
-  minYear: number
-  maxYear: number
-}) {
-  window.mapOwner.highlightNode(parameters)
-}
+
+onBeforeMount(() => {
+  bus.on('repo-selected', setProjectFromRepo)
+  bus.on('show-context-menu', (m) => (contextMenu.value = m))
+  bus.on('show-tooltip', (t) => (tooltip.value = t))
+  bus.on('show-largest-in-group', (id: number, largest: Repositories[]) => {
+    const g = getOrCreateGroupViewModel(id)
+    g.setLargest(largest)
+    currentFocus.value = undefined
+    currentGroup.value = g
+  })
+  bus.on('focus-on-repo', (repo, groupId) => void createFocusViewModel(repo, groupId))
+  bus.on('unsaved-changes-detected', (has) => (ui.hasUnsavedChanges = has))
+  window.addEventListener('resize', () => (ui.isSmallScreen = window.innerWidth < SM_SCREEN_BREAKPOINT))
+})
+
+onBeforeUnmount(() => {
+  window.mapOwner.dispose()
+  bus.off('repo-selected', setProjectFromRepo)
+  bus.off('show-context-menu', (m) => (contextMenu.value = m))
+  bus.off('show-tooltip', (t) => (tooltip.value = t))
+  bus.off('show-largest-in-group', () => {})
+  bus.off('focus-on-repo', () => {})
+  bus.off('unsaved-changes-detected', () => {})
+  window.removeEventListener('resize', () => (ui.isSmallScreen = window.innerWidth < SM_SCREEN_BREAKPOINT))
+})
 </script>
 
 <template>
   <div>
-    <div v-if="hasUnsavedChanges" class="unsaved-changes">
-      You have unsaved labels in local storage. <a href="#" class="normal" @click.prevent="showUnsavedChanges()">Click here</a> to see them.
+    <!-- Unsaved changes banner -->
+    <div v-if="ui.hasUnsavedChanges" class="unsaved-changes">
+      You have unsaved labels in local storage.
+      <a href="#" class="normal" @click.prevent="ui.unsavedChangesVisible = true">Click here</a>
+      to see them.
     </div>
+
+    <!-- Made by -->
     <div class="made-by">
       Made by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life"> Toucan4Life, </a>
+      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life">Toucan4Life</a>,
       inspired by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Anvaka"> Anvaka </a>
+      <a class="normal" aria-label="Inspired by @anvaka" target="_blank" href="https://github.com/Anvaka">Anvaka</a>
     </div>
-    <largest-repositories
-      v-if="currentGroup"
-      :repos="currentGroup"
-      class="right-panel"
-      @selected="findProject"
-      @close="closeLargestRepositories()"
-    ></largest-repositories>
-    <focus-repository v-if="currentFocus" :vm="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView()"></focus-repository>
+
+    <!-- Right panel views -->
+    <largest-repositories v-if="currentGroup" :repos="currentGroup" class="right-panel" @selected="findProject" @close="closeView('group')" />
+    <focus-repository v-if="currentFocus" :vm="currentFocus" class="right-panel" @selected="findProject" @close="closeView('focus')" />
+
+    <!-- Full repository view -->
     <github-repository
-      v-if="currentProject && currentId"
-      :id="currentId"
-      :name="currentProject"
-      @list-connections="listCurrentConnections()"
-    ></github-repository>
+      v-if="project.current && project.currentId"
+      :id="project.currentId"
+      :name="project.current"
+      @list-connections="listCurrentConnections"
+    />
+
+    <!-- Search bar -->
     <form v-if="typeAheadVisible" class="search-box" @submit.prevent>
       <type-ahead
         placeholder="Find Game"
-        :show-clear-button="currentProject"
-        :query="currentProject"
-        @menu-clicked="aboutVisible = true"
-        @show-advanced-search="advSearchVisible = true"
+        :show-clear-button="project.current ? 'true' : 'false'"
+        :query="project.current"
+        @menu-clicked="ui.aboutVisible = true"
+        @show-advanced-search="ui.advSearchVisible = true"
         @selected="findProject"
-        @before-clear="closeSideBarOnSmallScreen"
-        @cleared="closeSideBarViewer"
-      ></type-ahead>
+        @before-clear="clearProjectState"
+        @cleared="clearProjectState"
+      />
     </form>
+
+    <!-- Small preview -->
     <transition name="slide-bottom">
       <small-preview
-        v-if="smallPreviewName && currentId"
-        :id="currentId"
-        :name="smallPreviewName"
+        v-if="project.smallPreviewName && project.currentId"
+        :id="project.currentId"
+        :name="project.smallPreviewName"
         class="small-preview"
-        @show-full-preview="showFullPreview()"
-      ></small-preview>
+        @show-full-preview="showFullPreview"
+      />
     </transition>
+
+    <!-- Tooltip -->
     <div v-if="tooltip" class="tooltip" :style="{ left: tooltip.left, top: tooltip.top, background: tooltip.background }">
       {{ tooltip.text }}
     </div>
+
+    <!-- Context menu -->
     <div v-if="contextMenu" class="context-menu" :style="{ left: contextMenu.left, top: contextMenu.top }">
-      <a v-for="(item, key) in contextMenu.items" :key="key" href="#" @click.prevent="doContextMenuAction(item)">{{ item.text }}</a>
+      <a v-for="(item, key) in contextMenu.items" :key="key" href="#" @click.prevent="doContextMenuAction(item)">
+        {{ item.text }}
+      </a>
     </div>
+
+    <!-- Slide-in overlays -->
     <transition name="slide-top">
-      <unsaved-changes v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false"></unsaved-changes>
+      <unsaved-changes v-if="ui.unsavedChangesVisible" class="changes-window" @close="ui.unsavedChangesVisible = false" />
     </transition>
     <transition name="slide-left">
-      <about v-if="aboutVisible" class="about" @close="aboutVisible = false"></about>
+      <about v-if="ui.aboutVisible" class="about" @close="ui.aboutVisible = false" />
     </transition>
- <transition name="slide-right">
-      <advSearch v-if="advSearchVisible" class="adv-search" @search="search" @close="advSearchVisible = false"></advSearch>
+    <transition name="slide-right">
+      <advSearch v-if="ui.advSearchVisible" class="adv-search" @search="search" @close="ui.advSearchVisible = false" />
     </transition>
   </div>
 </template>
@@ -448,7 +417,7 @@ function search(parameters: {
 .adv-search {
   position: fixed;
   top: 0;
-right: 0;
+  right: 0;
   width: var(--side-panel-width);
   background: var(--color-background);
   z-index: 2;
