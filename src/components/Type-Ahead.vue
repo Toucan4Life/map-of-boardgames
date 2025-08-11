@@ -1,28 +1,25 @@
 <template>
   <div v-click-outside="hideSuggestions" class="ak-typeahead">
     <a href="#" class="menu-opener" @click.prevent="emit('menuClicked')">
+      <!-- Info icon -->
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10" />
         <line x1="12" y1="16" x2="12" y2="12" />
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </svg>
     </a>
+
     <a href="#" class="menu-opener" @click.prevent="emit('showAdvancedSearch')">
+      <!-- Funnel icon -->
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
       <svg fill="currentColor" height="24" width="24" viewBox="0 0 300.906 300.906" xmlns="http://www.w3.org/2000/svg">
         <path
-          d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978c0,3.688,2.03,7.076,5.281,8.816c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33c2.782-1.854,4.453-4.977,4.453-8.32v-80.978l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0z M167.587,166.77c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531h199.736L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
+          d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978c0,3.688,2.03,7.076,5.281,8.816
+             c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33c2.782-1.854,4.453-4.977,4.453-8.32v-80.978
+             l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0z M167.587,166.77
+             c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531h199.736
+             L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
         />
       </svg>
     </a>
@@ -41,18 +38,9 @@
     />
 
     <a v-if="shouldShowClearButton" class="search-submit" href="#" @click.prevent="clearSearch">
+      <!-- X-circle icon -->
       <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10" />
         <line x1="15" y1="9" x2="9" y2="15" />
         <line x1="9" y1="9" x2="15" y2="15" />
@@ -61,7 +49,7 @@
 
     <ul v-if="suggestions.length" class="suggestions">
       <li v-for="(s, i) in suggestions" :key="i">
-        <a class="suggestion" :class="{ selected: s.selected }" href="#" @click.prevent="pickSuggestion(s)">
+        <a class="suggestion" :class="{ selected: s.selected }" href="#" @click.prevent="selectSuggestion(s)">
           {{ `${s.text} (${s.year})` }}
         </a>
       </li>
@@ -110,35 +98,32 @@ const props = withDefaults(
   },
 )
 
-const currentSelectedIndex = ref(-1)
+const currentQuery = ref(props.query)
+const suggestions = ref<SearchResult[]>([])
 const showLoading = ref(false)
 const loadingError = ref('')
-const suggestions = ref<SearchResult[]>([])
-const currentQuery = ref(props.query)
-const pendingKeyToShow = ref(false)
-const searchTimeoutId = ref<number>()
+const currentSelectedIndex = ref(-1)
 
-const hasActiveSuggestions = computed(() => suggestions.value.length > 0)
-const shouldShowClearButton = computed(() => currentQuery.value || props.showClearButton)
+const shouldShowClearButton = computed(() => currentQuery.value.trim().length > 0)
+
+let searchTimeoutId: number | undefined
 
 watch(currentQuery, (query) => {
-  if (searchTimeoutId.value) clearTimeout(searchTimeoutId.value)
+  if (searchTimeoutId) clearTimeout(searchTimeoutId)
   if (!query) {
     suggestions.value = []
     return
   }
-  searchTimeoutId.value = window.setTimeout(() => performSearch(query), props.delay)
+  searchTimeoutId = window.setTimeout(() => performSearch(query), props.delay)
 })
 
 function hideSuggestions() {
   suggestions.value = []
   showLoading.value = false
-  pendingKeyToShow.value = true
-  currentQuery.value = ''
 }
 
-function pickSuggestion(searchResult: SearchResult) {
-  currentQuery.value = searchResult.text
+function selectSuggestion(searchResult: SearchResult) {
+  currentQuery.value = ''
   hideSuggestions()
   emit('selected', searchResult)
 }
@@ -157,36 +142,23 @@ async function performSearch(query: string) {
   try {
     const results = await find(query)
     showLoading.value = false
-    if (!results) {
-      suggestions.value = []
-      return
-    }
-    suggestions.value = results.map((result) => ({ ...result, selected: false }))
-    const hasResults = results.length > 0
-    currentSelectedIndex.value = hasResults ? 0 : -1
-    if (hasResults) suggestions.value[0].selected = true
-  } catch (error) {
+    suggestions.value = (results || []).map((r, idx) => ({ ...r, selected: idx === 0 }))
+    currentSelectedIndex.value = suggestions.value.length ? 0 : -1
+  } catch (err) {
     showLoading.value = false
-    loadingError.value = error instanceof Error ? error.message : 'Unknown error'
+    loadingError.value = err instanceof Error ? err.message : 'Unknown error'
   }
 }
 
 function navigateSuggestions(event: KeyboardEvent, direction: number) {
-  if (!hasActiveSuggestions.value) return
+  if (!suggestions.value.length) return
   event.preventDefault()
-  if (currentSelectedIndex.value >= 0) {
-    suggestions.value[currentSelectedIndex.value].selected = false
-  }
-
-  const modulo = (currentSelectedIndex.value + direction) % suggestions.value.length
-  const newIndex = modulo < 0 ? modulo + suggestions.value.length : modulo
-
-  suggestions.value[newIndex].selected = true
-  currentSelectedIndex.value = newIndex
+  suggestions.value[currentSelectedIndex.value].selected = false
+  currentSelectedIndex.value = (currentSelectedIndex.value + direction + suggestions.value.length) % suggestions.value.length
+  suggestions.value[currentSelectedIndex.value].selected = true
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  pendingKeyToShow.value = false
   switch (event.key) {
     case 'ArrowUp': {
       navigateSuggestions(event, -1)
@@ -197,32 +169,17 @@ function handleKeydown(event: KeyboardEvent) {
       return
     }
     case 'Enter': {
-      handleEnterKey(event)
+      event.preventDefault()
+      if (currentSelectedIndex.value >= 0) {
+        selectSuggestion(suggestions.value[currentSelectedIndex.value])
+      }
       return
     }
     case 'Escape': {
       hideSuggestions()
       return
     }
-    default:
-      return
   }
-}
-
-function handleEnterKey(event: KeyboardEvent) {
-  event.preventDefault()
-  pickSuggestion(
-    suggestions.value[currentSelectedIndex.value] || {
-      text: currentQuery.value,
-      selected: false,
-      skipAnimation: false,
-      html: null,
-      lat: 0,
-      lon: 0,
-      id: 0,
-      year: '0',
-    },
-  )
 }
 </script>
 
