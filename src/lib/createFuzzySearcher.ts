@@ -21,62 +21,44 @@ export interface SearchResult {
   year: string
 }
 
-export class FuzzySearcher {
-  private words: Word[] = []
-  private fetchedIndices = new Set<string>()
+const cache: Record<string, Word[]> = {}
+const loadIndex = async (key: string): Promise<Word[]> => {
+  if (key in cache) return cache[key]
 
-  async find(query: string): Promise<SearchResult[] | undefined> {
-    // Load index for first letter if not already loaded
-    let indexKey = query[0]
-    if (indexKey >= 'A' && indexKey <= 'Z') {
-      indexKey = indexKey.toLowerCase()
-    }
-    if (!this.fetchedIndices.has(indexKey)) {
-      await this.loadIndex(indexKey)
-    }
-    // Perform fuzzy search
-    const results = fuzzysort.go(query, this.words, {
-      limit: 10,
-      key: 'name',
-    })
-    return this.formatResults(results)
-  }
+  try {
+    const url = new URL(`${config.namesEndpoint}/${key}.json`)
+    const data: string[][] = await dedupingFetch(url)
 
-  private async loadIndex(indexKey: string): Promise<void> {
-    try {
-      const url = new URL(`${config.namesEndpoint}/${indexKey}.json`)
-      const data: string[][] = await dedupingFetch(url)
-      this.addWordsToIndex(data)
-      this.fetchedIndices.add(indexKey)
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(`Failed to fetch index for ${indexKey}: ${error.message}`)
-      }
-    }
-  }
-
-  private addWordsToIndex(data: string[][]): void {
-    data.forEach(([name, lat, lon, id, year]) => {
-      this.words.push({
-        name: name,
-        lat: +lat,
-        lon: +lon,
-        id: +id,
-        year: year,
-      })
-    })
-  }
-
-  private formatResults(results: Fuzzysort.KeyResults<Word>): SearchResult[] {
-    return results.map((result) => ({
-      html: result.highlight('<b>', '</b>'),
-      text: result.target,
-      lat: result.obj.lat,
-      lon: result.obj.lon,
-      id: result.obj.id,
-      skipAnimation: false,
-      selected: false,
-      year: result.obj.year,
+    cache[key] = data.map(([name, lat, lon, id, year]) => ({
+      name,
+      lat: +lat,
+      lon: +lon,
+      id: +id,
+      year,
     }))
+  } catch (error) {
+    console.error(`Failed to load index ${key}:`, error)
+    cache[key] = []
   }
+
+  return cache[key]
+}
+
+export const find = async (query: string): Promise<SearchResult[] | undefined> => {
+  if (!query) return undefined
+
+  const firstChar = query[0]
+  const key = firstChar >= 'A' && firstChar <= 'Z' ? firstChar.toLowerCase() : firstChar
+  const words = await loadIndex(key)
+
+  return fuzzysort.go(query, words, { limit: 10, key: 'name' }).map((r) => ({
+    html: r.highlight('<b>', '</b>'),
+    text: r.target,
+    lat: r.obj.lat,
+    lon: r.obj.lon,
+    id: r.obj.id,
+    selected: false,
+    skipAnimation: false,
+    year: r.obj.year,
+  }))
 }

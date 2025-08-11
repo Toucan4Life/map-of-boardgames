@@ -22,17 +22,31 @@ const explorer = {
   placeLabelsHaloColor: '#000',
   placeLabelsHaloWidth: 0.2,
   color: [
-    { input: '#516ebc', output: '#013185' }, // '#AAD8E6'},
-    { input: '#00529c', output: '#1373A9' }, // '#2B7499'},
-    { input: '#153477', output: '#05447C' }, // '#56A9CE'},
-    { input: '#37009c', output: '#013161' }, // '#2692C6'},
-    { input: '#00789c', output: '#022D6D' }, // '#1CA0E3'},
-    { input: '#37549c', output: '#00154D' }, // '#00396D'},
-    { input: '#9c4b00', output: '#00154D' }, // '#00396D'}
+    { input: '#516ebc', output: '#013185' },
+    { input: '#00529c', output: '#1373A9' },
+    { input: '#153477', output: '#05447C' },
+    { input: '#37009c', output: '#013161' },
+    { input: '#00789c', output: '#022D6D' },
+    { input: '#37549c', output: '#00154D' },
+    { input: '#9c4b00', output: '#00154D' },
   ],
 }
 
 const currentColorTheme = explorer
+
+interface SearchParameters {
+  minWeight: number
+  maxWeight: number
+  minRating: number
+  maxRating: number
+  minPlaytime: number
+  maxPlaytime: number
+  playerChoice: number
+  minPlayers: number
+  maxPlayers: number
+  minYear: number
+  maxYear: number
+}
 
 export class BoardGameMap {
   dispose() {
@@ -49,7 +63,7 @@ export class BoardGameMap {
     this.map.dragRotate.disable()
     this.map.touchZoomRotate.disableRotation()
     this.fastLinesLayer = new getCustomLayer()
-    // collection of labels.
+
     this.map.on('load', () => {
       this.LoadMap()
         .then(() => {
@@ -64,7 +78,6 @@ export class BoardGameMap {
       bus.fire('show-tooltip')
 
       const bg = this.getBackgroundNearPoint(e.point)[0]
-
       let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
 
       if (this.labelEditor) {
@@ -72,11 +85,8 @@ export class BoardGameMap {
       }
 
       const nearestCity = this.findNearestCity(e.point)
-      if (nearestCity) {
+      if (nearestCity?.properties.label) {
         const name: string = nearestCity.properties.label
-        // const parts = name.split('/')
-        // const displayName = parts[parts.length - 1] || name
-
         ctxMenuItems.push({
           text: 'List connections of ' + name,
           click: () => {
@@ -86,7 +96,8 @@ export class BoardGameMap {
           },
         })
       }
-      const contextMenuItems: { items: { text: string; click: () => void }[]; left: string; top: string } = {
+
+      const contextMenuItems = {
         items: ctxMenuItems,
         left: e.point.x.toString() + 'px',
         top: e.point.y.toString() + 'px',
@@ -96,51 +107,116 @@ export class BoardGameMap {
     })
 
     this.map.on('click', (e) => {
-      // console.log("Clicked")
       bus.fire('show-context-menu')
       const nearestCity = this.findNearestCity(e.point)
-      // console.log("Nearest city :" + JSON.stringify(nearestCity))
-      if (!nearestCity) return
-      const repo = nearestCity.properties.label
-      if (!repo) return
-      this.showDetails(nearestCity)
+      const repo = nearestCity?.properties.label
+      if (!nearestCity || !repo) return
 
-      //const includeExternal = e.originalEvent.altKey
+      this.showDetails(nearestCity)
       this.drawBackgroundEdges(e.point, repo)
     })
+
     this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
 
-  private async LoadMap() {
-    const circle = await this.map.loadImage(config.iconSource + '/circle.png')
-    this.map.addImage('circle-icon', circle.data, { sdf: true })
-    const diamond = await this.map.loadImage(config.iconSource + '/diamond.png')
-    this.map.addImage('diamond-icon', diamond.data, { sdf: true })
-    const triangle = await this.map.loadImage(config.iconSource + '/triangle.png')
-    this.map.addImage('triangle-icon', triangle.data, { sdf: true })
-    const star = await this.map.loadImage(config.iconSource + '/star.png')
-    this.map.addImage('star-icon', star.data, { sdf: true })
+  async LoadMap() {
+    const iconNames = ['circle', 'diamond', 'triangle', 'star']
+
+    // Load all icons in parallel
+    const iconPromises = iconNames.map(async (name) => {
+      const image = await this.map.loadImage(config.iconSource + `/${name}.png`)
+      this.map.addImage(`${name}-icon`, image.data, { sdf: true })
+    })
+
+    await Promise.all(iconPromises)
+
+    // Add the circle layer after icons are loaded to avoid missing image warnings
+    // Add circle layer before the label layer so labels appear on top
+    this.map.addLayer(
+      {
+        id: 'circle-layer',
+        type: 'symbol',
+        source: 'points-source',
+        'source-layer': 'points',
+        filter: ['==', '$type', 'Point'],
+        layout: {
+          'icon-image': [
+            'case',
+            ['>=', ['to-number', ['get', 'complexity']], 4],
+            'star-icon',
+            ['>=', ['to-number', ['get', 'complexity']], 3],
+            'diamond-icon',
+            ['>=', ['to-number', ['get', 'complexity']], 2],
+            'triangle-icon',
+            'circle-icon',
+          ],
+          'icon-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
+            15,
+            ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
+          ],
+          'icon-ignore-placement': true,
+          'icon-allow-overlap': true,
+        },
+        paint: {
+          'icon-color': [
+            'case',
+            ['>=', ['to-number', ['get', 'ratings']], 7.77],
+            '#00e9ff',
+            ['>=', ['to-number', ['get', 'ratings']], 7.46],
+            '#00f8d8',
+            ['>=', ['to-number', ['get', 'ratings']], 7.2],
+            '#00ff83',
+            ['>=', ['to-number', ['get', 'ratings']], 7.03],
+            '#62f25e',
+            ['>=', ['to-number', ['get', 'ratings']], 6.9],
+            '#87e539',
+            ['>=', ['to-number', ['get', 'ratings']], 6.76],
+            '#a2d600',
+            ['>=', ['to-number', ['get', 'ratings']], 6.6],
+            '#c3b700',
+            ['>=', ['to-number', ['get', 'ratings']], 6.4],
+            '#de9200',
+            ['>=', ['to-number', ['get', 'ratings']], 6.1],
+            '#f36300',
+            '#ff0000',
+          ],
+        },
+      },
+      'label-layer',
+    ) // Add before label-layer so labels appear on top
+
+    // Add lines layer before circle layer so icons appear on top of lines
     this.map.addLayer(this.fastLinesLayer, 'circle-layer')
     this.labelEditor = new LabelEditor(this.map)
   }
 
-  highlightNode(searchParameters: {
-    minWeight: number
-    maxWeight: number
-    minRating: number
-    maxRating: number
-    minPlaytime: number
-    maxPlaytime: number
-    playerChoice: number
-    minPlayers: number
-    maxPlayers: number
-    minYear: number
-    maxYear: number
-  }): void {
+  highlightNode(searchParameters: SearchParameters): void {
     if (this.map.getZoom() < 3) this.map.setZoom(3)
+
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
+    }
+
+    let playerMinField: string
+    let playerMaxField: string
+    switch (searchParameters.playerChoice) {
+      case 1:
+        playerMinField = 'min_players_rec'
+        playerMaxField = 'max_players_rec'
+        break
+      case 2:
+        playerMinField = 'min_players_best'
+        playerMaxField = 'max_players_best'
+        break
+      default:
+        playerMinField = 'min_players'
+        playerMaxField = 'max_players'
     }
 
     const selectedFilters: FilterSpecification = [
@@ -156,27 +232,12 @@ export class BoardGameMap {
         ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
         ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
       ],
+      [
+        'all',
+        ['<=', ['to-number', ['get', playerMinField]], searchParameters.maxPlayers],
+        ['>=', ['to-number', ['get', playerMaxField]], searchParameters.minPlayers],
+      ],
     ]
-
-    if (searchParameters.playerChoice == 0) {
-      selectedFilters.push([
-        'all',
-        ['<=', ['to-number', ['get', 'min_players']], searchParameters.maxPlayers],
-        ['>=', ['to-number', ['get', 'max_players']], searchParameters.minPlayers],
-      ])
-    } else if (searchParameters.playerChoice == 1) {
-      selectedFilters.push([
-        'all',
-        ['<=', ['to-number', ['get', 'min_players_rec']], searchParameters.maxPlayers],
-        ['>=', ['to-number', ['get', 'max_players_rec']], searchParameters.minPlayers],
-      ])
-    } else {
-      selectedFilters.push([
-        'all',
-        ['<=', ['to-number', ['get', 'min_players_best']], searchParameters.maxPlayers],
-        ['>=', ['to-number', ['get', 'max_players_best']], searchParameters.minPlayers],
-      ])
-    }
 
     this.map
       .querySourceFeatures('points-source', {
@@ -184,35 +245,35 @@ export class BoardGameMap {
         filter: selectedFilters,
       })
       .forEach((repo) => {
+        const coordinates = (repo.geometry as GeoJSON.Point).coordinates
         highlightedNodes.features.push({
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: (repo.geometry as GeoJSON.Point).coordinates },
-          properties: { color: primaryHighlightColor, name: repo.properties.label, background: '#ff0000', textSize: 1.2 },
+          geometry: { type: 'Point', coordinates },
+          properties: {
+            color: primaryHighlightColor,
+            name: repo.properties.label,
+            background: '#ff0000',
+            textSize: 1.2,
+          },
         })
       })
-    // console.log("nodes : " + JSON.stringify(highlightedNodes))
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
     this.map.redraw()
   }
 
   async getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
-    // find first group that contains the point.
-    return this.bordersCollection.then((collection) => {
-      const feature = collection.features.find((f: MapGeoJSONFeature) => {
-        return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
-      })
-      if (!feature?.id) return
-      const id = +feature.id
-      return id
+    const collection = await this.bordersCollection
+    const feature = collection.features.find((f: MapGeoJSONFeature) => {
+      return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
     })
+    return feature?.id ? +feature.id : undefined
   }
 
   showDetails(nearestCity: MapGeoJSONFeature): void {
     const repo = nearestCity.properties.label
-    // console.log("showing details for :" + repo)
     if (!repo) return
+
     const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
-    //console.log(nearestCity)
     bus.fire('show-tooltip')
     bus.fire('repo-selected', { text: repo, lat, lon, id: nearestCity.properties.id })
   }
@@ -222,32 +283,30 @@ export class BoardGameMap {
       text: 'Show largest projects',
       click: () => {
         if (!bg.id) return
+
         const seen = new Map()
         const largeRepositories = this.map
           .querySourceFeatures('points-source', {
             sourceLayer: 'points',
             filter: ['==', 'parent', bg.id],
           })
-          .sort((a, b) => {
-            //todo: investigate what is the properties size?
-            return b.properties.size - a.properties.size
-          })
+          .sort((a, b) => b.properties.size - a.properties.size)
 
         for (const repo of largeRepositories) {
-          const v: { name: string; lngLat: GeoJSON.Position; id: string } = {
-            name: repo.properties.label,
+          const label = repo.properties.label
+          if (seen.has(label)) continue
+
+          seen.set(label, {
+            name: label,
             lngLat: (repo.geometry as GeoJSON.Point).coordinates,
             id: repo.properties.id,
-          }
-          if (seen.has(repo.properties.label)) continue
-          seen.set(repo.properties.label, v)
+          })
+
           if (seen.size >= 100) break
         }
 
         this.map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
         this.map.setLayoutProperty('border-highlight', 'visibility', 'visible')
-
-        // todo: fire a view model here instead of the list.
         bus.fire('show-largest-in-group', bg.id, Array.from(seen.values()))
       },
     }
@@ -275,45 +334,43 @@ export class BoardGameMap {
   }
 
   makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false): void {
-    if (disableAnimation) {
-      this.map.jumpTo(location)
-    } else {
-      this.map.flyTo(location)
-    }
+    const moveMethod = disableAnimation ? 'jumpTo' : 'flyTo'
+    this.map[moveMethod](location)
+
     void this.map.once('moveend', () => {
       this.drawBackgroundEdges(location.center, repository)
     })
   }
 
   getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature[] {
-    const borderFeature = this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
-    return borderFeature
+    return this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
   }
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
-    // console.log("In drawBackgroundEdges")
     const bgFeature = this.getBackgroundNearPoint(point)[0]
-    // console.log("bgFeature :" + JSON.stringify(bgFeature))
     if (bgFeature.id === undefined) return
-    const groupId = +bgFeature.id
-    //console.log("groupId :" + JSON.stringify(groupId))
 
+    const groupId = +bgFeature.id
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
-    // console.log('Complimentary color: ' + complimentaryColor)
+
     this.fastLinesLayer.clear()
-    if (this.backgroundEdgesFetch) this.backgroundEdgesFetch.cancel()
+    this.backgroundEdgesFetch?.cancel()
+
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
     }
+
     this.backgroundEdgesFetch = new GraphDownloader()
     this.backgroundEdgesFetch
       .downloadGroupGraph(groupId)
       .then((groupGraph) => {
         if (this.backgroundEdgesFetch?.isCancelled) return
+
         const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
 
+        // Create adjustment map inline
         const renderedNodesAdjustment = new Map()
         this.map
           .querySourceFeatures('points-source', {
@@ -322,29 +379,25 @@ export class BoardGameMap {
           })
           .forEach((repo) => {
             const lngLat = (repo.geometry as GeoJSON.Point).coordinates
-            renderedNodesAdjustment.set(repo.properties.label, {
-              lngLat,
-            })
+            renderedNodesAdjustment.set(repo.properties.label, { lngLat })
           })
-        //  console.log('Repo : '+ JSON.stringify(repo))
-        //  console.log('Point : '+ JSON.stringify(point))
 
         let primaryNodePositionFound = false
+
         groupGraph.forEachLink((link) => {
-          //if (link.data?.e && ignoreExternal) return // external;
-          // console.log(link)
           const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
           const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
           const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
           const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
           const isFirstLevel = repo === link.fromId || repo === link.toId
+
           const line: { from: [number, number]; to: [number, number]; color: number } = {
             from: [from.x, from.y],
             to: [to.x, to.y],
             color: isFirstLevel ? 0xffffffff : complimentaryColor,
           }
-          // delay first level links to be drawn last, so that they are on the top
+
           if (isFirstLevel) {
             firstLevelLinks.push(line)
 
@@ -356,19 +409,21 @@ export class BoardGameMap {
               })
               primaryNodePositionFound = true
             }
+
             const otherName = repo === link.fromId ? link.toId : link.fromId
-            // pick the other one too:
             highlightedNodes.features.push({
               type: 'Feature',
               geometry: { type: 'Point', coordinates: repo === link.fromId ? toGeo : fromGeo },
               properties: { color: secondaryHighlightColor, name: otherName, background: fillColor, textSize: 0.8 },
             })
-          } else this.fastLinesLayer.addLine(line)
+          } else {
+            this.fastLinesLayer.addLine(line)
+          }
         })
+
         firstLevelLinks.forEach((line) => {
           this.fastLinesLayer.addLine(line)
         })
-        // console.log("Node to highlight : " + JSON.stringify(highlightedNodes))
         ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
         this.map.redraw()
       })
@@ -387,20 +442,18 @@ export class BoardGameMap {
       ],
       { layers: ['circle-layer'] },
     )
+
     if (!features.length) return
-    let distance = Infinity
-    let nearestCity = undefined
-    features.forEach((feature) => {
+
+    // Use reduce instead of imperative loop to find nearest
+    return features.reduce<{ feature: MapGeoJSONFeature; distance: number } | null>((nearest, feature) => {
       const geometry = (feature.geometry as GeoJSON.Point).coordinates
       const dx = geometry[0] - point.x
       const dy = geometry[1] - point.y
-      const d = dx * dx + dy * dy
-      if (d < distance) {
-        distance = d
-        nearestCity = feature
-      }
-    })
-    return nearestCity
+      const distance = dx * dx + dy * dy
+
+      return !nearest || distance < nearest.distance ? { feature, distance } : nearest
+    }, null)?.feature
   }
 
   getDefaultStyle(): MapOptions {
@@ -422,7 +475,6 @@ export class BoardGameMap {
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
           place: {
-            // this one loaded asynchronously, and merged with local storage data
             type: 'geojson',
             data: {
               type: 'FeatureCollection',
@@ -466,60 +518,7 @@ export class BoardGameMap {
               'line-width': 4,
             },
           },
-          {
-            id: 'circle-layer',
-            type: 'symbol',
-            source: 'points-source',
-            'source-layer': 'points',
-            filter: ['==', '$type', 'Point'],
-            layout: {
-              'icon-image': [
-                'case',
-                ['>=', ['to-number', ['get', 'complexity']], 4],
-                'star-icon',
-                ['>=', ['to-number', ['get', 'complexity']], 3],
-                'diamond-icon',
-                ['>=', ['to-number', ['get', 'complexity']], 2],
-                'triangle-icon',
-                'circle-icon',
-              ],
-              'icon-size': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                5,
-                ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
-                15,
-                ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
-              ],
-              'icon-ignore-placement': true,
-              'icon-allow-overlap': true,
-            },
-            paint: {
-              'icon-color': [
-                'case',
-                ['>=', ['to-number', ['get', 'ratings']], 7.77],
-                '#00e9ff',
-                ['>=', ['to-number', ['get', 'ratings']], 7.46],
-                '#00f8d8',
-                ['>=', ['to-number', ['get', 'ratings']], 7.2],
-                '#00ff83',
-                ['>=', ['to-number', ['get', 'ratings']], 7.03],
-                '#62f25e',
-                ['>=', ['to-number', ['get', 'ratings']], 6.9],
-                '#87e539',
-                ['>=', ['to-number', ['get', 'ratings']], 6.76],
-                '#a2d600',
-                ['>=', ['to-number', ['get', 'ratings']], 6.6],
-                '#c3b700',
-                ['>=', ['to-number', ['get', 'ratings']], 6.4],
-                '#de9200',
-                ['>=', ['to-number', ['get', 'ratings']], 6.1],
-                '#f36300',
-                '#ff0000',
-              ],
-            },
-          },
+          // Circle layer will be added dynamically after icons are loaded
           {
             id: 'label-layer',
             type: 'symbol',
@@ -552,14 +551,6 @@ export class BoardGameMap {
               'text-halo-width': currentColorTheme.circleLabelsHaloWidth,
             },
           },
-          // {
-          //   id: 'selected-nodes-layer',
-          //   type: 'circle',
-          //   source: 'selected-nodes',
-          //   paint: {
-          //     'circle-color': ['get', 'color'],
-          //   },
-          // },
           {
             id: 'selected-nodes-labels-layer',
             type: 'symbol',
@@ -590,10 +581,8 @@ export class BoardGameMap {
               'text-halo-width': 2,
             },
           },
-          // TODO: move labels stuff to label editor?
           {
             id: 'place-country-1',
-            // minzoom: 1,
             maxzoom: 10,
             type: 'symbol',
             source: 'place',
@@ -627,12 +616,9 @@ export class BoardGameMap {
   }
 
   getPolygonFillColor(polygonProperties: Record<string, string>): string | undefined {
-    for (const color of currentColorTheme.color) {
-      if (color.input === polygonProperties.fill) {
-        return color.output
-      }
-    }
-    return polygonProperties.fill
+    // Use find() and nullish coalescing instead of for-loop
+    const colorMapping = currentColorTheme.color.find((color) => color.input === polygonProperties.fill)
+    return colorMapping?.output ?? polygonProperties.fill
   }
 
   polygonContainsPoint(ring: GeoJSON.Position[], pX: number, pY: number): boolean {

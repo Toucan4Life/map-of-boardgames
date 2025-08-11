@@ -2,7 +2,6 @@
 import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { Repositories } from '@/lib/FocusViewModel'
 import type GroupViewModel from '@/lib/GroupViewModel'
-import ChatContainer from './ChatContainer.vue'
 
 const props = defineProps<{ repos: GroupViewModel }>()
 const emit = defineEmits<{
