@@ -1,4 +1,10 @@
-export function MyRenderProgram(gl: WebGL2RenderingContext) {
+export type RenderProgram = {
+  add: (item: { from: [number, number]; to: [number, number]; color: number }) => number
+  draw: (uniforms: { modelViewProjection: Iterable<number>; width: number }) => void
+  setCount: (newCount: number) => void
+}
+
+export function MyRenderProgram(gl: WebGL2RenderingContext): RenderProgram {
   const vertexSource = `
   uniform mat4 modelViewProjection;
   uniform float width;
@@ -65,8 +71,12 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
   return {
     add: add,
     draw: draw,
+    setCount: setCount,
   }
 
+  function setCount(newCount: number): void {
+    count = newCount
+  }
   function add(item: { from: [number, number]; to: [number, number]; color: number }): number {
     if (count * bytePerVertex >= capacity) {
       const oldBuffer = buffer
@@ -132,7 +142,8 @@ export function MyRenderProgram(gl: WebGL2RenderingContext) {
     if (colorAttributeLocation > -1) gl.vertexAttribDivisor(colorAttributeLocation, 0)
   }
 
-  function compileShader(type: GLenum, shaderSource: string, gl: WebGLRenderingContext): WebGLShader {
+  function compileShader(type: GLenum, shaderSource: string, gl: WebGLRenderingContext | WebGL2RenderingContext): WebGLShader {
+    if (gl instanceof WebGLRenderingContext) throw new Error('WebGL1 not supported')
     const shader = gl.createShader(type)
     if (!shader) {
       throw new Error('Failed to create a shared ' + shaderSource)

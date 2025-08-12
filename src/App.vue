@@ -70,9 +70,9 @@ const setProjectFromRepo = (repo: SearchResult, fullView = false) => {
   }
 }
 
-const createFocusViewModel = async (repo: string, groupId: number) => {
+const createFocusViewModel = (repo: number, groupId: number, label: string) => {
   try {
-    const vm = await new FocusViewModel(repo).create(groupId)
+    const vm = new FocusViewModel(repo, groupId, label)
     if (vm) {
       currentGroup.value = undefined
       currentFocus.value = vm
@@ -93,6 +93,7 @@ const findProject = (x: SearchResult) => {
   lastSelected = lastSelected?.text === x.text ? lastSelected : x
   window.mapOwner.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
   Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
+  bus.fire('current-project', lastSelected.text)
 }
 
 const showFullPreview = () => {
@@ -109,7 +110,9 @@ const closeView = (view: 'group' | 'focus') => {
     currentGroup.value = undefined
     window.mapOwner.clearBorderHighlights()
   } else {
-    currentFocus.value = undefined
+    if (currentFocus.value) {
+      currentFocus.value = undefined
+    }
   }
 }
 
@@ -118,8 +121,15 @@ const listCurrentConnections = async () => {
     console.warn('No last selected repository to list connections for.')
     return
   }
-  const groupId = await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon)
-  if (groupId !== undefined) await createFocusViewModel(lastSelected.text, groupId)
+  if (currentFocus.value) {
+    currentFocus.value.disposeSubgraphViewer()
+  }
+  if (contextMenu.value) {
+    contextMenu.value = undefined
+  }
+
+  const groupId = lastSelected.groupId ?? (await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon))
+  if (groupId !== undefined) createFocusViewModel(lastSelected.id, groupId, lastSelected.text)
 }
 
 const search = (params: AdvSearchResult) => {
@@ -150,7 +160,9 @@ onBeforeMount(() => {
     currentFocus.value = undefined
     currentGroup.value = g
   })
-  bus.on('focus-on-repo', (repo, groupId) => void createFocusViewModel(repo, groupId))
+  bus.on('focus-on-repo', (repo, groupId, label) => {
+    createFocusViewModel(repo, groupId, label)
+  })
   bus.on('unsaved-changes-detected', (has) => (ui.hasUnsavedChanges = has))
   window.addEventListener('resize', () => (ui.isSmallScreen = window.innerWidth < SM_SCREEN_BREAKPOINT))
 })

@@ -1,5 +1,5 @@
 import { type CustomLayerInterface, type CustomRenderMethod, type CustomRenderMethodInput, Map } from 'maplibre-gl'
-import { MyRenderProgram } from './RenderProgram'
+import { type RenderProgram, MyRenderProgram } from './RenderProgram'
 export class getCustomLayer implements CustomLayerInterface {
   id: string
   type: 'custom'
@@ -7,16 +7,11 @@ export class getCustomLayer implements CustomLayerInterface {
   prerender?: CustomRenderMethod | undefined
   onRemove?(_map: Map, _gl: WebGLRenderingContext): void
   map: Map | undefined
-  program:
-    | {
-        add: (item: { from: [number, number]; to: [number, number]; color: number }) => number
-        draw: (uniforms: { modelViewProjection: Iterable<number>; width: number }) => void
-      }
-    | undefined
+  program: RenderProgram | undefined
   gl: WebGL2RenderingContext | undefined
   count: number
-  constructor() {
-    this.id = 'null-island'
+  constructor(layerName = 'graph-edges') {
+    this.id = layerName
     this.type = 'custom'
     this.renderingMode = '2d'
     this.count = 0
@@ -53,6 +48,7 @@ export class getCustomLayer implements CustomLayerInterface {
 
   clear(): void {
     this.count = 0
+    this.program?.setCount(0)
   }
 
   addLine(lineDef: { from: [number, number]; to: [number, number]; color: number }): void {
