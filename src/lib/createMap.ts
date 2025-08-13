@@ -4,35 +4,15 @@ import bus from './bus'
 import config from './config'
 import { getCustomLayer } from './gl/createLinesCollection.ts'
 import getComplimentaryColor from './getComplimentaryColor'
-import { GraphDownloader } from './downloadGroupGraph.ts'
+import downloadGroupGraph from './downloadGroupGraph.ts'
 import { LabelEditor } from './label-editor/createLabelEditor.ts'
-
+import getColorTheme from './getColorTheme'
+import type { Graph } from 'ngraph.graph'
+import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.ts'
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
-const explorer = {
-  background: '#030E2E',
 
-  circleColor: '#EAEDEF',
-  circleStrokeColor: '#000',
-  circleLabelsColor: '#FFF',
-  circleLabelsHaloColor: '#111',
-  circleLabelsHaloWidth: 0,
-
-  placeLabelsColor: '#FFF',
-  placeLabelsHaloColor: '#000',
-  placeLabelsHaloWidth: 0.2,
-  color: [
-    { input: '#516ebc', output: '#013185' },
-    { input: '#00529c', output: '#1373A9' },
-    { input: '#153477', output: '#05447C' },
-    { input: '#37009c', output: '#013161' },
-    { input: '#00789c', output: '#022D6D' },
-    { input: '#37549c', output: '#00154D' },
-    { input: '#9c4b00', output: '#00154D' },
-  ],
-}
-
-const currentColorTheme = explorer
+const currentColorTheme = getColorTheme()
 
 interface SearchParameters {
   minWeight: number
@@ -52,7 +32,7 @@ export class BoardGameMap {
   dispose() {
     this.map.remove()
   }
-  backgroundEdgesFetch: GraphDownloader | undefined
+  backgroundEdgesFetch: Promise<Graph<BoardGameNodeData, BoardGameLinkData>> | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
   fastLinesLayer: getCustomLayer
@@ -92,7 +72,7 @@ export class BoardGameMap {
           click: () => {
             this.showDetails(nearestCity)
             this.drawBackgroundEdges(e.point, name)
-            bus.fire('focus-on-repo', name, bg.id)
+            bus.fire('focus-on-repo', nearestCity.properties.id, bg.id, name)
           },
         })
       }
@@ -266,7 +246,7 @@ export class BoardGameMap {
     const feature = collection.features.find((f: MapGeoJSONFeature) => {
       return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
     })
-    return feature?.id ? +feature.id : undefined
+    return feature?.id !== undefined ? +feature.id : undefined
   }
 
   showDetails(nearestCity: MapGeoJSONFeature): void {
@@ -347,27 +327,23 @@ export class BoardGameMap {
   }
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
-    const bgFeature = this.getBackgroundNearPoint(point)[0]
-    if (bgFeature.id === undefined) return
+    const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (bgFeature?.id === undefined) return
 
     const groupId = +bgFeature.id
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
 
     this.fastLinesLayer.clear()
-    this.backgroundEdgesFetch?.cancel()
 
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
     }
 
-    this.backgroundEdgesFetch = new GraphDownloader()
-    this.backgroundEdgesFetch
-      .downloadGroupGraph(groupId)
+    this.backgroundEdgesFetch = downloadGroupGraph(groupId)
       .then((groupGraph) => {
-        if (this.backgroundEdgesFetch?.isCancelled) return
-
         const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
 
         // Create adjustment map inline

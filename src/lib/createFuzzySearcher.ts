@@ -11,6 +11,7 @@ interface Word {
 }
 
 export interface SearchResult {
+  groupId: number | undefined
   selected: boolean
   skipAnimation: boolean
   html: string | null
@@ -60,5 +61,6 @@ export const find = async (query: string): Promise<SearchResult[] | undefined> =
     selected: false,
     skipAnimation: false,
     year: r.obj.year,
+    groupId: undefined,
   }))
 }

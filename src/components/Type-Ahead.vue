@@ -99,16 +99,27 @@ const props = withDefaults(
 )
 
 const currentQuery = ref(props.query)
+
 const suggestions = ref<SearchResult[]>([])
 const showLoading = ref(false)
 const loadingError = ref('')
 const currentSelectedIndex = ref(-1)
 
 const shouldShowClearButton = computed(() => currentQuery.value.trim().length > 0)
-
 let searchTimeoutId: number | undefined
-
+const skipNextSearch = ref(false)
+watch(
+  () => props.query,
+  (newQuery) => {
+    skipNextSearch.value = true
+    currentQuery.value = newQuery
+  },
+)
 watch(currentQuery, (query) => {
+  if (skipNextSearch.value) {
+    skipNextSearch.value = false
+    return
+  }
   if (searchTimeoutId) clearTimeout(searchTimeoutId)
   if (!query) {
     suggestions.value = []
@@ -123,7 +134,8 @@ function hideSuggestions() {
 }
 
 function selectSuggestion(searchResult: SearchResult) {
-  currentQuery.value = ''
+  skipNextSearch.value = true
+  currentQuery.value = searchResult.text
   hideSuggestions()
   emit('selected', searchResult)
 }
