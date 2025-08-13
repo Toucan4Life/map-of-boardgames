@@ -35,14 +35,6 @@ function search(
   minYear: number,
   maxYear: number,
 ): void {
-  // console.log(JSON.stringify({
-  //   minWeight: minW, maxWeight: maxW,
-  //   minRating: minR, maxRating: maxR,
-  //   minPlaytime: timescale[minP], maxPlaytime: timescale[maxP],
-  //   minPlayers: playersScale[minPl], maxPlayers: playersScale[maxPl],
-  //   playerChoice: pChoice,
-  //   tags: selectedTags.value
-  // }))
   emit('search', {
     minWeight: minW,
     maxWeight: maxW,

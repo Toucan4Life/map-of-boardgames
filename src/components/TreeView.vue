@@ -25,7 +25,6 @@ function getNodeKey(nodeId: number | undefined, parentPath = ''): string {
 const expandedNodes = ref<Set<string>>(new Set())
 
 function selectNode(node: BoardGameNodeData, event: MouseEvent) {
-  console.log('Selecting node:', node)
   emit('nodeSelected', node, event)
 }
 

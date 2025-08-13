@@ -52,25 +52,21 @@ const groupCache = new Map<number, GroupViewModel>()
 const typeAheadVisible = computed(() => !(isSmallScreen.value && currentGroup.value && !project.current))
 function showFullPreview() {
   if (!lastSelected) return
-  if (isSmallScreen.value) {
-    Object.assign(project, {
-      current: '',
-      currentId: lastSelected.id,
-      smallPreviewName: lastSelected.text,
-    })
-  } else {
-    Object.assign(project, {
-      current: lastSelected.text,
-      currentId: lastSelected.id,
-      smallPreviewName: '',
-    })
-  }
+  Object.assign(project, {
+    current: lastSelected.text,
+    currentId: lastSelected.id,
+    smallPreviewName: '',
+  })
 }
-
 function clearProjectState() {
   sidebarVisible.value = false
   Object.assign(project, defaultProjectState)
   window.mapOwner.clearHighlights()
+}
+function clearProjectStateIfSmallScreen() {
+  if (isSmallScreen.value) {
+    clearProjectState()
+  }
 }
 
 function getOrCreateGroupViewModel(groupId: number) {
@@ -79,18 +75,9 @@ function getOrCreateGroupViewModel(groupId: number) {
 }
 
 function findProject(repo: SearchResult) {
-  console.log('repo:', repo)
-  console.log('lastSelected:', lastSelected)
   lastSelected = lastSelected?.text === repo.text ? lastSelected : repo
-  console.log('lastSelected:', lastSelected)
   window.mapOwner.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
-  // console.log('Selected project:', project)
-  console.log('lastSelected.id:', lastSelected.id)
   Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
-  console.log({ ...project }) //Print Proxy.target.currentId = undefined
-  console.log('lastSelected.id:', lastSelected.id) // Print 64204
-  console.log('project.id:', project.currentId) // Print 64204
-  console.log({ ...project }) //Print Proxy.target.currentId = undefined
   bus.fire('current-project', lastSelected.text)
 }
 
@@ -132,7 +119,7 @@ const resizeHandler = () => {
 
 // Keep handler references for cleanup
 const repoSelectedHandler = (repo: SearchResult, fullView = false) => {
-  console.log('repo in handler:', repo)
+  console.log('repoSelectedHandler', repo, fullView)
   lastSelected = repo
   if (isSmallScreen.value && !fullView) {
     Object.assign(project, {
@@ -214,7 +201,14 @@ function handleItem(item: { text: string; click: () => void }) {
     <!-- Right panel views -->
     <largest-repositories v-if="currentGroup" :repos="currentGroup" class="right-panel" @selected="findProject" @close="closeGroupView" />
 
-    <focus-repository v-if="currentFocus" :vm="currentFocus" class="right-panel" @selected="findProject" @close="closeFocusView" />
+    <focus-repository
+      v-if="currentFocus"
+      :vm="currentFocus"
+      class="right-panel"
+      @selected="findProject"
+      @close="closeFocusView"
+      @cleared="clearProjectStateIfSmallScreen"
+    />
 
     <!-- Full repository view -->
     <github-repository

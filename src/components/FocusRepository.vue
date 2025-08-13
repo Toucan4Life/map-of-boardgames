@@ -9,6 +9,7 @@ const props = defineProps<{ vm: IFocusViewModel }>()
 const emit = defineEmits<{
   selected: [id: SearchResult]
   close: []
+  cleared: []
 }>()
 
 function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
@@ -25,7 +26,6 @@ function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
 }
 
 function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
-  console.log('Showing details for:', repo)
   if (!repo.id) return
   emit('selected', {
     text: repo.name?.toString() ?? '',
@@ -50,6 +50,10 @@ function getLink(repo: IFocusViewModel | Repositories): string {
     return ''
   }
   return 'https://boardgamegeek.com/boardgame/' + repo.id.toString()
+}
+function expandGraph() {
+  emit('cleared')
+  props.vm.expandGraph()
 }
 </script>
 <template>
@@ -78,7 +82,7 @@ function getLink(repo: IFocusViewModel | Repositories): string {
           <div v-else class="minimal-header">
             <span v-if="!vm.loading">
               {{ vm.repos.length }} direct connections shown.
-              <a v-if="!vm.expandingGraph" href="#" class="inline-action-link" @click.prevent="vm.expandGraph()"> Expand to graph view </a>
+              <a v-if="!vm.expandingGraph" href="#" class="inline-action-link" @click.prevent="expandGraph()"> Expand to graph view </a>
             </span>
           </div>
         </div>

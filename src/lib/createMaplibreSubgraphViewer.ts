@@ -512,13 +512,17 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     if (bringToView) {
       map.flyTo({ center: [selectedMapCoords.lng, selectedMapCoords.lat] })
     }
-    bus.fire('repo-selected', {
-      text: nodeId,
-      lat: selectedMapCoords.lat,
-      lon: selectedMapCoords.lng,
-      groupId: graph.getNode(nodeId)?.data.c,
-      id: graph.getNode(nodeId)?.data.id,
-    })
+    bus.fire(
+      'repo-selected',
+      {
+        text: nodeId,
+        lat: selectedMapCoords.lat,
+        lon: selectedMapCoords.lng,
+        groupId: graph.getNode(nodeId)?.data.c,
+        id: graph.getNode(nodeId)?.data.id,
+      },
+      !bringToView,
+    )
   }
 
   // Fit the map to the bounds of the current nodes
