@@ -2,7 +2,7 @@ import type { Graph, NodeId } from 'ngraph.graph'
 import downloadGroupGraph, { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
 import { createMaplibreSubgraphViewer } from './createMaplibreSubgraphViewer'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph'
-import { parse } from 'vue/compiler-sfc'
+import type { TreeItem } from '@/components/TreeView.vue'
 
 // Static reference to maintain single instance
 let activeSubgraphViewer = undefined
@@ -14,10 +14,7 @@ export interface Repositories {
   id: number
   linkWeight: number
 }
-interface BoardGameNodeDataWithChildren {
-  node: BoardGameNodeData
-  children: BoardGameNodeDataWithChildren[]
-}
+
 export interface IFocusViewModel {
   currentLog: string
   logMessages: string[]
@@ -26,7 +23,7 @@ export interface IFocusViewModel {
   expandGraph(): unknown
   expandingGraph: boolean
   layoutRunning: boolean
-  graphData: BoardGameNodeDataWithChildren | undefined
+  graphData: TreeItem | undefined
   name: string
   repos: Repositories[]
   lngLat: [number, number]
@@ -99,7 +96,7 @@ export class FocusViewModel implements IFocusViewModel {
   }
   expandingGraph: boolean
   layoutRunning: boolean
-  graphData: BoardGameNodeDataWithChildren | undefined
+  graphData: TreeItem | undefined
   currentLog: string
   logMessages: string[]
   // Return to direct connections view
@@ -126,7 +123,7 @@ export class FocusViewModel implements IFocusViewModel {
     this.currentLog = ''
 
     try {
-      const repositoryName = this.name
+      const bggId = this.id
       const groupId = this.groupId
 
       // Depth of 2 gives immediate neighbors and their neighbors
@@ -141,11 +138,11 @@ export class FocusViewModel implements IFocusViewModel {
       }
 
       logCallback('Starting graph expansion...')
-      const graph = await buildLocalNeighborsGraphForGroup(groupId, repositoryName, depth, logCallback)
+      const graph = await buildLocalNeighborsGraphForGroup(groupId, this.name, depth, logCallback)
       logCallback('Graph data received, building tree view...')
 
       // Convert graph to tree view
-      this.graphData = this.toTreeView(graph, repositoryName, depth)
+      this.graphData = this.toTreeView(graph, this.name, depth)
 
       // Dispose existing viewer if any
       this.disposeSubgraphViewer()
@@ -153,7 +150,7 @@ export class FocusViewModel implements IFocusViewModel {
       // Create the new subgraph viewer
       activeSubgraphViewer = createMaplibreSubgraphViewer({
         graph,
-        nodeId: repositoryName,
+        nodeId: bggId,
         groupId,
         onLayoutStatusChange: (isRunning: boolean) => {
           this.layoutRunning = isRunning
@@ -169,7 +166,7 @@ export class FocusViewModel implements IFocusViewModel {
     }
   }
 
-  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: number, depth = 2): BoardGameNodeDataWithChildren {
+  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: string, depth = 2): TreeItem {
     const rootGraphNode = graph.getNode(startNodeId)
     if (!rootGraphNode) {
       // Return a minimal tree structure if the start node isn't found
@@ -185,19 +182,19 @@ export class FocusViewModel implements IFocusViewModel {
     // parentNodeId: The ID of the node whose children are being fetched.
     // parentDepthInTree: The depth of parentNodeId in the tree (startNodeId is at 0).
     // path: Set of ancestor IDs in the current traversal path to avoid cycles.
-    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<number>): BoardGameNodeDataWithChildren[] {
+    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<string>): TreeItem[] {
       // If the parent node is already at the maximum allowed depth,
       // it cannot have any children displayed in the tree.
       if (parentDepthInTree >= depth) {
         return []
       }
 
-      const childNodes: BoardGameNodeDataWithChildren[] = []
+      const childNodes: TreeItem[] = []
       graph.forEachLinkedNode(
         parentNodeId,
         (linkedGraphNode) => {
           // If the linked node is already in the current path, skip it to prevent cycles.
-          if (path.has(parseInt(linkedGraphNode.id.toString(), 10))) {
+          if (path.has(linkedGraphNode.id)) {
             return
           }
 
@@ -205,7 +202,7 @@ export class FocusViewModel implements IFocusViewModel {
 
           // Create a new path set for the recursive call, including the current child.
           const newPath = new Set(path)
-          newPath.add(parseInt(linkedGraphNode.id.toString(), 10))
+          newPath.add(linkedGraphNode.id)
 
           // Recursively get children of the current linkedGraphNode.
           // Its depth in the tree will be parentDepthInTree + 1.
@@ -219,7 +216,7 @@ export class FocusViewModel implements IFocusViewModel {
     }
 
     // Initial path for recursion, containing only the startNodeId.
-    const initialPath = new Set<number>()
+    const initialPath = new Set<string>()
     initialPath.add(startNodeId)
 
     // Fetch children for the root node (startNodeId, which is at depth 0).

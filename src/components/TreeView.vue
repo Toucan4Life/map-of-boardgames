@@ -1,14 +1,9 @@
 <script setup lang="ts">
+import type { BoardGameNodeData } from '@/lib/fetchAndProcessGraph'
 import { ref } from 'vue'
 
-export interface TreeNode {
-  id: number | undefined
-  name: string
-  isExternal?: boolean
-}
-
-interface TreeItem {
-  node: TreeNode
+export interface TreeItem {
+  node: BoardGameNodeData
   children?: TreeItem[]
 }
 
@@ -17,7 +12,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'nodeSelected', node: TreeNode, event: MouseEvent): void
+  (e: 'nodeSelected', node: BoardGameNodeData, event: MouseEvent): void
 }>()
 
 /**
@@ -29,7 +24,8 @@ function getNodeKey(nodeId: number | undefined, parentPath = ''): string {
 
 const expandedNodes = ref<Set<string>>(new Set())
 
-function selectNode(node: TreeNode, event: MouseEvent) {
+function selectNode(node: BoardGameNodeData, event: MouseEvent) {
+  console.log('Selecting node:', node)
   emit('nodeSelected', node, event)
 }
 
@@ -54,27 +50,27 @@ function isExpanded(nodeId: number | undefined, parentPath = ''): boolean {
       <!-- Root node only shown if it has no children or as a special case -->
       <li v-if="!tree.children || tree.children.length === 0">
         <div class="node-item">
-          <a href="#" @click.prevent="selectNode(tree.node, $event)">{{ tree.node.name }}</a>
+          <a href="#" @click.prevent="selectNode(tree.node, $event)">{{ tree.node.label }}</a>
           <span v-if="tree.node.isExternal" title="External country">E</span>
         </div>
       </li>
 
       <!-- Otherwise, only show the children with toggle controls -->
       <template v-else>
-        <li v-for="child in tree.children" :key="child.node.id">
+        <li v-for="child in tree.children" :key="child.node.label">
           <div class="node-item">
-            <span v-if="child.children && child.children.length" class="toggle" @click="toggleExpand(child.node.id, tree.node.id)">
-              {{ isExpanded(child.node.id, tree.node.id) ? '▼' : '▶' }}
+            <span v-if="child.children && child.children.length" class="toggle" @click="toggleExpand(child.node.label, tree.node.label)">
+              {{ isExpanded(child.node.label, tree.node.label) ? '▼' : '▶' }}
             </span>
             <span v-else class="toggle-placeholder"></span>
-            <a href="#" @click.prevent="selectNode(child.node, $event)">{{ child.node.name }}</a>
+            <a href="#" @click.prevent="selectNode(child.node, $event)">{{ child.node.label }}</a>
             <span v-if="child.node.isExternal" title="External country">E</span>
           </div>
-          <ul v-if="isExpanded(child.node.id, tree.node.id) && child.children && child.children.length > 0">
-            <li v-for="grandChild in child.children" :key="grandChild.node.id">
+          <ul v-if="isExpanded(child.node.label, tree.node.label) && child.children && child.children.length > 0">
+            <li v-for="grandChild in child.children" :key="grandChild.node.label">
               <div class="node-item">
                 <span class="toggle-placeholder"></span>
-                <a href="#" @click.prevent="selectNode(grandChild.node, $event)">{{ grandChild.node.name }}</a>
+                <a href="#" @click.prevent="selectNode(grandChild.node, $event)">{{ grandChild.node.label }}</a>
                 <span v-if="grandChild.node.isExternal" title="External country">E</span>
               </div>
             </li>

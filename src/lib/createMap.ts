@@ -246,7 +246,7 @@ export class BoardGameMap {
     const feature = collection.features.find((f: MapGeoJSONFeature) => {
       return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
     })
-    return feature?.id ? +feature.id : undefined
+    return feature?.id !== undefined ? +feature.id : undefined
   }
 
   showDetails(nearestCity: MapGeoJSONFeature): void {
@@ -327,8 +327,9 @@ export class BoardGameMap {
   }
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
-    const bgFeature = this.getBackgroundNearPoint(point)[0]
-    if (bgFeature.id === undefined) return
+    const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (bgFeature?.id === undefined) return
 
     const groupId = +bgFeature.id
     const fillColor = this.getPolygonFillColor(bgFeature.properties)

@@ -7,6 +7,7 @@ import getComplimentaryColor from './getComplimentaryColor'
 import { type Layout } from 'ngraph.forcelayout'
 import type { Graph } from 'ngraph.graph'
 import createLayout from 'ngraph.forcelayout'
+import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.js'
 const currentColorTheme = getColorTheme()
 
 // Default map style configuration for subgraph viewer
@@ -48,7 +49,11 @@ function convertLayoutToMapCoordinates(pos: { x: number; y: number }) {
   }
 }
 
-export function createMaplibreSubgraphViewer(subgraphInfo: { graph: Graph; onLayoutStatusChange: (arg0: boolean) => void; nodeId: any }) {
+export function createMaplibreSubgraphViewer(subgraphInfo: {
+  graph: Graph<BoardGameNodeData, BoardGameLinkData>
+  onLayoutStatusChange: (arg0: boolean) => void
+  nodeId: string
+}) {
   const container = document.querySelector('.subgraph-viewer')
   if (!container) {
     throw new Error('Subgraph viewer container not found')
@@ -511,7 +516,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: { graph: Graph; onLay
       text: nodeId,
       lat: selectedMapCoords.lat,
       lon: selectedMapCoords.lng,
-      groupId: graph.getNode(nodeId)?.data?.c,
+      groupId: graph.getNode(nodeId)?.data.c,
+      id: graph.getNode(nodeId)?.data.id,
     })
   }
 

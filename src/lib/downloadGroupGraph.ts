@@ -45,12 +45,12 @@ function formatBytes(bytes: number, decimals = 2) {
 
 export async function buildLocalNeighborsGraphForGroup(
   groupId: number,
-  repositoryName: number,
+  repositoryName: string,
   depth: number,
   logCallback?: (message: string) => void,
 ) {
   const createGraph = await import('ngraph.graph')
-  const localGraph = createGraph.default()
+  const localGraph: Graph<BoardGameNodeData, BoardGameLinkData> = createGraph.default()
 
   if (logCallback) logCallback(`Downloading network data for group ${groupId.toString()}...`)
 
@@ -72,7 +72,7 @@ export async function buildLocalNeighborsGraphForGroup(
   }
 
   // Fetch the initial group's graph with progress tracking
-  let rootGraph: Graph | undefined
+  let rootGraph: Graph<BoardGameNodeData, BoardGameLinkData> | undefined
   try {
     rootGraph = await downloadGroupGraph(groupId, downloadProgressCallback)
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
-import TreeView, { type TreeNode } from './TreeView.vue'
+import TreeView from './TreeView.vue'
+import type { BoardGameNodeData } from '@/lib/fetchAndProcessGraph'
 
 const props = defineProps<{ vm: IFocusViewModel }>()
 
@@ -10,10 +11,10 @@ const emit = defineEmits<{
   close: []
 }>()
 
-function handleNodeSelected(node: TreeNode, event: MouseEvent) {
+function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
   showDetails(
     {
-      name: node.name,
+      name: node.label,
       lngLat: props.vm.lngLat,
       id: node.id || 0,
       isExternal: false,
@@ -24,6 +25,7 @@ function handleNodeSelected(node: TreeNode, event: MouseEvent) {
 }
 
 function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): void {
+  console.log('Showing details for:', repo)
   if (!repo.id) return
   emit('selected', {
     text: repo.name?.toString() ?? '',
@@ -38,6 +40,7 @@ function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): v
   })
 }
 function closePanel(): void {
+  props.vm.goBackToDirectConnections()
   emit('close')
 }
 
