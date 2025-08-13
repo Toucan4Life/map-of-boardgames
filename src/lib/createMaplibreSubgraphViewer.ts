@@ -50,11 +50,12 @@ function convertLayoutToMapCoordinates(pos: { x: number; y: number }) {
 }
 
 export function createMaplibreSubgraphViewer(subgraphInfo: {
+  container: Element | null
   graph: Graph<BoardGameNodeData, BoardGameLinkData>
   onLayoutStatusChange: (arg0: boolean) => void
   nodeId: string
 }) {
-  const container = document.querySelector('.subgraph-viewer')
+  const container = subgraphInfo.container //document.querySelector('.subgraph-viewer')
   if (!container) {
     throw new Error('Subgraph viewer container not found')
   }
