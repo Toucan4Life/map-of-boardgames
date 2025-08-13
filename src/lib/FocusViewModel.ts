@@ -148,10 +148,15 @@ export class FocusViewModel implements IFocusViewModel {
       this.disposeSubgraphViewer()
 
       // Create the new subgraph viewer
+      const containerEl = document.querySelector<HTMLElement>('.subgraph-viewer')
+      if (!containerEl) {
+        throw new Error('Subgraph viewer container not found in DOM')
+      }
+
       activeSubgraphViewer = createMaplibreSubgraphViewer({
+        container: containerEl,
         graph,
         nodeId: bggId,
-        groupId,
         onLayoutStatusChange: (isRunning: boolean) => {
           this.layoutRunning = isRunning
         },
