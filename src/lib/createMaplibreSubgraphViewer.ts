@@ -114,19 +114,69 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         features: [],
       },
     })
+    const iconNames = ['circle', 'diamond', 'triangle', 'star']
+
+    // Load all icons in parallel
+    const iconPromises = iconNames.map(async (name) => {
+      const image = await map.loadImage(config.iconSource + `/${name}.png`)
+      map.addImage(`${name}-icon`, image.data, { sdf: true })
+    })
+
+    void Promise.all(iconPromises).then(() => {
+      // Icons are loaded, now we can add the layer
+    })
 
     // Add circle layer for all nodes
     map.addLayer({
       id: 'nodes',
-      type: 'circle',
+      type: 'symbol',
       source: 'nodes',
+      layout: {
+        'icon-image': [
+          'case',
+          ['>=', ['to-number', ['get', 'complexity']], 4],
+          'star-icon',
+          ['>=', ['to-number', ['get', 'complexity']], 3],
+          'diamond-icon',
+          ['>=', ['to-number', ['get', 'complexity']], 2],
+          'triangle-icon',
+          'circle-icon',
+        ],
+        'icon-size': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          5,
+          ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
+          15,
+          ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
+        ],
+        'icon-ignore-placement': true,
+        'icon-allow-overlap': true,
+      },
       paint: {
-        'circle-color': currentColorTheme.circleColor,
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.1, 15, 0.9],
-        'circle-stroke-color': currentColorTheme.circleStrokeColor,
-        'circle-stroke-width': 1,
-        'circle-stroke-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.0, 15, 0.9],
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['*', ['get', 'size'], 0.15], 23, ['*', ['get', 'size'], 2]],
+        'icon-color': [
+          'case',
+          ['>=', ['to-number', ['get', 'ratings']], 7.77],
+          '#00e9ff',
+          ['>=', ['to-number', ['get', 'ratings']], 7.46],
+          '#00f8d8',
+          ['>=', ['to-number', ['get', 'ratings']], 7.2],
+          '#00ff83',
+          ['>=', ['to-number', ['get', 'ratings']], 7.03],
+          '#62f25e',
+          ['>=', ['to-number', ['get', 'ratings']], 6.9],
+          '#87e539',
+          ['>=', ['to-number', ['get', 'ratings']], 6.76],
+          '#a2d600',
+          ['>=', ['to-number', ['get', 'ratings']], 6.6],
+          '#c3b700',
+          ['>=', ['to-number', ['get', 'ratings']], 6.4],
+          '#de9200',
+          ['>=', ['to-number', ['get', 'ratings']], 6.1],
+          '#f36300',
+          '#ff0000',
+        ],
       },
     })
 
@@ -361,8 +411,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         properties: {
           id: node.id,
           label: getLabelFromName(node.id),
-          size: nodeSizes[node.id] || 5,
+          size: node.data.size,
           originalPos: { x: pos.x, y: pos.y }, // Store original position for edge rendering
+          complexity: node.data.complexity || 0,
+          ratings: node.data.rating || 0,
         },
       })
     })

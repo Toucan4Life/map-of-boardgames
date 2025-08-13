@@ -119,7 +119,6 @@ const resizeHandler = () => {
 
 // Keep handler references for cleanup
 const repoSelectedHandler = (repo: SearchResult, fullView = false) => {
-  console.log('repoSelectedHandler', repo, fullView)
   lastSelected = repo
   if (isSmallScreen.value && !fullView) {
     Object.assign(project, {

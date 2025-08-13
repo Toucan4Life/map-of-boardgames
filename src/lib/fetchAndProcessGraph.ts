@@ -2,6 +2,9 @@ import type { Graph, Link, Node } from 'ngraph.graph'
 import config from './config'
 
 export type BoardGameNodeData = {
+  rating: string
+  complexity: string
+  size: string
   id: number
   label: string
   lnglat: [number, number]
