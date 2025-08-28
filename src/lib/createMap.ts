@@ -361,39 +361,56 @@ export class BoardGameMap {
         let primaryNodePositionFound = false
 
         groupGraph.forEachLink((link) => {
-          const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
-          const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
+          if (link.data.s == undefined) {
+            // this means the status is "Shown"
+            const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
+            const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
-          const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
-          const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
-          const isFirstLevel = repo === link.fromId || repo === link.toId
+            const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
+            const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
+            const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
+            const lineColor = (() => {
+              switch (true) {
+                case link.data.weight < 0.06598822:
+                  return 0x4a148c66
+                case link.data.weight < 0.09264013:
+                  return 0x7b1fa266
+                case link.data.weight < 0.1295021:
+                  return 0xab47bc66
+                case link.data.weight < 0.1920555:
+                  return 0xff704366
+                default:
+                  return 0xff572266
+              }
+            })()
 
-          const line: { from: [number, number]; to: [number, number]; color: number } = {
-            from: [from.x, from.y],
-            to: [to.x, to.y],
-            color: isFirstLevel ? 0xffffffff : complimentaryColor,
-          }
-
-          if (isFirstLevel) {
-            firstLevelLinks.push(line)
-
-            if (!primaryNodePositionFound) {
-              highlightedNodes.features.push({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: repo === link.fromId ? fromGeo : toGeo },
-                properties: { color: primaryHighlightColor, name: repo, background: fillColor, textSize: 1.2 },
-              })
-              primaryNodePositionFound = true
+            const line: { from: [number, number]; to: [number, number]; color: number } = {
+              from: [from.x, from.y],
+              to: [to.x, to.y],
+              color: isFirstLevel ? 0xffffffff : lineColor,
             }
 
-            const otherName = repo === link.fromId ? link.toId : link.fromId
-            highlightedNodes.features.push({
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: repo === link.fromId ? toGeo : fromGeo },
-              properties: { color: secondaryHighlightColor, name: otherName, background: fillColor, textSize: 0.8 },
-            })
-          } else {
-            this.fastLinesLayer.addLine(line)
+            if (isFirstLevel) {
+              firstLevelLinks.push(line)
+
+              if (!primaryNodePositionFound) {
+                highlightedNodes.features.push({
+                  type: 'Feature',
+                  geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? fromGeo : toGeo },
+                  properties: { color: primaryHighlightColor, name: repo, background: fillColor, textSize: 1.2 },
+                })
+                primaryNodePositionFound = true
+              }
+
+              const otherName = repo === groupGraph.getNode(link.fromId)?.data.label ? link.toId : link.fromId
+              highlightedNodes.features.push({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? toGeo : fromGeo },
+                properties: { color: secondaryHighlightColor, name: groupGraph.getNode(otherName)?.data.label, background: fillColor, textSize: 0.8 },
+              })
+            } else {
+              this.fastLinesLayer.addLine(line)
+            }
           }
         })
 

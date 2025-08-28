@@ -191,15 +191,15 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       },
     })
 
-    // Add highlighted nodes layer (selected node and its neighbors)
-    map.addLayer({
-      id: 'selected-nodes-layer',
-      type: 'circle',
-      source: 'selected-nodes',
-      paint: {
-        'circle-color': ['get', 'color'],
-      },
-    })
+    // // Add highlighted nodes layer (selected node and its neighbors)
+    // map.addLayer({
+    //   id: 'selected-nodes-layer',
+    //   type: 'circle',
+    //   source: 'selected-nodes',
+    //   paint: {
+    //     'circle-color': ['get', 'color'],
+    //   },
+    // })
 
     // Add regular labels layer
     map.addLayer({
@@ -229,7 +229,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       type: 'symbol',
       source: 'selected-nodes',
       layout: {
-        'text-field': ['get', 'name'],
+        'text-field': ['get', 'label'],
         'text-font': ['Roboto Condensed Regular'],
         'text-anchor': 'top',
         'text-max-width': 10,
@@ -281,6 +281,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     },
     resumeLayout() {
       layoutSteps = 400
+      map.getSource('selected-nodes').setData({
+        type: 'FeatureCollection',
+        features: [],
+      })
       if (!isDisposed && layout) {
         if (subgraphInfo.onLayoutStatusChange) {
           subgraphInfo.onLayoutStatusChange(true)
@@ -410,7 +414,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         },
         properties: {
           id: node.id,
-          label: getLabelFromName(node.id),
+          label: node.data.label,
           size: node.data.size,
           originalPos: { x: pos.x, y: pos.y }, // Store original position for edge rendering
           complexity: node.data.complexity || 0,
@@ -425,8 +429,21 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     graph.forEachLink((link) => {
       // Determine if this is a first-level link (connected to selected node)
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
-
-      const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? 0xffffffff : complimentaryLinkColor)
+      const lineColor = (() => {
+        switch (true) {
+          case link.data.weight < 0.06598822:
+            return 0x4a148c66
+          case link.data.weight < 0.09264013:
+            return 0x7b1fa266
+          case link.data.weight < 0.1295021:
+            return 0xab47bc66
+          case link.data.weight < 0.1920555:
+            return 0xff704366
+          default:
+            return 0xff572266
+        }
+      })()
+      const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? 0xffffffff : lineColor)
 
       if (!line) return
 
@@ -455,8 +472,9 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   // Helper function to get shorter label from full name
   function getLabelFromName(fullName: string) {
-    const parts = fullName.split('/')
-    return parts.length > 1 ? parts[parts.length - 1] : fullName
+    // const parts = fullName.split('/')
+    // return parts.length > 1 ? parts[parts.length - 1] : fullName
+    return fullName
   }
 
   // Handle node click
@@ -483,7 +501,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       properties: {
         ...properties,
         id: nodeId,
-        name: nodeId, // For label display
+        label: graph.getNode(nodeId)?.data.label, // For label display
       },
     }
   }
@@ -546,8 +564,21 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       if (!layout.getBody(link.fromId) || !layout.getBody(link.toId)) return
       // Skip links connected to selected node as they're already handled
       if (link.fromId === nodeId || link.toId === nodeId) return
-
-      const line = createLinkLine(link.fromId, link.toId, complimentaryLinkColor) // Semi-transparent for background connections
+      const lineColor = (() => {
+        switch (true) {
+          case link.data.weight < 0.06598822:
+            return 0x4a148c66
+          case link.data.weight < 0.09264013:
+            return 0x7b1fa266
+          case link.data.weight < 0.1295021:
+            return 0xab47bc66
+          case link.data.weight < 0.1920555:
+            return 0xff704366
+          default:
+            return 0xff572266
+        }
+      })()
+      const line = createLinkLine(link.fromId, link.toId, lineColor) // Semi-transparent for background connections
       if (line) linksLayer.addLine(line)
     })
 
@@ -568,7 +599,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     bus.fire(
       'repo-selected',
       {
-        text: nodeId,
+        text: graph.getNode(nodeId)?.data.label,
         lat: selectedMapCoords.lat,
         lon: selectedMapCoords.lng,
         groupId: graph.getNode(nodeId)?.data.c,
@@ -645,13 +676,18 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   function handleCurrentProjectChange(projectName: string) {
-    if (projectName === lastSelectedNode || !layout) return
-
+    if (projectName === graph.getNode(lastSelectedNode)?.data.label || !layout) return
+    let projectId
+    graph.forEachNode((node) => {
+      if (node.data.label === projectName) {
+        projectId = node.id
+      }
+    })
     // Check if projectName exists in our graph
-    if (!layout.getBody(projectName)) return
+    if (!layout.getBody(projectId)) return
 
     // Select the node
-    selectNode(projectName)
+    selectNode(projectId)
   }
 }
 

@@ -11,4 +11,6 @@ export default {
   iconSource: `${server}${version}/icon`,
   namesEndpoint: `${server}${version}/names`,
   graphsEndpoint: `${server}${version}/graphs`,
+  extendedGraphEndpoint: `${server}${version}/extendedGraphs`,
+  compressedGraphEndpoint: `${server}${version}/compressedGraphs`,
 }

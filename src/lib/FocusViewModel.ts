@@ -60,7 +60,7 @@ export class FocusViewModel implements IFocusViewModel {
         this.lngLat = graph.getNode(label)?.data.lnglat || [0, 0]
         const seen = new Set()
         graph.forEachLinkedNode(
-          label,
+          repositoryId,
           (node, link) => {
             if (seen.has(node.id)) {
               return
@@ -76,18 +76,9 @@ export class FocusViewModel implements IFocusViewModel {
           },
           false,
         )
+        neighbors.sort((a, b) => b.linkWeight - a.linkWeight)
 
-        neighbors.sort((a, b) => {
-          if (a.isExternal && !b.isExternal) {
-            return 1
-          } else if (!a.isExternal && b.isExternal) {
-            return -1
-          } else {
-            return 0
-          }
-        })
-
-        this.repos = neighbors
+        this.repos = neighbors.slice(0, 25)
       })
       .catch((err) => {
         this.loading = false
@@ -138,11 +129,11 @@ export class FocusViewModel implements IFocusViewModel {
       }
 
       logCallback('Starting graph expansion...')
-      const graph = await buildLocalNeighborsGraphForGroup(groupId, this.name, depth, logCallback)
+      const graph = await buildLocalNeighborsGraphForGroup(groupId, this.id, depth, logCallback)
       logCallback('Graph data received, building tree view...')
 
       // Convert graph to tree view
-      this.graphData = this.toTreeView(graph, this.name, depth)
+      this.graphData = this.toTreeView(graph, this.id, depth)
 
       // Dispose existing viewer if any
       this.disposeSubgraphViewer()
@@ -188,38 +179,39 @@ export class FocusViewModel implements IFocusViewModel {
     // parentDepthInTree: The depth of parentNodeId in the tree (startNodeId is at 0).
     // path: Set of ancestor IDs in the current traversal path to avoid cycles.
     function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<string>): TreeItem[] {
-      // If the parent node is already at the maximum allowed depth,
-      // it cannot have any children displayed in the tree.
       if (parentDepthInTree >= depth) {
         return []
       }
 
+      // Add current node to path
+      path.add(parentNodeId)
+
       const childNodes: TreeItem[] = []
+
       graph.forEachLinkedNode(
         parentNodeId,
-        (linkedGraphNode) => {
-          // If the linked node is already in the current path, skip it to prevent cycles.
+        (linkedGraphNode, linkedGraphLink) => {
           if (path.has(linkedGraphNode.id)) {
             return
           }
 
-          const childData = linkedGraphNode.data
+          // Create a copy of the node data
+          const childData = { ...linkedGraphNode.data }
+          childData.linkWeight = linkedGraphLink.data.weight
 
-          // Create a new path set for the recursive call, including the current child.
-          const newPath = new Set(path)
-          newPath.add(linkedGraphNode.id)
-
-          // Recursively get children of the current linkedGraphNode.
-          // Its depth in the tree will be parentDepthInTree + 1.
-          const grandChildren = getChildrenRecursive(linkedGraphNode.id, parentDepthInTree + 1, newPath)
-
+          // Use the same path Set (current node already added above)
+          const grandChildren = getChildrenRecursive(linkedGraphNode.id, parentDepthInTree + 1, path)
           childNodes.push({ node: childData, children: grandChildren })
         },
         false,
       )
-      return childNodes
-    }
 
+      // Remove current node from path when backtracking
+      path.delete(parentNodeId)
+
+      childNodes.sort((a, b) => b.node.linkWeight - a.node.linkWeight)
+      return childNodes.slice(0, 25)
+    }
     // Initial path for recursion, containing only the startNodeId.
     const initialPath = new Set<string>()
     initialPath.add(startNodeId)

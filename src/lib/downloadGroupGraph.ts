@@ -135,34 +135,44 @@ export async function buildLocalNeighborsGraphForGroup(
 
     let linksAdded = 0
 
-    // Process all neighbors of the current node
+    // Collect all neighbor links for the current node
+    const neighborLinks: { neighborNode: Node; link: Link }[] = []
     currentGraph.forEachLinkedNode(
       nodeId,
       (neighborNode: Node, link: Link) => {
-        // Add the edge to the local graph
-        if (!localGraph.hasLink(link.fromId, link.toId) && !localGraph.hasLink(link.toId, link.fromId)) {
-          localGraph.addLink(link.fromId, link.toId, { ...link.data })
-          linksAdded++
-          totalLinks++
-        }
-
-        // Skip already visited nodes
-        if (visited.has(neighborNode.id)) return
-
-        // Add the neighbor node to the local graph
-        localGraph.addNode(neighborNode.id, { ...neighborNode.data })
-        visited.add(neighborNode.id)
-
-        // Add neighbor to queue with its group and incremented depth
-        const neighborGroupId = neighborNode.data.c
-        queue.push({
-          nodeId: neighborNode.id,
-          groupId: neighborGroupId,
-          currentDepth: currentDepth + 1,
-        })
+        neighborLinks.push({ neighborNode, link })
       },
       false,
     )
+
+    // Sort neighbor links by link weight descending and take the top 25
+    neighborLinks.sort((a, b) => b.link.data.weight - a.link.data.weight)
+    const topNeighborLinks = neighborLinks.slice(0, 25)
+
+    // Process only the top 25 neighbor links
+    for (const { neighborNode, link } of topNeighborLinks) {
+      // Add the edge to the local graph
+      if (!localGraph.hasLink(link.fromId, link.toId) && !localGraph.hasLink(link.toId, link.fromId)) {
+        localGraph.addLink(link.fromId, link.toId, { ...link.data })
+        linksAdded++
+        totalLinks++
+      }
+
+      // Skip already visited nodes
+      if (visited.has(neighborNode.id)) continue
+
+      // Add the neighbor node to the local graph
+      localGraph.addNode(neighborNode.id, { ...neighborNode.data })
+      visited.add(neighborNode.id)
+
+      // Add neighbor to queue with its group and incremented depth
+      const neighborGroupId = neighborNode.data.c
+      queue.push({
+        nodeId: neighborNode.id,
+        groupId: neighborGroupId,
+        currentDepth: currentDepth + 1,
+      })
+    }
 
     if (logCallback && (processedNodes % 10 === 0 || linksAdded > 20)) {
       logCallback(

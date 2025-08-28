@@ -68,6 +68,13 @@ function close(): void {
         </ul>
       </div>
 
+      <div class="row-horizontal">
+        <p>
+          The link color represent the strength of the relationship between 2 boardgames. Strong relationships will be orange, weaker ones will be
+          purple
+        </p>
+      </div>
+
       <h2>Credits</h2>
       <p>A huge thanks to <b>Anvaka</b> which inspired me to do this project and did the tools that enabled me to come this far.</p>
 
