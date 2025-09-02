@@ -1,17 +1,17 @@
-import maplibregl, { type CustomLayerInterface } from 'maplibre-gl'
+import maplibregl, { type CustomLayerInterface, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
 import bus from './bus'
 import { getCustomLayer } from './gl/createLinesCollection.js'
 import config from './config'
 import getColorTheme from './getColorTheme'
 import getComplimentaryColor from './getComplimentaryColor'
 import { type Layout } from 'ngraph.forcelayout'
-import type { Graph } from 'ngraph.graph'
+import type { Graph, NodeId } from 'ngraph.graph'
 import createLayout from 'ngraph.forcelayout'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.js'
 const currentColorTheme = getColorTheme()
 
 // Default map style configuration for subgraph viewer
-const mapStyle = {
+const mapStyle: StyleSpecification = {
   version: 8,
   glyphs: config.glyphsSource,
   sources: {
@@ -50,10 +50,10 @@ function convertLayoutToMapCoordinates(pos: { x: number; y: number }) {
 }
 
 export function createMaplibreSubgraphViewer(subgraphInfo: {
-  container: Element | null
+  container: Element
   graph: Graph<BoardGameNodeData, BoardGameLinkData>
   onLayoutStatusChange: (arg0: boolean) => void
-  nodeId: string
+  nodeId: number
 }) {
   const container = subgraphInfo.container //document.querySelector('.subgraph-viewer')
   if (!container) {
@@ -80,7 +80,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     center: [0, 0],
     dragRotate: false,
     touchZoomRotate: { around: 'center' },
-    preserveDrawingBuffer: true,
+    canvasContextAttributes: { preserveDrawingBuffer: true },
   })
 
   // Disable map rotation
@@ -88,13 +88,16 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   map.touchZoomRotate.disableRotation()
 
   // Track state
-  let layout: Layout<Graph<string, string>> | undefined = undefined
+  let layout: Layout<Graph<BoardGameNodeData, BoardGameLinkData>> | undefined = undefined
   const graph = subgraphInfo.graph
   let isDisposed = false
   let layoutSteps = 400
   let layoutAnimationFrame: number | undefined = undefined
-  let lastSelectedNode: string | undefined = undefined
-  const nodesGeoJSON = createEmptyFeatureCollection()
+  let lastSelectedNode: number | undefined = undefined
+  const nodesGeoJSON = {
+    type: 'FeatureCollection',
+    features: [],
+  } as GeoJSON.FeatureCollection<GeoJSON.Point>
   let linksLayer: getCustomLayer | null = null
   let firstTimeLayout = true
 
@@ -281,7 +284,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     },
     resumeLayout() {
       layoutSteps = 400
-      map.getSource('selected-nodes').setData({
+      ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData({
         type: 'FeatureCollection',
         features: [],
       })
@@ -361,8 +364,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Helper to create a link line between two nodes
-  function createLinkLine(fromId: string, toId: string, color: number) {
-    if (!layout.getBody(fromId) || !layout.getBody(toId)) return null
+  function createLinkLine(fromId: NodeId, toId: NodeId, color: number): { from: [number, number]; to: [number, number]; color: number } | null {
+    if (!layout?.getBody(fromId) || !layout?.getBody(toId)) return null
 
     const fromPos = layout.getNodePosition(fromId)
     const toPos = layout.getNodePosition(toId)
@@ -391,7 +394,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     linksLayer?.clear()
 
     // Calculate node sizes based on connections
-    const nodeSizes = {}
+    const nodeSizes: { [key: string]: number } = {}
     graph.forEachNode((node) => {
       const linkCount = node.links?.size || 0
 
@@ -400,7 +403,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     })
 
     graph.forEachNode((node) => {
-      if (!layout.getBody(node.id)) return // Skip if node not in layout
+      if (!layout?.getBody(node.id)) return // Skip if node not in layout
 
       const pos = layout.getNodePosition(node.id)
       const mapCoords = convertLayoutToMapCoordinates(pos)
@@ -424,7 +427,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     })
 
     // Update edges
-    const firstLevelLinks = []
+    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
 
     graph.forEachLink((link) => {
       // Determine if this is a first-level link (connected to selected node)
@@ -451,18 +454,18 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       if (isSelectedLink) {
         firstLevelLinks.push(line)
       } else {
-        linksLayer.addLine(line)
+        linksLayer?.addLine(line)
       }
     })
 
     // Add first-level links after other links to ensure they're on top
     firstLevelLinks.forEach((line) => {
-      linksLayer.addLine(line)
+      linksLayer?.addLine(line)
     })
 
     // Update the nodes source with new features
     nodesGeoJSON.features = features
-    map.getSource('nodes').setData(nodesGeoJSON)
+    ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData(nodesGeoJSON)
 
     // Fit map to nodes if first update
     if (features.length > 0 && !lastSelectedNode) {
@@ -470,15 +473,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     }
   }
 
-  // Helper function to get shorter label from full name
-  function getLabelFromName(fullName: string) {
-    // const parts = fullName.split('/')
-    // return parts.length > 1 ? parts[parts.length - 1] : fullName
-    return fullName
-  }
-
   // Handle node click
-  function handleNodeClick(e) {
+  function handleNodeClick(e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
     if (!e.features || e.features.length === 0) return
 
     const nodeId = e.features[0].properties.id
@@ -486,8 +482,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Helper to create a node feature for GeoJSON
-  function createNodeFeature(nodeId: string, properties = {}): GeoJSON.Feature<GeoJSON.Point> | null {
-    if (!layout.getBody(nodeId)) return null
+  function createNodeFeature(nodeId: NodeId, properties = {}): GeoJSON.Feature<GeoJSON.Point> | null {
+    if (!layout?.getBody(nodeId)) return null
 
     const pos = layout.getNodePosition(nodeId)
     const mapCoords = convertLayoutToMapCoordinates(pos)
@@ -507,7 +503,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Select a node and update visual highlighting
-  function selectNode(nodeId, bringToView = true) {
+  function selectNode(nodeId: number, bringToView = true) {
     if (!map.isStyleLoaded() || !layout || nodeId === lastSelectedNode) {
       return
     }
@@ -534,34 +530,38 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     }
 
     // Update edges in the custom layer
-    linksLayer.clear()
-    const firstLevelLinks = []
+    linksLayer?.clear()
+    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
 
     // Find and highlight neighbors of the selected node
-    graph.forEachLinkedNode(nodeId, (linkedNode) => {
-      if (!layout.getBody(linkedNode.id)) return
+    graph.forEachLinkedNode(
+      nodeId,
+      (linkedNode) => {
+        if (!layout?.getBody(linkedNode.id)) return
 
-      // Add neighbor node to highlighted features
-      const neighborFeature = createNodeFeature(linkedNode.id, {
-        color: NODE_COLORS.neighbor,
-        textSize: 1.0,
-        size: 6,
-      })
+        // Add neighbor node to highlighted features
+        const neighborFeature = createNodeFeature(linkedNode.id, {
+          color: NODE_COLORS.neighbor,
+          textSize: 1.0,
+          size: 6,
+        })
 
-      if (neighborFeature) {
-        highlightedNodes.features.push(neighborFeature)
-      }
+        if (neighborFeature) {
+          highlightedNodes.features.push(neighborFeature)
+        }
 
-      // Add first-level connection
-      const line = createLinkLine(nodeId, linkedNode.id, 0xffffffff) // Bright white for direct connections
-      if (line) {
-        firstLevelLinks.push(line)
-      }
-    })
+        // Add first-level connection
+        const line = createLinkLine(nodeId, linkedNode.id, 0xffffffff) // Bright white for direct connections
+        if (line) {
+          firstLevelLinks.push(line)
+        }
+      },
+      false,
+    )
 
     // Draw all other connections (non-highlighted)
     graph.forEachLink((link) => {
-      if (!layout.getBody(link.fromId) || !layout.getBody(link.toId)) return
+      if (!layout?.getBody(link.fromId) || !layout.getBody(link.toId)) return
       // Skip links connected to selected node as they're already handled
       if (link.fromId === nodeId || link.toId === nodeId) return
       const lineColor = (() => {
@@ -579,15 +579,15 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         }
       })()
       const line = createLinkLine(link.fromId, link.toId, lineColor) // Semi-transparent for background connections
-      if (line) linksLayer.addLine(line)
+      if (line) linksLayer?.addLine(line)
     })
 
     // Add the selected node and neighbors to the map
-    map.getSource('selected-nodes').setData(highlightedNodes)
+    ;(map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData(highlightedNodes)
 
     // Update the links layer with the new lines
     firstLevelLinks.forEach((line) => {
-      linksLayer.addLine(line)
+      linksLayer?.addLine(line)
     })
 
     lastSelectedNode = nodeId
@@ -623,7 +623,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Calculate the bounds for all current nodes in the viewer
-  function calculateBounds(): number[][] | null {
+  function calculateBounds(): LngLatBoundsLike | null {
     if (!layout || isDisposed) return null
 
     let minLng = Infinity
@@ -632,7 +632,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     let maxLat = -Infinity
 
     graph.forEachNode((node) => {
-      if (!layout.getBody(node.id)) return // Skip if node not in layout
+      if (!layout?.getBody(node.id)) return // Skip if node not in layout
 
       const pos = layout.getNodePosition(node.id)
       const mapCoords = convertLayoutToMapCoordinates(pos)
@@ -676,7 +676,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   function handleCurrentProjectChange(projectName: string) {
-    if (projectName === graph.getNode(lastSelectedNode)?.data.label || !layout) return
+    if (!lastSelectedNode || projectName === graph.getNode(lastSelectedNode)?.data.label || !layout) return
     let projectId
     graph.forEachNode((node) => {
       if (node.data.label === projectName) {
@@ -684,16 +684,9 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       }
     })
     // Check if projectName exists in our graph
-    if (!layout.getBody(projectId)) return
+    if (!projectId || !layout.getBody(projectId)) return
 
     // Select the node
     selectNode(projectId)
-  }
-}
-
-function createEmptyFeatureCollection() {
-  return {
-    type: 'FeatureCollection',
-    features: [],
   }
 }

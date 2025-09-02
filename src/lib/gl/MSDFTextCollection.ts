@@ -36,10 +36,9 @@ export default class MSDFTextCollection extends GLCollection {
     chars: { id: number }[]
   } | null
   onReadyCallback: (() => void) | undefined
-  alphabet: Map<string, FontLetter>
-  private _sdfTextureChanged: boolean
-  sdfTextureWidth: number
-  sdfTextureHeight: number
+  alphabet: Map<string, FontLetter> = new Map()
+  sdfTextureWidth: number = 1
+  sdfTextureHeight: number = 1
   constructor(gl: WebGLRenderingContext | WebGL2RenderingContext, options: { fontSize?: number; onReady?: () => void } = {}) {
     if (gl instanceof WebGLRenderingContext) throw new Error('WebGL1 not supported')
     gl.getExtension('OES_standard_derivatives')
@@ -66,7 +65,6 @@ export default class MSDFTextCollection extends GLCollection {
         })
 
         this.msdfImage.onload = () => {
-          this._sdfTextureChanged = true
           this.program.setTextureCanvas('msdf', this.msdfImage)
           this.isReady = true
           this.sdfTextureWidth = img.width
@@ -91,6 +89,8 @@ export default class MSDFTextCollection extends GLCollection {
       this.queue = []
     }
   }
+
+  declare uniforms: { modelViewProjection: any; color: number[]; bias: number } | undefined
 
   draw(/* gl, drawContext */) {
     if (!this.uniforms) {
@@ -272,6 +272,18 @@ export default class MSDFTextCollection extends GLCollection {
 
     let scale = 0
     // Projection-dependent font size calculation
+    if (!this.scene) {
+      return {
+        charDetailsList: [],
+        overallWidth: 0,
+        minWorldY: textInfo.y || 0,
+        maxWorldY: textInfo.y || 0,
+        startX: textInfo.x || 0,
+        scale: 0,
+        currentWorldFontSize: textInfo.fontSize || this.fontSize,
+        error: 'Scene is not available',
+      }
+    }
     const dc = this.scene.getDrawContext()
     const pMat = dc.projection
     const textAnchorClip: vec4 = [0, 0, 0, 1]
@@ -383,7 +395,7 @@ function getTextProgram(
 ) {
   return defineProgram({
     capacity: options.capacity || 1,
-    buffer: options.buffer,
+
     debug: options.debug,
     gl,
     vertex: `

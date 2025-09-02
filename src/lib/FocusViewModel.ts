@@ -5,7 +5,13 @@ import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGrap
 import type { TreeItem } from '@/components/TreeView.vue'
 
 // Static reference to maintain single instance
-let activeSubgraphViewer = undefined
+interface ActiveSubgraphViewer {
+  dispose(): void
+  resumeLayout(): void
+  stopLayout(): void
+}
+
+let activeSubgraphViewer: ActiveSubgraphViewer | undefined = undefined
 export interface Repositories {
   isExternal: boolean
   name: NodeId | undefined
@@ -129,6 +135,9 @@ export class FocusViewModel implements IFocusViewModel {
       }
 
       logCallback('Starting graph expansion...')
+      if (this.id === undefined) {
+        throw new Error('Repository ID is undefined and cannot be used to expand graph.')
+      }
       const graph = await buildLocalNeighborsGraphForGroup(groupId, this.id, depth, logCallback)
       logCallback('Graph data received, building tree view...')
 
@@ -143,7 +152,9 @@ export class FocusViewModel implements IFocusViewModel {
       if (!containerEl) {
         throw new Error('Subgraph viewer container not found in DOM')
       }
-
+      if (bggId === undefined) {
+        throw new Error('Repository ID is undefined and cannot be used to expand graph.')
+      }
       activeSubgraphViewer = createMaplibreSubgraphViewer({
         container: containerEl,
         graph,
@@ -162,12 +173,23 @@ export class FocusViewModel implements IFocusViewModel {
     }
   }
 
-  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: string, depth = 2): TreeItem {
+  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: number, depth = 2): TreeItem {
     const rootGraphNode = graph.getNode(startNodeId)
     if (!rootGraphNode) {
       // Return a minimal tree structure if the start node isn't found
       return {
-        node: { id: startNodeId, label: startNodeId.toString() + ' (not found)', isExternal: false, lnglat: [0, 0], max_players: '0', l: '', c: 0 },
+        node: {
+          id: startNodeId,
+          label: startNodeId.toString() + ' (not found)',
+          isExternal: false,
+          lnglat: [0, 0],
+          max_players: '0',
+          l: '',
+          c: 0,
+          rating: '',
+          complexity: '',
+          size: '',
+        },
         children: [],
       }
     }
@@ -178,7 +200,7 @@ export class FocusViewModel implements IFocusViewModel {
     // parentNodeId: The ID of the node whose children are being fetched.
     // parentDepthInTree: The depth of parentNodeId in the tree (startNodeId is at 0).
     // path: Set of ancestor IDs in the current traversal path to avoid cycles.
-    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<string>): TreeItem[] {
+    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<NodeId>): TreeItem[] {
       if (parentDepthInTree >= depth) {
         return []
       }
@@ -197,11 +219,10 @@ export class FocusViewModel implements IFocusViewModel {
 
           // Create a copy of the node data
           const childData = { ...linkedGraphNode.data }
-          childData.linkWeight = linkedGraphLink.data.weight
 
           // Use the same path Set (current node already added above)
           const grandChildren = getChildrenRecursive(linkedGraphNode.id, parentDepthInTree + 1, path)
-          childNodes.push({ node: childData, children: grandChildren })
+          childNodes.push({ node: childData, children: grandChildren, linkWeight: linkedGraphLink.data.weight })
         },
         false,
       )
@@ -209,11 +230,11 @@ export class FocusViewModel implements IFocusViewModel {
       // Remove current node from path when backtracking
       path.delete(parentNodeId)
 
-      childNodes.sort((a, b) => b.node.linkWeight - a.node.linkWeight)
+      childNodes.sort((a, b) => (b.linkWeight ?? 0) - (a.linkWeight ?? 0))
       return childNodes.slice(0, 25)
     }
     // Initial path for recursion, containing only the startNodeId.
-    const initialPath = new Set<string>()
+    const initialPath = new Set<number>()
     initialPath.add(startNodeId)
 
     // Fetch children for the root node (startNodeId, which is at depth 0).

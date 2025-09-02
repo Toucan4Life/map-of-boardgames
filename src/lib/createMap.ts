@@ -32,7 +32,7 @@ export class BoardGameMap {
   dispose() {
     this.map.remove()
   }
-  backgroundEdgesFetch: Promise<Graph<BoardGameNodeData, BoardGameLinkData>> | undefined
+  backgroundEdgesFetch: Promise<void> | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
   fastLinesLayer: getCustomLayer
@@ -328,7 +328,7 @@ export class BoardGameMap {
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
     const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     if (bgFeature?.id === undefined) return
 
     const groupId = +bgFeature.id

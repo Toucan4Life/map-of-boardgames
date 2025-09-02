@@ -18,6 +18,7 @@ export type BoardGameNodeData = {
 export type BoardGameLinkData = {
   e: boolean
   weight: number
+  s: string
 }
 
 export async function fetchAndProcessGraph(
@@ -42,6 +43,9 @@ export async function fetchAndProcessGraph(
     const totalBytes = contentLength !== null ? parseInt(contentLength, 10) : undefined
 
     // Create a reader from the response body
+    if (!response.body) {
+      throw new Error('Response body is null')
+    }
     const reader = response.body.getReader()
     let bytesReceived = 0
     const chunks = []
@@ -53,13 +57,15 @@ export async function fetchAndProcessGraph(
 
       if (!done) {
         const value = result.value
-        chunks.push(value)
-        bytesReceived += value.length
+        if (value) {
+          chunks.push(value)
+          bytesReceived += value.length
+        }
 
         progressCallback({
           fileName,
           bytesReceived,
-          totalBytes,
+          totalBytes: totalBytes ?? 0,
         })
       }
     }
@@ -96,7 +102,7 @@ export async function fetchAndProcessGraph(
 
   graph.forEachNode((node: Node<BoardGameNodeData>) => {
     node.data.lnglat = node.data.l.split(',').map((x: string) => +x) as [number, number]
-    if (node.data.c == 'undefined') {
+    if (typeof node.data.c === 'string' && node.data.c === 'undefined') {
       // Nodes of external groups will have their groupId set in the `.data.c` property
       // However nodes that belong to current group will have this property set to undefined
       // We set it here to make sure we know which group the node belongs to

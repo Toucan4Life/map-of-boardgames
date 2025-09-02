@@ -1,4 +1,4 @@
-import type { Graph, Link, Node } from 'ngraph.graph'
+import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 import { fetchAndProcessGraph } from './fetchAndProcessGraph'
 import type { BoardGameNodeData, BoardGameLinkData } from './fetchAndProcessGraph'
 const graphsCache = new Map()
@@ -45,7 +45,7 @@ function formatBytes(bytes: number, decimals = 2) {
 
 export async function buildLocalNeighborsGraphForGroup(
   groupId: number,
-  repositoryName: string,
+  repositoryName: NodeId,
   depth: number,
   logCallback?: (message: string) => void,
 ) {
@@ -90,7 +90,7 @@ export async function buildLocalNeighborsGraphForGroup(
   // Track visited nodes to avoid duplicates
   const visited = new Set()
   // Queue for BFS traversal with node id, source group, and current depth
-  const queue = []
+  const queue: { nodeId: NodeId; groupId: number; currentDepth: number }[] = []
 
   // Get the starting node
   const startNode = rootGraph.getNode(repositoryName)
@@ -136,10 +136,10 @@ export async function buildLocalNeighborsGraphForGroup(
     let linksAdded = 0
 
     // Collect all neighbor links for the current node
-    const neighborLinks: { neighborNode: Node; link: Link }[] = []
+    const neighborLinks: { neighborNode: Node<BoardGameNodeData>; link: Link }[] = []
     currentGraph.forEachLinkedNode(
       nodeId,
-      (neighborNode: Node, link: Link) => {
+      (neighborNode: Node<BoardGameNodeData>, link: Link) => {
         neighborLinks.push({ neighborNode, link })
       },
       false,

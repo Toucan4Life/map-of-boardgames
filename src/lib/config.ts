@@ -1,4 +1,4 @@
-const server = 'https://Toucan4Life.github.io/graph-start/src/server/data'
+const server = 'https://Toucan4Life.github.io/graph-start/src/server/data' //'http://localhost:3010/data'
 const version = '/v2'
 const params = new URLSearchParams(window.location.search)
 export default {

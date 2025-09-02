@@ -19,6 +19,7 @@ function showDetails(repo: Repositories): void {
     skipAnimation: false,
     html: null,
     year: '0',
+    groupId: 0,
   })
 }
 function closePanel(): void {

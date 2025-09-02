@@ -96,7 +96,7 @@ export default function createLabelEditor(scene: WglScene) {
           // If text layout measurement failed, skip this label
           return
         }
-        if (textLayout.width > 10 && labelInfo.selectedLevel < 0) {
+        if (textLayout.width > 10 && labelInfo.selectedLevel && labelInfo.selectedLevel < 0) {
           // Too long to display, skip
           return
         }
@@ -182,6 +182,7 @@ export default function createLabelEditor(scene: WglScene) {
 
   function isLabelVisible(labelInfo: Label) {
     if (!visibleRect) return false
+    if (!labelInfo.ui || !labelInfo.ui.position) return false
     const [x, y] = labelInfo.ui.position
     return x > visibleRect.left && x < visibleRect.right && y < visibleRect.top && y > visibleRect.bottom
   }
@@ -206,7 +207,7 @@ function getTextFromNode(node: Label, cameraZ: number) {
   }
 
   // For non-selected labels, apply fontSize scaling based on camera z position and node size
-  if (node.selectedLevel < 0) {
+  if (node.selectedLevel && node.selectedLevel < 0) {
     const nodeSize: number = node.ui && node.ui.size !== undefined ? node.ui.size : 1
 
     // Interpolate fontSize based on camera z position (zoom level)
@@ -230,7 +231,7 @@ function getTextFromNode(node: Label, cameraZ: number) {
 
   node.textUI.text = text
   node.textUI.fontSize = fontSize
-  node.textUI.x = node.ui.position[0]
-  node.textUI.y = node.ui.position[1] - node.ui.size / 2
+  node.textUI.x = node?.ui?.position[0] ?? 0
+  node.textUI.y = (node?.ui?.position[1] ?? 0) - (node?.ui?.size ?? 0) / 2
   return node.textUI
 }

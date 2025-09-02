@@ -67,10 +67,14 @@ export default class LineCollection extends GLCollection {
         modelViewProjection: this.modelViewProjection,
         width: this.width,
         resolution: [drawContext.width, drawContext.height],
+      } as {
+        modelViewProjection: any
+        width: number
+        resolution: [number, number]
       }
     }
-    this.uniforms.resolution[0] = drawContext.width
-    this.uniforms.resolution[1] = drawContext.height
+    ;(this.uniforms as { resolution: [number, number] }).resolution[0] = drawContext.width
+    ;(this.uniforms as { resolution: [number, number] }).resolution[1] = drawContext.height
     this.program.draw(this.uniforms)
   }
 
