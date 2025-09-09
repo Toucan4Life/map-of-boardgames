@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import type { BoardGameNodeData } from '@/lib/fetchAndProcessGraph'
+import type { TreeItem } from '@/lib/FocusViewModel'
 import { ref } from 'vue'
 
-export interface TreeItem {
-  node: BoardGameNodeData
-  children?: TreeItem[]
-  linkWeight?: number
-}
-
-const props = defineProps<{
+defineProps<{
   tree: TreeItem
 }>()
 

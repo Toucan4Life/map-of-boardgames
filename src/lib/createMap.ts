@@ -9,12 +9,9 @@ import maplibregl, {
 } from 'maplibre-gl'
 import bus from './bus'
 import config from './config'
-import getComplimentaryColor from './getComplimentaryColor'
 import downloadGroupGraph from './downloadGroupGraph.ts'
 import { LabelEditor } from './label-editor/createLabelEditor.ts'
 import getColorTheme from './getColorTheme'
-import type { Graph } from 'ngraph.graph'
-import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.ts'
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
 
@@ -347,11 +344,10 @@ export class BoardGameMap {
   drawBackgroundEdges(point: PointLike, repo: string): void {
     const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
 
-    if (bgFeature?.id === undefined) return
+    if (bgFeature.id === undefined) return
 
     const groupId = +bgFeature.id
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
-    const complimentaryColor = getComplimentaryColor(fillColor)
 
     ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
       type: 'FeatureCollection',
@@ -365,6 +361,10 @@ export class BoardGameMap {
 
     this.backgroundEdgesFetch = downloadGroupGraph(groupId)
       .then((groupGraph) => {
+        if (!groupGraph) {
+          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
+          return
+        }
         const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string; weight: number }[] = []
 
         // Create adjustment map inline
@@ -380,7 +380,7 @@ export class BoardGameMap {
           })
 
         let primaryNodePositionFound = false
-        let lines: {
+        const lines: {
           from: [number, number]
           to: [number, number]
           color: string
@@ -442,7 +442,7 @@ export class BoardGameMap {
         firstLevelLinks.forEach((line) => {
           lines.push(line)
         })
-        let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+        const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
         lines.forEach((line) =>
           GeoJSONLine.push({
             type: 'Feature',

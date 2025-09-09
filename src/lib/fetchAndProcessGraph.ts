@@ -1,4 +1,4 @@
-import type { Graph, Link, Node } from 'ngraph.graph'
+import type { Graph, Node } from 'ngraph.graph'
 import config from './config'
 import pako from 'pako'
 
@@ -18,7 +18,7 @@ export type BoardGameNodeData = {
 export type BoardGameLinkData = {
   e: boolean
   weight: number
-  s: string
+  s: string | undefined
 }
 
 export async function fetchAndProcessGraph(
@@ -35,7 +35,8 @@ export async function fetchAndProcessGraph(
     const response = await fetch(url)
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch graph for group ${groupId}: ${response.status.toString()} ${response.statusText}`)
+      console.error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
+      return
     }
 
     // Get content length if available
@@ -44,7 +45,8 @@ export async function fetchAndProcessGraph(
 
     // Create a reader from the response body
     if (!response.body) {
-      throw new Error('Response body is null')
+      console.error('Response body is null')
+      return
     }
     const reader = response.body.getReader()
     let bytesReceived = 0

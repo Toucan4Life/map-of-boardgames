@@ -2,7 +2,6 @@ import type { Graph, NodeId } from 'ngraph.graph'
 import downloadGroupGraph, { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
 import { createMaplibreSubgraphViewer } from './createMaplibreSubgraphViewer'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph'
-import type { TreeItem } from '@/components/TreeView.vue'
 
 // Static reference to maintain single instance
 interface ActiveSubgraphViewer {
@@ -20,7 +19,11 @@ export interface Repositories {
   id: number
   linkWeight: number
 }
-
+export interface TreeItem {
+  node: BoardGameNodeData
+  children?: TreeItem[]
+  linkWeight?: number
+}
 export interface IFocusViewModel {
   currentLog: string
   logMessages: string[]
@@ -61,6 +64,11 @@ export class FocusViewModel implements IFocusViewModel {
     this.currentLog = ''
     downloadGroupGraph(groupId)
       .then((graph) => {
+        if (!graph) {
+          this.loading = false
+          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
+          return
+        }
         this.loading = false
         const neighbors: Repositories[] = []
         this.lngLat = graph.getNode(label)?.data.lnglat || [0, 0]
@@ -86,7 +94,7 @@ export class FocusViewModel implements IFocusViewModel {
 
         this.repos = neighbors.slice(0, 25)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         this.loading = false
         console.error('Failed to initialize FocusViewModel:', err)
       })
@@ -136,9 +144,14 @@ export class FocusViewModel implements IFocusViewModel {
 
       logCallback('Starting graph expansion...')
       if (this.id === undefined) {
-        throw new Error('Repository ID is undefined and cannot be used to expand graph.')
+        console.error('Repository ID is undefined and cannot be used to expand graph.')
+        return
       }
       const graph = await buildLocalNeighborsGraphForGroup(groupId, this.id, depth, logCallback)
+      if (!graph) {
+        logCallback('Graph expansion failed.')
+        return
+      }
       logCallback('Graph data received, building tree view...')
 
       // Convert graph to tree view
@@ -150,10 +163,12 @@ export class FocusViewModel implements IFocusViewModel {
       // Create the new subgraph viewer
       const containerEl = document.querySelector<HTMLElement>('.subgraph-viewer')
       if (!containerEl) {
-        throw new Error('Subgraph viewer container not found in DOM')
+        console.error('Subgraph viewer container not found in DOM')
+        return
       }
       if (bggId === undefined) {
-        throw new Error('Repository ID is undefined and cannot be used to expand graph.')
+        console.error('Repository ID is undefined and cannot be used to expand graph.')
+        return
       }
       activeSubgraphViewer = createMaplibreSubgraphViewer({
         container: containerEl,

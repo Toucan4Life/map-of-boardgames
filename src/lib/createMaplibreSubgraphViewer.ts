@@ -2,7 +2,6 @@ import maplibregl, { GeoJSONSource, type AddLayerObject, type LngLatBoundsLike, 
 import bus from './bus'
 import config from './config'
 import getColorTheme from './getColorTheme'
-import getComplimentaryColor from './getComplimentaryColor'
 import { type Layout } from 'ngraph.forcelayout'
 import type { Graph, NodeId } from 'ngraph.graph'
 import createLayout from 'ngraph.forcelayout'
@@ -60,9 +59,6 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   nodeId: number
 }) {
   const container = subgraphInfo.container //document.querySelector('.subgraph-viewer')
-  if (!container) {
-    throw new Error('Subgraph viewer container not found')
-  }
   container.classList.add('active')
 
   // Clear the container first
@@ -75,7 +71,6 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   mapContainer.style.width = '100%'
   mapContainer.style.height = '100%'
   container.appendChild(mapContainer)
-  const complimentaryLinkColor = getComplimentaryColor(currentColorTheme.background)
 
   // Initialize maplibre map
   const map = new maplibregl.Map({
@@ -298,9 +293,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     },
     stopLayout() {
       layoutSteps = 0
-      if (subgraphInfo.onLayoutStatusChange) {
-        subgraphInfo.onLayoutStatusChange(false)
-      }
+
+      subgraphInfo.onLayoutStatusChange(false)
     },
     resumeLayout() {
       layoutSteps = 400
@@ -313,9 +307,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         features: [],
       })
       if (!isDisposed && layout) {
-        if (subgraphInfo.onLayoutStatusChange) {
-          subgraphInfo.onLayoutStatusChange(true)
-        }
+        subgraphInfo.onLayoutStatusChange(true)
+
         if (!layoutAnimationFrame) {
           layoutAnimationFrame = requestAnimationFrame(runLayout)
         }
@@ -350,11 +343,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     updateNodesOnMap()
 
     // Start the layout animation
-    if (!isDisposed) {
-      layoutAnimationFrame = requestAnimationFrame(runLayout)
-      // Select root node initially
-      selectNode(subgraphInfo.nodeId)
-    }
+
+    layoutAnimationFrame = requestAnimationFrame(runLayout)
+    // Select root node initially
+    selectNode(subgraphInfo.nodeId)
   }
 
   // Run layout steps and update the visual representation
@@ -370,9 +362,8 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     }
 
     if (willStop) {
-      if (subgraphInfo.onLayoutStatusChange) {
-        subgraphInfo.onLayoutStatusChange(false)
-      }
+      subgraphInfo.onLayoutStatusChange(false)
+
       if (firstTimeLayout) {
         firstTimeLayout = false
         // need a timeout, because maplibre.isStyleLoaded() is not true immediately after we
@@ -449,7 +440,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     // Update edges
     const firstLevelLinks: LinkLine[] = []
 
-    let lines: LinkLine[] = []
+    const lines: LinkLine[] = []
     graph.forEachLink((link) => {
       // Determine if this is a first-level link (connected to selected node)
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
@@ -483,7 +474,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     firstLevelLinks.forEach((line) => {
       lines.push(line)
     })
-    let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+    const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
     lines.forEach((line) =>
       GeoJSONLine.push({
         type: 'Feature',
@@ -598,7 +589,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       },
       false,
     )
-    let lines: LinkLine[] = []
+    const lines: LinkLine[] = []
     // Draw all other connections (non-highlighted)
     graph.forEachLink((link) => {
       if (!layout?.getBody(link.fromId) || !layout.getBody(link.toId)) return
@@ -629,7 +620,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     firstLevelLinks.forEach((line) => {
       lines.push(line)
     })
-    let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+    const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
     lines.forEach((line) =>
       GeoJSONLine.push({
         type: 'Feature',
@@ -722,9 +713,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
     bus.off('current-project', handleCurrentProjectChange)
 
-    if (map) {
-      map.remove()
-    }
+    map.remove()
 
     while (container.firstChild) {
       container.removeChild(container.firstChild)
@@ -735,14 +724,14 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   function handleCurrentProjectChange(projectName: string) {
     if (!lastSelectedNode || projectName === graph.getNode(lastSelectedNode)?.data.label || !layout) return
-    let projectId
+    let projectId: number | undefined
     graph.forEachNode((node) => {
       if (node.data.label === projectName) {
-        projectId = node.id
+        projectId = parseInt(node.id.toString(), 10)
       }
     })
     // Check if projectName exists in our graph
-    if (!projectId || !layout.getBody(projectId)) return
+    if (projectId === undefined || !layout.getBody(projectId)) return
 
     // Select the node
     selectNode(projectId)
