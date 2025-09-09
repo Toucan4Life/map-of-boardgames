@@ -1,6 +1,5 @@
-import maplibregl, { type CustomLayerInterface, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
+import maplibregl, { GeoJSONSource, type AddLayerObject, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
 import bus from './bus'
-import { getCustomLayer } from './gl/createLinesCollection.js'
 import config from './config'
 import getColorTheme from './getColorTheme'
 import getComplimentaryColor from './getComplimentaryColor'
@@ -9,7 +8,12 @@ import type { Graph, NodeId } from 'ngraph.graph'
 import createLayout from 'ngraph.forcelayout'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.js'
 const currentColorTheme = getColorTheme()
-
+interface LinkLine {
+  from: [number, number]
+  to: [number, number]
+  color: string
+  weight?: number
+}
 // Default map style configuration for subgraph viewer
 const mapStyle: StyleSpecification = {
   version: 8,
@@ -98,7 +102,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     type: 'FeatureCollection',
     features: [],
   } as GeoJSON.FeatureCollection<GeoJSON.Point>
-  let linksLayer: getCustomLayer | null = null
+  let linksLayer: AddLayerObject | null = null
   let firstTimeLayout = true
 
   // Set up maplibre sources and layers once map is loaded
@@ -111,6 +115,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
     // Add selected nodes source (for highlighted nodes)
     map.addSource('selected-nodes', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [],
+      },
+    })
+    map.addSource('graph-edges-source', {
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
@@ -249,7 +260,16 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     })
 
     // Add custom layer for links
-    linksLayer = new getCustomLayer('graph-links')
+    linksLayer = {
+      id: 'graph-edges',
+      type: 'line',
+      source: 'graph-edges-source',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 2, // 2 pixels wide
+        'line-opacity': 0.4,
+      },
+    }
     map.addLayer(linksLayer, 'nodes')
 
     // Set up click listener for node selection
@@ -285,6 +305,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     resumeLayout() {
       layoutSteps = 400
       ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData({
+        type: 'FeatureCollection',
+        features: [],
+      })
+      ;(map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData({
         type: 'FeatureCollection',
         features: [],
       })
@@ -364,34 +388,30 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Helper to create a link line between two nodes
-  function createLinkLine(fromId: NodeId, toId: NodeId, color: number): { from: [number, number]; to: [number, number]; color: number } | null {
-    if (!layout?.getBody(fromId) || !layout?.getBody(toId)) return null
+  function createLinkLine(fromId: NodeId, toId: NodeId, color: string): LinkLine | null {
+    const fromBody = layout?.getBody(fromId)
+    const toBody = layout?.getBody(toId)
+    if (!fromBody || !toBody) return null
 
-    const fromPos = layout.getNodePosition(fromId)
-    const toPos = layout.getNodePosition(toId)
-
-    // Convert layout coordinates to map coordinates
-    const fromMapCoords = convertLayoutToMapCoordinates(fromPos)
-    const toMapCoords = convertLayoutToMapCoordinates(toPos)
-
-    // Convert to mercator coordinates for the custom layer
-    const from = maplibregl.MercatorCoordinate.fromLngLat(fromMapCoords)
-    const to = maplibregl.MercatorCoordinate.fromLngLat(toMapCoords)
+    const fromMapCoords = convertLayoutToMapCoordinates(fromBody.pos)
+    const toMapCoords = convertLayoutToMapCoordinates(toBody.pos)
 
     return {
-      from: [from.x, from.y],
-      to: [to.x, to.y],
-      color: color,
+      from: [fromMapCoords.lng, fromMapCoords.lat],
+      to: [toMapCoords.lng, toMapCoords.lat],
+      color,
     }
   }
 
-  // Update node and edge positions on the map
   function updateNodesOnMap() {
     if (!layout || !map.isStyleLoaded()) return
 
     // Update the GeoJSON features with current layout positions
     const features: GeoJSON.Feature<GeoJSON.Point>[] = []
-    linksLayer?.clear()
+    // ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+    //   type: 'FeatureCollection',
+    //   features: [],
+    // })
 
     // Calculate node sizes based on connections
     const nodeSizes: { [key: string]: number } = {}
@@ -427,26 +447,27 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     })
 
     // Update edges
-    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
+    const firstLevelLinks: LinkLine[] = []
 
+    let lines: LinkLine[] = []
     graph.forEachLink((link) => {
       // Determine if this is a first-level link (connected to selected node)
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
       const lineColor = (() => {
         switch (true) {
           case link.data.weight < 0.06598822:
-            return 0x4a148c66
+            return '#4a148c'
           case link.data.weight < 0.09264013:
-            return 0x7b1fa266
+            return '#7b1fa2'
           case link.data.weight < 0.1295021:
-            return 0xab47bc66
+            return '#ab47bc'
           case link.data.weight < 0.1920555:
-            return 0xff704366
+            return '#ff7043'
           default:
-            return 0xff572266
+            return '#ff5722'
         }
       })()
-      const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? 0xffffffff : lineColor)
+      const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? '#ffffff' : lineColor)
 
       if (!line) return
 
@@ -454,19 +475,35 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       if (isSelectedLink) {
         firstLevelLinks.push(line)
       } else {
-        linksLayer?.addLine(line)
+        lines.push(line)
       }
     })
 
     // Add first-level links after other links to ensure they're on top
     firstLevelLinks.forEach((line) => {
-      linksLayer?.addLine(line)
+      lines.push(line)
     })
-
+    let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+    lines.forEach((line) =>
+      GeoJSONLine.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [line.from, line.to],
+        },
+        properties: {
+          color: line.color,
+          weight: line.weight,
+        },
+      }),
+    )
     // Update the nodes source with new features
     nodesGeoJSON.features = features
     ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData(nodesGeoJSON)
-
+    ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: GeoJSONLine,
+    })
     // Fit map to nodes if first update
     if (features.length > 0 && !lastSelectedNode) {
       fitMapToNodes()
@@ -530,8 +567,11 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     }
 
     // Update edges in the custom layer
-    linksLayer?.clear()
-    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
+    // ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+    //   type: 'FeatureCollection',
+    //   features: [],
+    // })
+    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string }[] = []
 
     // Find and highlight neighbors of the selected node
     graph.forEachLinkedNode(
@@ -551,14 +591,14 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         }
 
         // Add first-level connection
-        const line = createLinkLine(nodeId, linkedNode.id, 0xffffffff) // Bright white for direct connections
+        const line = createLinkLine(nodeId, linkedNode.id, '#ffffff') // Bright white for direct connections
         if (line) {
           firstLevelLinks.push(line)
         }
       },
       false,
     )
-
+    let lines: LinkLine[] = []
     // Draw all other connections (non-highlighted)
     graph.forEachLink((link) => {
       if (!layout?.getBody(link.fromId) || !layout.getBody(link.toId)) return
@@ -567,19 +607,19 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       const lineColor = (() => {
         switch (true) {
           case link.data.weight < 0.06598822:
-            return 0x4a148c66
+            return '#4a148c'
           case link.data.weight < 0.09264013:
-            return 0x7b1fa266
+            return '#7b1fa2'
           case link.data.weight < 0.1295021:
-            return 0xab47bc66
+            return '#ab47bc'
           case link.data.weight < 0.1920555:
-            return 0xff704366
+            return '#ff7043'
           default:
-            return 0xff572266
+            return '#ff5722'
         }
       })()
       const line = createLinkLine(link.fromId, link.toId, lineColor) // Semi-transparent for background connections
-      if (line) linksLayer?.addLine(line)
+      if (line) lines.push(line)
     })
 
     // Add the selected node and neighbors to the map
@@ -587,9 +627,27 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
     // Update the links layer with the new lines
     firstLevelLinks.forEach((line) => {
-      linksLayer?.addLine(line)
+      lines.push(line)
     })
-
+    let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+    lines.forEach((line) =>
+      GeoJSONLine.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [line.from, line.to],
+        },
+        properties: {
+          color: line.color,
+          weight: line.weight,
+        },
+      }),
+    )
+    // Update the nodes source with new features
+    ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: GeoJSONLine,
+    })
     lastSelectedNode = nodeId
 
     const selectedMapCoords = convertLayoutToMapCoordinates(selectedPos)

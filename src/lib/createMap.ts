@@ -1,8 +1,14 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
-import maplibregl, { GeoJSONSource, type FilterSpecification, type MapGeoJSONFeature, type MapOptions, type PointLike } from 'maplibre-gl'
+import maplibregl, {
+  GeoJSONSource,
+  type AddLayerObject,
+  type FilterSpecification,
+  type MapGeoJSONFeature,
+  type MapOptions,
+  type PointLike,
+} from 'maplibre-gl'
 import bus from './bus'
 import config from './config'
-import { getCustomLayer } from './gl/createLinesCollection.ts'
 import getComplimentaryColor from './getComplimentaryColor'
 import downloadGroupGraph from './downloadGroupGraph.ts'
 import { LabelEditor } from './label-editor/createLabelEditor.ts'
@@ -35,14 +41,12 @@ export class BoardGameMap {
   backgroundEdgesFetch: Promise<void> | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
-  fastLinesLayer: getCustomLayer
   labelEditor: LabelEditor | undefined
 
   constructor() {
     this.map = new maplibregl.Map(this.getDefaultStyle())
     this.map.dragRotate.disable()
     this.map.touchZoomRotate.disableRotation()
-    this.fastLinesLayer = new getCustomLayer()
 
     this.map.on('load', () => {
       this.LoadMap()
@@ -169,9 +173,19 @@ export class BoardGameMap {
       },
       'label-layer',
     ) // Add before label-layer so labels appear on top
+    const linesLayer: AddLayerObject = {
+      id: 'graph-edges',
+      type: 'line',
+      source: 'graph-edges-source',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 2, // 2 pixels wide
+        'line-opacity': 0.4,
+      },
+    }
 
     // Add lines layer before circle layer so icons appear on top of lines
-    this.map.addLayer(this.fastLinesLayer, 'circle-layer')
+    this.map.addLayer(linesLayer, 'circle-layer')
     this.labelEditor = new LabelEditor(this.map)
   }
 
@@ -305,7 +319,11 @@ export class BoardGameMap {
   }
 
   clearHighlights(): void {
-    this.fastLinesLayer.clear()
+    ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: [],
+    })
+    this.map.redraw()
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData({
       type: 'FeatureCollection',
       features: [],
@@ -335,7 +353,10 @@ export class BoardGameMap {
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
     const complimentaryColor = getComplimentaryColor(fillColor)
 
-    this.fastLinesLayer.clear()
+    ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: [],
+    })
 
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
@@ -344,7 +365,7 @@ export class BoardGameMap {
 
     this.backgroundEdgesFetch = downloadGroupGraph(groupId)
       .then((groupGraph) => {
-        const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
+        const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string; weight: number }[] = []
 
         // Create adjustment map inline
         const renderedNodesAdjustment = new Map()
@@ -359,35 +380,39 @@ export class BoardGameMap {
           })
 
         let primaryNodePositionFound = false
-
+        let lines: {
+          from: [number, number]
+          to: [number, number]
+          color: string
+          weight: number
+        }[] = []
         groupGraph.forEachLink((link) => {
           if (link.data.s == undefined) {
             // this means the status is "Shown"
             const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
             const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
-            const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
-            const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
             const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
             const lineColor = (() => {
               switch (true) {
                 case link.data.weight < 0.06598822:
-                  return 0x4a148c66
+                  return '#4a148c'
                 case link.data.weight < 0.09264013:
-                  return 0x7b1fa266
+                  return '#7b1fa2'
                 case link.data.weight < 0.1295021:
-                  return 0xab47bc66
+                  return '#ab47bc'
                 case link.data.weight < 0.1920555:
-                  return 0xff704366
+                  return '#ff7043'
                 default:
-                  return 0xff572266
+                  return '#ff5722'
               }
             })()
 
-            const line: { from: [number, number]; to: [number, number]; color: number } = {
-              from: [from.x, from.y],
-              to: [to.x, to.y],
-              color: isFirstLevel ? 0xffffffff : lineColor,
+            const line: { from: [number, number]; to: [number, number]; color: string; weight: number } = {
+              from: fromGeo,
+              to: toGeo,
+              color: isFirstLevel ? '#ffffff' : lineColor,
+              weight: link.data.weight,
             }
 
             if (isFirstLevel) {
@@ -409,15 +434,33 @@ export class BoardGameMap {
                 properties: { color: secondaryHighlightColor, name: groupGraph.getNode(otherName)?.data.label, background: fillColor, textSize: 0.8 },
               })
             } else {
-              this.fastLinesLayer.addLine(line)
+              lines.push(line)
             }
           }
         })
 
         firstLevelLinks.forEach((line) => {
-          this.fastLinesLayer.addLine(line)
+          lines.push(line)
         })
+        let GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+        lines.forEach((line) =>
+          GeoJSONLine.push({
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [line.from, line.to],
+            },
+            properties: {
+              color: line.color,
+              weight: line.weight,
+            },
+          }),
+        )
         ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
+        ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+          type: 'FeatureCollection',
+          features: GeoJSONLine,
+        })
         this.map.redraw()
       })
       .catch((e: unknown) => {
@@ -475,6 +518,13 @@ export class BoardGameMap {
             },
           },
           'selected-nodes': {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: [],
+            },
+          },
+          'graph-edges-source': {
             type: 'geojson',
             data: {
               type: 'FeatureCollection',
