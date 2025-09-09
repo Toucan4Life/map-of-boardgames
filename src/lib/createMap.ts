@@ -461,7 +461,6 @@ export class BoardGameMap {
           type: 'FeatureCollection',
           features: GeoJSONLine,
         })
-        this.map.redraw()
       })
       .catch((e: unknown) => {
         console.error('Error fetching group graph:', e)
