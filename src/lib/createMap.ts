@@ -7,17 +7,15 @@ import maplibregl, {
   type MapOptions,
   type PointLike,
 } from 'maplibre-gl'
-import bus from './bus'
 import config from './config'
 import downloadGroupGraph from './downloadGroupGraph.ts'
-import { LabelEditor } from './label-editor/createLabelEditor.ts'
 import getColorTheme from './getColorTheme'
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
 
 const currentColorTheme = getColorTheme()
 
-interface SearchParameters {
+export interface SearchParameters {
   minWeight: number
   maxWeight: number
   minRating: number
@@ -38,64 +36,12 @@ export class BoardGameMap {
   backgroundEdgesFetch: Promise<void> | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
-  labelEditor: LabelEditor | undefined
-
-  constructor() {
+  containerValue: HTMLDivElement
+  constructor(containerValue: HTMLDivElement) {
+    this.containerValue = containerValue
     this.map = new maplibregl.Map(this.getDefaultStyle())
     this.map.dragRotate.disable()
     this.map.touchZoomRotate.disableRotation()
-
-    this.map.on('load', () => {
-      this.LoadMap()
-        .then(() => {
-          console.log('Map loaded')
-        })
-        .catch((e: unknown) => {
-          console.error('Error loading map:', e)
-        })
-    })
-
-    this.map.on('contextmenu', (e) => {
-      bus.fire('show-tooltip')
-
-      const bg = this.getBackgroundNearPoint(e.point)[0]
-      let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
-
-      if (this.labelEditor) {
-        ctxMenuItems = ctxMenuItems.concat(this.labelEditor.getContextMenuItems(e, bg.id))
-      }
-
-      const nearestCity = this.findNearestCity(e.point)
-      if (nearestCity?.properties.label) {
-        const name: string = nearestCity.properties.label
-        ctxMenuItems.push({
-          text: 'List connections of ' + name,
-          click: () => {
-            this.showDetails(nearestCity)
-            this.drawBackgroundEdges(e.point, name)
-            bus.fire('focus-on-repo', nearestCity.properties.id, bg.id, name)
-          },
-        })
-      }
-
-      const contextMenuItems = {
-        items: ctxMenuItems,
-        left: e.point.x.toString() + 'px',
-        top: e.point.y.toString() + 'px',
-      }
-
-      bus.fire('show-context-menu', contextMenuItems)
-    })
-
-    this.map.on('click', (e) => {
-      bus.fire('show-context-menu')
-      const nearestCity = this.findNearestCity(e.point)
-      const repo = nearestCity?.properties.label
-      if (!nearestCity || !repo) return
-
-      this.showDetails(nearestCity)
-      this.drawBackgroundEdges(e.point, repo)
-    })
 
     this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
@@ -183,7 +129,6 @@ export class BoardGameMap {
 
     // Add lines layer before circle layer so icons appear on top of lines
     this.map.addLayer(linesLayer, 'circle-layer')
-    this.labelEditor = new LabelEditor(this.map)
   }
 
   highlightNode(searchParameters: SearchParameters): void {
@@ -258,57 +203,6 @@ export class BoardGameMap {
       return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
     })
     return feature?.id !== undefined ? +feature.id : undefined
-  }
-
-  showDetails(nearestCity: MapGeoJSONFeature): void {
-    const repo = nearestCity.properties.label
-    if (!repo) return
-
-    const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
-    bus.fire('show-tooltip')
-    bus.fire('repo-selected', { text: repo, lat, lon, id: nearestCity.properties.id })
-  }
-
-  showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature): { text: string; click: () => void } {
-    return {
-      text: 'Show largest projects',
-      click: () => {
-        if (!bg.id) return
-
-        const seen = new Map()
-        const largeRepositories = this.map
-          .querySourceFeatures('points-source', {
-            sourceLayer: 'points',
-            filter: ['==', 'parent', bg.id],
-          })
-          .sort((a, b) => b.properties.size - a.properties.size)
-
-        for (const repo of largeRepositories) {
-          const label = repo.properties.label
-          if (seen.has(label)) continue
-
-          seen.set(label, {
-            name: label,
-            lngLat: (repo.geometry as GeoJSON.Point).coordinates,
-            id: repo.properties.id,
-          })
-
-          if (seen.size >= 100) break
-        }
-
-        this.map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
-        this.map.setLayoutProperty('border-highlight', 'visibility', 'visible')
-        bus.fire('show-largest-in-group', bg.id, Array.from(seen.values()))
-      },
-    }
-  }
-
-  getPlacesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Point> | undefined {
-    if (!this.labelEditor) {
-      console.warn('labelEditor not yet initialized')
-      return
-    }
-    return this.labelEditor.places
   }
 
   clearBorderHighlights(): void {
@@ -494,7 +388,7 @@ export class BoardGameMap {
   getDefaultStyle(): MapOptions {
     return {
       hash: true,
-      container: 'map',
+      container: this.containerValue,
       center: [0, 0],
       zoom: 2,
       style: {
@@ -509,13 +403,7 @@ export class BoardGameMap {
             maxzoom: 4,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
-          place: {
-            type: 'geojson',
-            data: {
-              type: 'FeatureCollection',
-              features: [],
-            },
-          },
+          place: { type: 'geojson', data: config.placesSource },
           'selected-nodes': {
             type: 'geojson',
             data: {

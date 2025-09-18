@@ -33,7 +33,9 @@ export default function createDOMarkerEditor(map: Map, onSave: (value: string) =
   function submit(e: Event): void {
     e.preventDefault()
     const input = element.querySelector('input')
-    if (input) onSave(input.value)
+    if (input) {
+      onSave(input.value)
+    }
     close()
   }
 

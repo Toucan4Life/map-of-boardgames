@@ -1,11 +1,11 @@
 import maplibregl, { GeoJSONSource, type AddLayerObject, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
-import bus from './bus'
 import config from './config'
 import getColorTheme from './getColorTheme'
 import { type Layout } from 'ngraph.forcelayout'
 import type { Graph, NodeId } from 'ngraph.graph'
 import createLayout from 'ngraph.forcelayout'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.js'
+import type { SearchResult } from './createFuzzySearcher.js'
 const currentColorTheme = getColorTheme()
 interface LinkLine {
   from: [number, number]
@@ -57,6 +57,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   graph: Graph<BoardGameNodeData, BoardGameLinkData>
   onLayoutStatusChange: (arg0: boolean) => void
   nodeId: number
+  onMapClicked: (searchResult: SearchResult) => void
 }) {
   const container = subgraphInfo.container //document.querySelector('.subgraph-viewer')
   container.classList.add('active')
@@ -268,7 +269,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     map.addLayer(linksLayer, 'nodes')
 
     // Set up click listener for node selection
-    map.on('click', 'nodes-touch-target', handleNodeClick)
+    map.on('click', 'nodes-touch-target', (e) => handleNodeClick(e, subgraphInfo.onMapClicked))
 
     // Also set up hover effects for better feedback
     map.on('mouseenter', 'nodes-touch-target', () => {
@@ -282,9 +283,6 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     // Initialize layout
     initializeLayout()
   })
-
-  // Listener for current project changes to sync selections
-  bus.on('current-project', handleCurrentProjectChange)
 
   // Public API
   return {
@@ -313,6 +311,12 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
           layoutAnimationFrame = requestAnimationFrame(runLayout)
         }
       }
+    },
+    handleCurrentProjectChange(projectName: number) {
+      handleCurrentProjectChange(projectName)
+    },
+    getCoordinates(projectId: number) {
+      return getCoordinates(projectId)
     },
   }
 
@@ -502,11 +506,27 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   // Handle node click
-  function handleNodeClick(e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
+  function handleNodeClick(
+    e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] },
+    onMapClicked: (searchResult: SearchResult) => void,
+  ) {
     if (!e.features || e.features.length === 0) return
 
     const nodeId = e.features[0].properties.id
-    selectNode(nodeId, false)
+    let selectedMapCoords = selectNode(nodeId, false)
+    if (!selectedMapCoords) return
+    let searchResult = {
+      text: graph.getNode(nodeId)?.data.label ?? '',
+      lat: selectedMapCoords.lat,
+      lon: selectedMapCoords.lng,
+      groupId: graph.getNode(nodeId)?.data.c ?? 0,
+      id: graph.getNode(nodeId)?.data.id ?? 0,
+      year: '0',
+      selected: true,
+      skipAnimation: false,
+      html: null,
+    }
+    onMapClicked(searchResult)
   }
 
   // Helper to create a node feature for GeoJSON
@@ -645,17 +665,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     if (bringToView) {
       map.flyTo({ center: [selectedMapCoords.lng, selectedMapCoords.lat] })
     }
-    bus.fire(
-      'repo-selected',
-      {
-        text: graph.getNode(nodeId)?.data.label,
-        lat: selectedMapCoords.lat,
-        lon: selectedMapCoords.lng,
-        groupId: graph.getNode(nodeId)?.data.c,
-        id: graph.getNode(nodeId)?.data.id,
-      },
-      !bringToView,
-    )
+    return selectedMapCoords
   }
 
   // Fit the map to the bounds of the current nodes
@@ -711,8 +721,6 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       layoutAnimationFrame = undefined
     }
 
-    bus.off('current-project', handleCurrentProjectChange)
-
     map.remove()
 
     while (container.firstChild) {
@@ -722,18 +730,32 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     container.classList.remove('active')
   }
 
-  function handleCurrentProjectChange(projectName: string) {
-    if (!lastSelectedNode || projectName === graph.getNode(lastSelectedNode)?.data.label || !layout) return
-    let projectId: number | undefined
-    graph.forEachNode((node) => {
-      if (node.data.label === projectName) {
-        projectId = parseInt(node.id.toString(), 10)
-      }
-    })
-    // Check if projectName exists in our graph
-    if (projectId === undefined || !layout.getBody(projectId)) return
+  function handleCurrentProjectChange(projectId: number) {
+    // Check if projectId exists in our graph
+    if (projectId === undefined || !layout?.getBody(projectId)) return
 
     // Select the node
     selectNode(projectId)
+  }
+
+  function getCoordinates(nodeId: number): SearchResult | undefined {
+    if (nodeId === undefined || !layout?.getBody(nodeId)) return
+    const node = graph.getNode(nodeId)
+    if (node === undefined) return
+    // Get the selected node position
+    const selectedPos = layout.getBody(nodeId)?.pos
+    if (!selectedPos) return // Node not in layout yet
+    const selectedMapCoords = convertLayoutToMapCoordinates(selectedPos)
+    return {
+      text: node.data.label,
+      lat: selectedMapCoords.lat,
+      lon: selectedMapCoords.lng,
+      groupId: node.data.c,
+      id: node.data.id,
+      selected: false,
+      skipAnimation: false,
+      html: null,
+      year: '',
+    }
   }
 }

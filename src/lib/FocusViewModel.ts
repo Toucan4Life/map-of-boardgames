@@ -2,12 +2,15 @@ import type { Graph, NodeId } from 'ngraph.graph'
 import downloadGroupGraph, { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
 import { createMaplibreSubgraphViewer } from './createMaplibreSubgraphViewer'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph'
+import type { SearchResult } from './createFuzzySearcher'
 
 // Static reference to maintain single instance
 interface ActiveSubgraphViewer {
   dispose(): void
   resumeLayout(): void
   stopLayout(): void
+  handleCurrentProjectChange(projectName: number): void
+  getCoordinates(projectId: number): SearchResult | undefined
 }
 
 let activeSubgraphViewer: ActiveSubgraphViewer | undefined = undefined
@@ -29,7 +32,7 @@ export interface IFocusViewModel {
   logMessages: string[]
   goBackToDirectConnections(): unknown
   setLayout(arg0: boolean): unknown
-  expandGraph(): unknown
+  expandGraph(onMapClicked: (searchResult: SearchResult) => void): unknown
   expandingGraph: boolean
   layoutRunning: boolean
   graphData: TreeItem | undefined
@@ -38,6 +41,7 @@ export interface IFocusViewModel {
   lngLat: [number, number]
   loading: boolean
   id: number | undefined
+  handleCurrentProjectChange(projectName: number): void
 }
 /**
  * This view model is used to show direct neighbors of a node. It can be extended
@@ -71,7 +75,7 @@ export class FocusViewModel implements IFocusViewModel {
         }
         this.loading = false
         const neighbors: Repositories[] = []
-        this.lngLat = graph.getNode(label)?.data.lnglat || [0, 0]
+        this.lngLat = graph.getNode(repositoryId)?.data.lnglat || [0, 0]
         const seen = new Set()
         graph.forEachLinkedNode(
           repositoryId,
@@ -99,6 +103,15 @@ export class FocusViewModel implements IFocusViewModel {
         console.error('Failed to initialize FocusViewModel:', err)
       })
   }
+  handleCurrentProjectChange(projectName: number): void {
+    // If the subgraph viewer exists, notify it of the project change
+    if (activeSubgraphViewer) {
+      activeSubgraphViewer.handleCurrentProjectChange(projectName)
+    }
+  }
+  getCoordinates(projectId: number): SearchResult | undefined {
+    return activeSubgraphViewer?.getCoordinates(projectId)
+  }
   expandingGraph: boolean
   layoutRunning: boolean
   graphData: TreeItem | undefined
@@ -120,7 +133,7 @@ export class FocusViewModel implements IFocusViewModel {
 
     this.layoutRunning = isRunning
   }
-  async expandGraph() {
+  async expandGraph(onMapClickedd: (searchResult: SearchResult) => void) {
     if (this.expandingGraph) return // Prevent multiple clicks
 
     this.expandingGraph = true
@@ -177,6 +190,7 @@ export class FocusViewModel implements IFocusViewModel {
         onLayoutStatusChange: (isRunning: boolean) => {
           this.layoutRunning = isRunning
         },
+        onMapClicked: onMapClickedd,
       })
 
       // Set initial layout status
