@@ -2,10 +2,18 @@ import type { Graph, NodeId } from 'ngraph.graph'
 import downloadGroupGraph, { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
 import { createMaplibreSubgraphViewer } from './createMaplibreSubgraphViewer'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph'
-import type { TreeItem } from '@/components/TreeView.vue'
+import type { SearchResult } from './createFuzzySearcher'
 
 // Static reference to maintain single instance
-let activeSubgraphViewer = undefined
+interface ActiveSubgraphViewer {
+  dispose(): void
+  resumeLayout(): void
+  stopLayout(): void
+  handleCurrentProjectChange(projectName: number): void
+  getCoordinates(projectId: number): SearchResult | undefined
+}
+
+let activeSubgraphViewer: ActiveSubgraphViewer | undefined = undefined
 export interface Repositories {
   isExternal: boolean
   name: NodeId | undefined
@@ -14,13 +22,17 @@ export interface Repositories {
   id: number
   linkWeight: number
 }
-
+export interface TreeItem {
+  node: BoardGameNodeData
+  children?: TreeItem[]
+  linkWeight?: number
+}
 export interface IFocusViewModel {
   currentLog: string
   logMessages: string[]
   goBackToDirectConnections(): unknown
   setLayout(arg0: boolean): unknown
-  expandGraph(): unknown
+  expandGraph(onMapClicked: (searchResult: SearchResult) => void): unknown
   expandingGraph: boolean
   layoutRunning: boolean
   graphData: TreeItem | undefined
@@ -29,6 +41,7 @@ export interface IFocusViewModel {
   lngLat: [number, number]
   loading: boolean
   id: number | undefined
+  handleCurrentProjectChange(projectName: number): void
 }
 /**
  * This view model is used to show direct neighbors of a node. It can be extended
@@ -55,9 +68,14 @@ export class FocusViewModel implements IFocusViewModel {
     this.currentLog = ''
     downloadGroupGraph(groupId)
       .then((graph) => {
+        if (!graph) {
+          this.loading = false
+          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
+          return
+        }
         this.loading = false
         const neighbors: Repositories[] = []
-        this.lngLat = graph.getNode(label)?.data.lnglat || [0, 0]
+        this.lngLat = graph.getNode(repositoryId)?.data.lnglat || [0, 0]
         const seen = new Set()
         graph.forEachLinkedNode(
           repositoryId,
@@ -80,10 +98,19 @@ export class FocusViewModel implements IFocusViewModel {
 
         this.repos = neighbors.slice(0, 25)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         this.loading = false
         console.error('Failed to initialize FocusViewModel:', err)
       })
+  }
+  handleCurrentProjectChange(projectName: number): void {
+    // If the subgraph viewer exists, notify it of the project change
+    if (activeSubgraphViewer) {
+      activeSubgraphViewer.handleCurrentProjectChange(projectName)
+    }
+  }
+  getCoordinates(projectId: number): SearchResult | undefined {
+    return activeSubgraphViewer?.getCoordinates(projectId)
   }
   expandingGraph: boolean
   layoutRunning: boolean
@@ -106,7 +133,7 @@ export class FocusViewModel implements IFocusViewModel {
 
     this.layoutRunning = isRunning
   }
-  async expandGraph() {
+  async expandGraph(onMapClickedd: (searchResult: SearchResult) => void) {
     if (this.expandingGraph) return // Prevent multiple clicks
 
     this.expandingGraph = true
@@ -129,7 +156,15 @@ export class FocusViewModel implements IFocusViewModel {
       }
 
       logCallback('Starting graph expansion...')
+      if (this.id === undefined) {
+        console.error('Repository ID is undefined and cannot be used to expand graph.')
+        return
+      }
       const graph = await buildLocalNeighborsGraphForGroup(groupId, this.id, depth, logCallback)
+      if (!graph) {
+        logCallback('Graph expansion failed.')
+        return
+      }
       logCallback('Graph data received, building tree view...')
 
       // Convert graph to tree view
@@ -141,9 +176,13 @@ export class FocusViewModel implements IFocusViewModel {
       // Create the new subgraph viewer
       const containerEl = document.querySelector<HTMLElement>('.subgraph-viewer')
       if (!containerEl) {
-        throw new Error('Subgraph viewer container not found in DOM')
+        console.error('Subgraph viewer container not found in DOM')
+        return
       }
-
+      if (bggId === undefined) {
+        console.error('Repository ID is undefined and cannot be used to expand graph.')
+        return
+      }
       activeSubgraphViewer = createMaplibreSubgraphViewer({
         container: containerEl,
         graph,
@@ -151,6 +190,7 @@ export class FocusViewModel implements IFocusViewModel {
         onLayoutStatusChange: (isRunning: boolean) => {
           this.layoutRunning = isRunning
         },
+        onMapClicked: onMapClickedd,
       })
 
       // Set initial layout status
@@ -162,12 +202,23 @@ export class FocusViewModel implements IFocusViewModel {
     }
   }
 
-  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: string, depth = 2): TreeItem {
+  toTreeView(graph: Graph<BoardGameNodeData, BoardGameLinkData>, startNodeId: number, depth = 2): TreeItem {
     const rootGraphNode = graph.getNode(startNodeId)
     if (!rootGraphNode) {
       // Return a minimal tree structure if the start node isn't found
       return {
-        node: { id: startNodeId, label: startNodeId.toString() + ' (not found)', isExternal: false, lnglat: [0, 0], max_players: '0', l: '', c: 0 },
+        node: {
+          id: startNodeId,
+          label: startNodeId.toString() + ' (not found)',
+          isExternal: false,
+          lnglat: [0, 0],
+          max_players: '0',
+          l: '',
+          c: 0,
+          rating: '',
+          complexity: '',
+          size: '',
+        },
         children: [],
       }
     }
@@ -178,7 +229,7 @@ export class FocusViewModel implements IFocusViewModel {
     // parentNodeId: The ID of the node whose children are being fetched.
     // parentDepthInTree: The depth of parentNodeId in the tree (startNodeId is at 0).
     // path: Set of ancestor IDs in the current traversal path to avoid cycles.
-    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<string>): TreeItem[] {
+    function getChildrenRecursive(parentNodeId: NodeId, parentDepthInTree: number, path: Set<NodeId>): TreeItem[] {
       if (parentDepthInTree >= depth) {
         return []
       }
@@ -197,11 +248,10 @@ export class FocusViewModel implements IFocusViewModel {
 
           // Create a copy of the node data
           const childData = { ...linkedGraphNode.data }
-          childData.linkWeight = linkedGraphLink.data.weight
 
           // Use the same path Set (current node already added above)
           const grandChildren = getChildrenRecursive(linkedGraphNode.id, parentDepthInTree + 1, path)
-          childNodes.push({ node: childData, children: grandChildren })
+          childNodes.push({ node: childData, children: grandChildren, linkWeight: linkedGraphLink.data.weight })
         },
         false,
       )
@@ -209,11 +259,11 @@ export class FocusViewModel implements IFocusViewModel {
       // Remove current node from path when backtracking
       path.delete(parentNodeId)
 
-      childNodes.sort((a, b) => b.node.linkWeight - a.node.linkWeight)
+      childNodes.sort((a, b) => (b.linkWeight ?? 0) - (a.linkWeight ?? 0))
       return childNodes.slice(0, 25)
     }
     // Initial path for recursion, containing only the startNodeId.
-    const initialPath = new Set<string>()
+    const initialPath = new Set<number>()
     initialPath.add(startNodeId)
 
     // Fetch children for the root node (startNodeId, which is at depth 0).

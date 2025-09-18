@@ -13,6 +13,6 @@ export default [
     ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**'],
   },
 
-  ...defineConfigWithVueTs(pluginVue.configs['flat/recommended'], vueTsConfigs.strictTypeChecked),
+  ...defineConfigWithVueTs(pluginVue.configs['flat/strict'], vueTsConfigs.strictTypeChecked),
   skipFormatting,
 ]

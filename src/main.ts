@@ -1,14 +1,7 @@
 import './assets/main.css'
-import { BoardGameMap } from './lib/createMap.ts'
 import { createApp } from 'vue'
 import App from './App.vue'
 import ClickOutside from './lib/clickOutside'
-
-declare global {
-  interface Window {
-    mapOwner: BoardGameMap
-  }
-}
 
 const state = {
   vueLoader: document.querySelector('.vue-loading'),
@@ -51,7 +44,7 @@ async function safeExecute<T>(operation: () => T | Promise<T>, loaderKey: keyof 
     state[loaderKey]?.remove()
     state[loaderKey] = null
     // Clean up boot container if all loaders are removed
-    if (!state.vueLoader && !state.mapLoader) {
+    if (!state.vueLoader) {
       document.querySelector('.boot')?.remove()
     }
   } catch (e: unknown) {
@@ -70,10 +63,6 @@ async function initialize(): Promise<void> {
   }
 
   await Promise.allSettled([
-    safeExecute(() => {
-      if (state.mapLoader) (state.mapLoader as HTMLElement).innerText = 'Loading Map...'
-      window.mapOwner = new BoardGameMap()
-    }, 'mapLoader'),
     safeExecute(() => {
       if (state.vueLoader) (state.vueLoader as HTMLElement).innerText = 'Loading Vue containers...'
       const app = createApp(App)

@@ -10,12 +10,11 @@ import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
 import GroupViewModel from './lib/GroupViewModel'
 import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
-import bus from './lib/bus'
 import type { SearchResult } from './lib/createFuzzySearcher'
 import type { AdvSearchResult } from './components/AdvSearch.vue'
-
+import MapView from './components/MapView.vue'
 const SM_SCREEN_BREAKPOINT = 600
-
+const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
 // UI state
 const sidebarVisible = ref(false)
 const aboutVisible = ref(false)
@@ -23,7 +22,7 @@ const advSearchVisible = ref(false)
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
-
+let loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined>(undefined)
 // Project state
 const defaultProjectState = {
   current: '',
@@ -38,12 +37,14 @@ const currentFocus = ref<FocusViewModel>()
 
 // Overlays
 const tooltip = ref<{ left: string; top: string; background: string; text: string }>()
-const contextMenu = ref<{
-  click: () => void
-  left: string
-  top: string
-  items: { text: string; click: () => void }[]
-}>()
+const contextMenu = ref<
+  | {
+      left: string
+      top: string
+      items: { text: string; click: () => void }[]
+    }
+  | undefined
+>()
 
 // Internal state
 let lastSelected: SearchResult | undefined
@@ -61,7 +62,7 @@ function showFullPreview() {
 function clearProjectState() {
   sidebarVisible.value = false
   Object.assign(project, defaultProjectState)
-  window.mapOwner.clearHighlights()
+  mapViewRef.value?.clearHighlights()
 }
 function clearProjectStateIfSmallScreen() {
   if (isSmallScreen.value) {
@@ -76,9 +77,13 @@ function getOrCreateGroupViewModel(groupId: number) {
 
 function findProject(repo: SearchResult) {
   lastSelected = lastSelected?.text === repo.text ? lastSelected : repo
-  window.mapOwner.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
+  mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
   Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
-  bus.fire('current-project', lastSelected.text)
+  currentFocus.value?.handleCurrentProjectChange(lastSelected.id)
+  const reposs = currentFocus.value?.getCoordinates(lastSelected.id)
+  if (reposs) {
+    repoSelectedHandler(reposs, false)
+  }
 }
 
 async function listCurrentConnections() {
@@ -88,9 +93,7 @@ async function listCurrentConnections() {
   }
   currentFocus.value?.disposeSubgraphViewer()
   contextMenu.value = undefined
-
-  const groupId = lastSelected.groupId ?? (await window.mapOwner.getGroupIdAt(lastSelected.lat, lastSelected.lon))
-
+  const groupId = lastSelected.groupId ?? (await mapViewRef.value?.getGroupIdAt(lastSelected.lat, lastSelected.lon))
   if (groupId !== undefined) {
     currentGroup.value = undefined
     currentFocus.value = new FocusViewModel(lastSelected.id, groupId, lastSelected.text)
@@ -98,7 +101,7 @@ async function listCurrentConnections() {
 }
 
 function search(params: AdvSearchResult) {
-  window.mapOwner.highlightNode({
+  mapViewRef.value?.highlightNode({
     minWeight: params.minWeight ?? 0,
     maxWeight: params.maxWeight ?? 10,
     minRating: params.minRating ?? 0,
@@ -147,27 +150,40 @@ const focusOnRepoHandler = (repo: number, groupId: number, label: string) => {
   currentFocus.value = new FocusViewModel(repo, groupId, label)
 }
 
-onBeforeMount(() => {
-  bus.on('repo-selected', repoSelectedHandler)
-  bus.on('show-context-menu', (m) => (contextMenu.value = m))
-  bus.on('show-tooltip', (t) => (tooltip.value = t))
-  bus.on('show-largest-in-group', showLargestHandler)
-  bus.on('focus-on-repo', focusOnRepoHandler)
-  bus.on('unsaved-changes-detected', (has) => (hasUnsavedChanges.value = has))
+const unsavedChangesHandler = (has: boolean) => {
+  hasUnsavedChanges.value = has
+}
 
+onBeforeMount(() => {
   window.addEventListener('resize', resizeHandler)
 })
 
 onBeforeUnmount(() => {
-  window.mapOwner.dispose()
-  bus.off('repo-selected', repoSelectedHandler)
-  bus.off('show-largest-in-group', showLargestHandler)
-  bus.off('focus-on-repo', focusOnRepoHandler)
+  mapViewRef.value?.dispose()
   window.removeEventListener('resize', resizeHandler)
 })
+
+function showContextMenuHandler(
+  m:
+    | {
+        left: string
+        top: string
+        items: {
+          text: string
+          click: () => void
+        }[]
+      }
+    | undefined,
+) {
+  contextMenu.value = m
+}
+function labelEditorLoadedHandler(ldPlaces: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties>) {
+  loadedPlaces.value = ldPlaces
+}
+
 function closeGroupView() {
   currentGroup.value = undefined
-  window.mapOwner.clearBorderHighlights()
+  mapViewRef.value?.clearBorderHighlights()
 }
 
 function closeFocusView() {
@@ -182,6 +198,17 @@ function handleItem(item: { text: string; click: () => void }) {
 
 <template>
   <div>
+    <!-- MapLibre Map -->
+    <MapView
+      ref="mapViewRef"
+      class="map-container"
+      @focus-on-repo="focusOnRepoHandler"
+      @show-context-menu="showContextMenuHandler"
+      @repo-selected="repoSelectedHandler"
+      @show-largest-in-group="showLargestHandler"
+      @label-editor-loaded="labelEditorLoadedHandler"
+      @unsaved-changes-detected="unsavedChangesHandler"
+    />
     <!-- Unsaved changes banner -->
     <div v-if="hasUnsavedChanges" class="unsaved-changes">
       You have unsaved labels in local storage.
@@ -207,6 +234,7 @@ function handleItem(item: { text: string; click: () => void }) {
       @selected="findProject"
       @close="closeFocusView"
       @cleared="clearProjectStateIfSmallScreen"
+      @repoSelected="repoSelectedHandler"
     />
 
     <!-- Full repository view -->
@@ -256,7 +284,7 @@ function handleItem(item: { text: string; click: () => void }) {
 
     <!-- Slide-in overlays -->
     <transition name="slide-top">
-      <unsaved-changes v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false" />
+      <unsaved-changes :geojson="loadedPlaces" v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false" />
     </transition>
     <transition name="slide-left">
       <about v-if="aboutVisible" class="about" @close="aboutVisible = false" />
@@ -266,7 +294,13 @@ function handleItem(item: { text: string; click: () => void }) {
     </transition>
   </div>
 </template>
-
+<style scoped>
+.map-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+</style>
 <style scoped>
 .made-by {
   position: fixed;
@@ -293,6 +327,7 @@ function handleItem(item: { text: string; click: () => void }) {
   padding: 0;
   cursor: text;
   left: 8px;
+  top: 8px;
   width: calc(var(--side-panel-width) - 8px);
 }
 

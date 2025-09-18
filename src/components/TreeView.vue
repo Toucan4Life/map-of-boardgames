@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import type { BoardGameNodeData } from '@/lib/fetchAndProcessGraph'
+import type { TreeItem } from '@/lib/FocusViewModel'
 import { ref } from 'vue'
 
-export interface TreeItem {
-  node: BoardGameNodeData
-  children?: TreeItem[]
-}
-
-const props = defineProps<{
+defineProps<{
   tree: TreeItem
 }>()
 
@@ -18,7 +14,7 @@ const emit = defineEmits<{
 /**
  * Create a unique key for each node based on its ID and parent path
  */
-function getNodeKey(nodeId: number | undefined, parentPath = ''): string {
+function getNodeKey(nodeId: string | undefined, parentPath = ''): string {
   return `${parentPath}_${nodeId !== undefined ? nodeId.toString() : ''}`
 }
 
@@ -28,7 +24,7 @@ function selectNode(node: BoardGameNodeData, event: MouseEvent) {
   emit('nodeSelected', node, event)
 }
 
-function toggleExpand(nodeId: number | undefined, parentPath = '') {
+function toggleExpand(nodeId: string | undefined, parentPath = '') {
   const nodeKey = getNodeKey(nodeId, parentPath)
   if (expandedNodes.value.has(nodeKey)) {
     expandedNodes.value.delete(nodeKey)
@@ -37,7 +33,7 @@ function toggleExpand(nodeId: number | undefined, parentPath = '') {
   }
 }
 
-function isExpanded(nodeId: number | undefined, parentPath = ''): boolean {
+function isExpanded(nodeId: string | undefined, parentPath = ''): boolean {
   const nodeKey = getNodeKey(nodeId, parentPath)
   return expandedNodes.value.has(nodeKey)
 }

@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
 const emit = defineEmits(['close'])
-const geojson = window.mapOwner.getPlacesGeoJSON()
 const copiedTooltipVisible = ref(false)
+
+const props = defineProps<{
+  geojson: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined
+}>()
 
 function onClose() {
   emit('close')
 }
 
 function copyJSON() {
-  navigator.clipboard.writeText(JSON.stringify(geojson, null, 2)).catch((err: unknown) => {
+  navigator.clipboard.writeText(JSON.stringify(props.geojson, null, 2)).catch((err: unknown) => {
     console.error('Failed to copy: ', err)
   })
   copiedTooltipVisible.value = true
@@ -58,7 +60,7 @@ function copyJSON() {
       >.
     </p>
     <pre
-      >{{ geojson }}
+      >{{ props.geojson }}
 </pre
     >
   </div>

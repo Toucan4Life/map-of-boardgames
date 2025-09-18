@@ -1,4 +1,4 @@
-import type { Graph, Link, Node } from 'ngraph.graph'
+import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
 import { fetchAndProcessGraph } from './fetchAndProcessGraph'
 import type { BoardGameNodeData, BoardGameLinkData } from './fetchAndProcessGraph'
 const graphsCache = new Map()
@@ -7,7 +7,7 @@ const pendingRequests = new Map()
 export default async function downloadGroupGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
-): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
+): Promise<Graph<BoardGameNodeData, BoardGameLinkData> | undefined> {
   if (graphsCache.has(groupId)) {
     return graphsCache.get(groupId)
   }
@@ -45,7 +45,7 @@ function formatBytes(bytes: number, decimals = 2) {
 
 export async function buildLocalNeighborsGraphForGroup(
   groupId: number,
-  repositoryName: string,
+  repositoryName: NodeId,
   depth: number,
   logCallback?: (message: string) => void,
 ) {
@@ -75,13 +75,16 @@ export async function buildLocalNeighborsGraphForGroup(
   let rootGraph: Graph<BoardGameNodeData, BoardGameLinkData> | undefined
   try {
     rootGraph = await downloadGroupGraph(groupId, downloadProgressCallback)
-
+    if (!rootGraph) {
+      if (logCallback) logCallback(`Error: Failed to load graph for group ${groupId.toString()}`)
+      return
+    }
     if (logCallback) {
       logCallback(`Graph loaded: ${rootGraph.getNodesCount().toString()} nodes, ${rootGraph.getLinksCount().toString()} links`)
     }
   } catch (error: unknown) {
     if (logCallback) logCallback(`Error downloading group data: ${(error as Error).message}`)
-    throw error
+    return
   }
 
   const downloadTime = Math.round(performance.now() - startTime)
@@ -90,13 +93,13 @@ export async function buildLocalNeighborsGraphForGroup(
   // Track visited nodes to avoid duplicates
   const visited = new Set()
   // Queue for BFS traversal with node id, source group, and current depth
-  const queue = []
+  const queue: { nodeId: NodeId; groupId: number; currentDepth: number }[] = []
 
   // Get the starting node
   const startNode = rootGraph.getNode(repositoryName)
   if (!startNode) {
     if (logCallback) logCallback(`Error: Repository "${repositoryName.toString()}" not found in group ${groupId.toString()}`)
-    throw new Error(`Repository "${repositoryName.toString()}" not found in group ${groupId.toString()}`)
+    return
   }
 
   if (logCallback) logCallback(`Root node "${repositoryName.toString()}" found. Starting graph exploration...`)
@@ -128,6 +131,12 @@ export async function buildLocalNeighborsGraphForGroup(
         logCallback(`Loading external group: ${currentGroupId.toString()} (external group)`)
       }
       currentGraph = await downloadGroupGraph(currentGroupId, downloadProgressCallback)
+      if (!currentGraph) {
+        if (logCallback) {
+          logCallback(`Warning: Failed to load external group ${currentGroupId.toString()}. Skipping its neighbors.`)
+        }
+        continue
+      }
       externalGroups.add(currentGroupId)
     } else {
       currentGraph = rootGraph
@@ -136,10 +145,10 @@ export async function buildLocalNeighborsGraphForGroup(
     let linksAdded = 0
 
     // Collect all neighbor links for the current node
-    const neighborLinks: { neighborNode: Node; link: Link }[] = []
+    const neighborLinks: { neighborNode: Node<BoardGameNodeData>; link: Link }[] = []
     currentGraph.forEachLinkedNode(
       nodeId,
-      (neighborNode: Node, link: Link) => {
+      (neighborNode: Node<BoardGameNodeData>, link: Link) => {
         neighborLinks.push({ neighborNode, link })
       },
       false,

@@ -10,6 +10,7 @@ const emit = defineEmits<{
   selected: [id: SearchResult]
   close: []
   cleared: []
+  repoSelected: [id: SearchResult]
 }>()
 
 function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
@@ -53,7 +54,9 @@ function getLink(repo: IFocusViewModel | Repositories): string {
 }
 function expandGraph() {
   emit('cleared')
-  props.vm.expandGraph()
+  props.vm.expandGraph((searchResult) => {
+    emit('repoSelected', searchResult)
+  })
 }
 </script>
 <template>

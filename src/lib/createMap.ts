@@ -1,20 +1,21 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
-import maplibregl, { GeoJSONSource, type FilterSpecification, type MapGeoJSONFeature, type MapOptions, type PointLike } from 'maplibre-gl'
-import bus from './bus'
+import maplibregl, {
+  GeoJSONSource,
+  type AddLayerObject,
+  type FilterSpecification,
+  type MapGeoJSONFeature,
+  type MapOptions,
+  type PointLike,
+} from 'maplibre-gl'
 import config from './config'
-import { getCustomLayer } from './gl/createLinesCollection.ts'
-import getComplimentaryColor from './getComplimentaryColor'
 import downloadGroupGraph from './downloadGroupGraph.ts'
-import { LabelEditor } from './label-editor/createLabelEditor.ts'
 import getColorTheme from './getColorTheme'
-import type { Graph } from 'ngraph.graph'
-import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.ts'
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
 
 const currentColorTheme = getColorTheme()
 
-interface SearchParameters {
+export interface SearchParameters {
   minWeight: number
   maxWeight: number
   minRating: number
@@ -32,69 +33,15 @@ export class BoardGameMap {
   dispose() {
     this.map.remove()
   }
-  backgroundEdgesFetch: Promise<Graph<BoardGameNodeData, BoardGameLinkData>> | undefined
+  backgroundEdgesFetch: Promise<void> | undefined
   bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
-  fastLinesLayer: getCustomLayer
-  labelEditor: LabelEditor | undefined
-
-  constructor() {
+  containerValue: HTMLDivElement
+  constructor(containerValue: HTMLDivElement) {
+    this.containerValue = containerValue
     this.map = new maplibregl.Map(this.getDefaultStyle())
     this.map.dragRotate.disable()
     this.map.touchZoomRotate.disableRotation()
-    this.fastLinesLayer = new getCustomLayer()
-
-    this.map.on('load', () => {
-      this.LoadMap()
-        .then(() => {
-          console.log('Map loaded')
-        })
-        .catch((e: unknown) => {
-          console.error('Error loading map:', e)
-        })
-    })
-
-    this.map.on('contextmenu', (e) => {
-      bus.fire('show-tooltip')
-
-      const bg = this.getBackgroundNearPoint(e.point)[0]
-      let ctxMenuItems = [this.showLargestProjectsContextMenuItem(bg)]
-
-      if (this.labelEditor) {
-        ctxMenuItems = ctxMenuItems.concat(this.labelEditor.getContextMenuItems(e, bg.id))
-      }
-
-      const nearestCity = this.findNearestCity(e.point)
-      if (nearestCity?.properties.label) {
-        const name: string = nearestCity.properties.label
-        ctxMenuItems.push({
-          text: 'List connections of ' + name,
-          click: () => {
-            this.showDetails(nearestCity)
-            this.drawBackgroundEdges(e.point, name)
-            bus.fire('focus-on-repo', nearestCity.properties.id, bg.id, name)
-          },
-        })
-      }
-
-      const contextMenuItems = {
-        items: ctxMenuItems,
-        left: e.point.x.toString() + 'px',
-        top: e.point.y.toString() + 'px',
-      }
-
-      bus.fire('show-context-menu', contextMenuItems)
-    })
-
-    this.map.on('click', (e) => {
-      bus.fire('show-context-menu')
-      const nearestCity = this.findNearestCity(e.point)
-      const repo = nearestCity?.properties.label
-      if (!nearestCity || !repo) return
-
-      this.showDetails(nearestCity)
-      this.drawBackgroundEdges(e.point, repo)
-    })
 
     this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
@@ -169,10 +116,19 @@ export class BoardGameMap {
       },
       'label-layer',
     ) // Add before label-layer so labels appear on top
+    const linesLayer: AddLayerObject = {
+      id: 'graph-edges',
+      type: 'line',
+      source: 'graph-edges-source',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 2, // 2 pixels wide
+        'line-opacity': 0.4,
+      },
+    }
 
     // Add lines layer before circle layer so icons appear on top of lines
-    this.map.addLayer(this.fastLinesLayer, 'circle-layer')
-    this.labelEditor = new LabelEditor(this.map)
+    this.map.addLayer(linesLayer, 'circle-layer')
   }
 
   highlightNode(searchParameters: SearchParameters): void {
@@ -249,63 +205,16 @@ export class BoardGameMap {
     return feature?.id !== undefined ? +feature.id : undefined
   }
 
-  showDetails(nearestCity: MapGeoJSONFeature): void {
-    const repo = nearestCity.properties.label
-    if (!repo) return
-
-    const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
-    bus.fire('show-tooltip')
-    bus.fire('repo-selected', { text: repo, lat, lon, id: nearestCity.properties.id })
-  }
-
-  showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature): { text: string; click: () => void } {
-    return {
-      text: 'Show largest projects',
-      click: () => {
-        if (!bg.id) return
-
-        const seen = new Map()
-        const largeRepositories = this.map
-          .querySourceFeatures('points-source', {
-            sourceLayer: 'points',
-            filter: ['==', 'parent', bg.id],
-          })
-          .sort((a, b) => b.properties.size - a.properties.size)
-
-        for (const repo of largeRepositories) {
-          const label = repo.properties.label
-          if (seen.has(label)) continue
-
-          seen.set(label, {
-            name: label,
-            lngLat: (repo.geometry as GeoJSON.Point).coordinates,
-            id: repo.properties.id,
-          })
-
-          if (seen.size >= 100) break
-        }
-
-        this.map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
-        this.map.setLayoutProperty('border-highlight', 'visibility', 'visible')
-        bus.fire('show-largest-in-group', bg.id, Array.from(seen.values()))
-      },
-    }
-  }
-
-  getPlacesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Point> | undefined {
-    if (!this.labelEditor) {
-      console.warn('labelEditor not yet initialized')
-      return
-    }
-    return this.labelEditor.places
-  }
-
   clearBorderHighlights(): void {
     this.map.setLayoutProperty('border-highlight', 'visibility', 'none')
   }
 
   clearHighlights(): void {
-    this.fastLinesLayer.clear()
+    ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: [],
+    })
+    this.map.redraw()
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData({
       type: 'FeatureCollection',
       features: [],
@@ -328,14 +237,16 @@ export class BoardGameMap {
 
   drawBackgroundEdges(point: PointLike, repo: string): void {
     const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (bgFeature?.id === undefined) return
+
+    if (bgFeature.id === undefined) return
 
     const groupId = +bgFeature.id
     const fillColor = this.getPolygonFillColor(bgFeature.properties)
-    const complimentaryColor = getComplimentaryColor(fillColor)
 
-    this.fastLinesLayer.clear()
+    ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: [],
+    })
 
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
@@ -344,7 +255,11 @@ export class BoardGameMap {
 
     this.backgroundEdgesFetch = downloadGroupGraph(groupId)
       .then((groupGraph) => {
-        const firstLevelLinks: { from: [number, number]; to: [number, number]; color: number }[] = []
+        if (!groupGraph) {
+          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
+          return
+        }
+        const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string; weight: number }[] = []
 
         // Create adjustment map inline
         const renderedNodesAdjustment = new Map()
@@ -359,35 +274,39 @@ export class BoardGameMap {
           })
 
         let primaryNodePositionFound = false
-
+        const lines: {
+          from: [number, number]
+          to: [number, number]
+          color: string
+          weight: number
+        }[] = []
         groupGraph.forEachLink((link) => {
           if (link.data.s == undefined) {
             // this means the status is "Shown"
             const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
             const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
-            const from = maplibregl.MercatorCoordinate.fromLngLat(fromGeo)
-            const to = maplibregl.MercatorCoordinate.fromLngLat(toGeo)
             const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
             const lineColor = (() => {
               switch (true) {
                 case link.data.weight < 0.06598822:
-                  return 0x4a148c66
+                  return '#4a148c'
                 case link.data.weight < 0.09264013:
-                  return 0x7b1fa266
+                  return '#7b1fa2'
                 case link.data.weight < 0.1295021:
-                  return 0xab47bc66
+                  return '#ab47bc'
                 case link.data.weight < 0.1920555:
-                  return 0xff704366
+                  return '#ff7043'
                 default:
-                  return 0xff572266
+                  return '#ff5722'
               }
             })()
 
-            const line: { from: [number, number]; to: [number, number]; color: number } = {
-              from: [from.x, from.y],
-              to: [to.x, to.y],
-              color: isFirstLevel ? 0xffffffff : lineColor,
+            const line: { from: [number, number]; to: [number, number]; color: string; weight: number } = {
+              from: fromGeo,
+              to: toGeo,
+              color: isFirstLevel ? '#ffffff' : lineColor,
+              weight: link.data.weight,
             }
 
             if (isFirstLevel) {
@@ -409,16 +328,33 @@ export class BoardGameMap {
                 properties: { color: secondaryHighlightColor, name: groupGraph.getNode(otherName)?.data.label, background: fillColor, textSize: 0.8 },
               })
             } else {
-              this.fastLinesLayer.addLine(line)
+              lines.push(line)
             }
           }
         })
 
         firstLevelLinks.forEach((line) => {
-          this.fastLinesLayer.addLine(line)
+          lines.push(line)
         })
+        const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+        lines.forEach((line) =>
+          GeoJSONLine.push({
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [line.from, line.to],
+            },
+            properties: {
+              color: line.color,
+              weight: line.weight,
+            },
+          }),
+        )
         ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
-        this.map.redraw()
+        ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+          type: 'FeatureCollection',
+          features: GeoJSONLine,
+        })
       })
       .catch((e: unknown) => {
         console.error('Error fetching group graph:', e)
@@ -452,7 +388,7 @@ export class BoardGameMap {
   getDefaultStyle(): MapOptions {
     return {
       hash: true,
-      container: 'map',
+      container: this.containerValue,
       center: [0, 0],
       zoom: 2,
       style: {
@@ -467,14 +403,15 @@ export class BoardGameMap {
             maxzoom: 4,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
-          place: {
+          place: { type: 'geojson', data: config.placesSource },
+          'selected-nodes': {
             type: 'geojson',
             data: {
               type: 'FeatureCollection',
               features: [],
             },
           },
-          'selected-nodes': {
+          'graph-edges-source': {
             type: 'geojson',
             data: {
               type: 'FeatureCollection',

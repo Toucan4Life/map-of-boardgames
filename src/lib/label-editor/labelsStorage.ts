@@ -1,16 +1,10 @@
-import config from '../config'
-import bus from '../bus'
 import { LngLat } from 'maplibre-gl'
+import type { FeatureCollection, Feature, Point, Geometry, GeoJsonProperties } from 'geojson'
 
-let originalPlaces: GeoJSON.FeatureCollection = {
-  type: 'FeatureCollection',
-  features: [],
-}
 const indexedPlaces = new Map()
 
-export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSON.Point> | undefined> {
-  const r = await fetch(config.placesSource, { mode: 'cors' })
-  originalPlaces = await r.json()
+export function getPlaceLabels(d: GeoJSON.FeatureCollection<GeoJSON.Point>): { isChanged: boolean; merged: FeatureCollection<Point> } {
+  let originalPlaces = d
   originalPlaces.features.forEach((f) => {
     if (!f.properties) return
     indexedPlaces.set(f.properties.labelId, f)
@@ -18,8 +12,7 @@ export async function getPlaceLabels(): Promise<GeoJSON.FeatureCollection<GeoJSO
 
   const mergedLabels = mergePlacesWithLocalStorage()
   const hasChanges = checkOriginalPlacesForChanges(mergedLabels)
-  if (hasChanges) bus.fire('unsaved-changes-detected', hasChanges)
-  return mergedLabels
+  return { isChanged: hasChanges, merged: mergedLabels }
 }
 
 function savePlaceLabels(places: GeoJSON.GeoJSON | undefined): void {
