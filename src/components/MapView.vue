@@ -137,15 +137,16 @@ onMounted(() => {
       .then(() => {
         if (map) {
           ;(map.getSource('place') as GeoJSONSource).getData().then((d) => {
-            const t = getPlaceLabelss(d as GeoJSON.FeatureCollection<GeoJSON.Point>)
-            const loadedPlaces = t?.merged
+            places = d as GeoJSON.FeatureCollection<GeoJSON.Point>
+            const t = getPlaceLabelss(places)
+            places = t?.merged
             if (t?.isChanged) {
               emit('unsaved-changes-detected', t.isChanged)
             }
-            if (!loadedPlaces) return
-            emit('labelEditorLoaded', loadedPlaces)
+            if (!places) return
+            emit('labelEditorLoaded', places)
             if (map) {
-              ;(map.getSource('place') as GeoJSONSource).setData(loadedPlaces)
+              ;(map.getSource('place') as GeoJSONSource).setData(places)
             }
           })
         }
@@ -222,6 +223,7 @@ function getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | 
 function saveAdd(value: string): void {
   if (!map) return
   places = addLabelToPlaces(places, value, marker.getLngLat(), map.getZoom(), borderOwnerId)
+  localStorage.setItem('places', JSON.stringify(places))
   if (!places) return
   ;(map.getSource('place') as GeoJSONSource).setData(places)
   emit('unsaved-changes-detected', true)
@@ -231,6 +233,7 @@ function saveEdit(value: string): void {
   if (!map) return
   if (!oldLabelProps) return
   places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom())
+  localStorage.setItem('places', JSON.stringify(places))
   if (!places) return
   ;(map.getSource('place') as GeoJSONSource).setData(places)
   emit('unsaved-changes-detected', true)
@@ -239,7 +242,9 @@ function getPlaceLabelss(d: GeoJSON.FeatureCollection<GeoJSON.Point>): {
   isChanged: boolean
   merged: GeoJSON.FeatureCollection<GeoJSON.Point>
 } {
-  let t = getPlaceLabels(d)
+  const pl = localStorage.getItem('places')
+  const localPlaces = pl ? JSON.parse(pl) : { type: 'FeatureCollection', features: [] }
+  let t = getPlaceLabels(d, localPlaces)
   places = t.merged
   return t
 }
