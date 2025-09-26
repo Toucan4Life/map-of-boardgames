@@ -1,67 +1,21 @@
-import { LngLat } from 'maplibre-gl'
-import type { FeatureCollection, Feature, Point } from 'geojson'
+import type { Feature, Point } from 'geojson'
 
-export function getPlaceLabels(
-  onlinePlaces: FeatureCollection<Point>,
-  localPlaces: FeatureCollection<Point>,
-): { isChanged: boolean; merged: FeatureCollection<Point> } {
-  const merg = new Map(localPlaces.features.filter((f) => f.properties?.labelId).map((f) => [f.properties?.labelId, f]))
-  onlinePlaces.features.forEach((f, k) => {
-    merg.has(k) || merg.set(k, f)
+export function getPlaceLabels(onlinePlaces: Feature<Point>[], localPlaces: Feature<Point>[]): { isChanged: boolean; merged: Feature<Point>[] } {
+  const merg = new Map(localPlaces.filter((f) => f.properties?.labelId).map((f) => [f.properties?.labelId, f]))
+
+  onlinePlaces.forEach((f, k) => {
+    if (!merg.has(k)) {
+      merg.set(k, f)
+    }
   })
-  const merged: FeatureCollection<Point> = { type: 'FeatureCollection', features: Array.from(merg.values()) }
+
+  const merged = Array.from(merg.values())
   return { isChanged: hasChanges(merged, onlinePlaces), merged }
 }
 
-export function addLabelToPlaces(
-  places: FeatureCollection<Point> | undefined,
-  value: string,
-  lngLat: LngLat,
-  mapZoomLevel: number,
-  borderOwnerId: string | number | undefined,
-): FeatureCollection<Point> | undefined {
-  const labelId = generateShortRandomId()
-  const label: Feature<Point> = {
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [round(lngLat.lng), round(lngLat.lat)] },
-    properties: {
-      symbolzoom: Math.ceil(mapZoomLevel),
-      name: value,
-      labelId,
-      ...(borderOwnerId !== undefined && { ownerId: borderOwnerId }),
-    },
-  }
-  places?.features.push(label)
-  return places
-}
-
-export function editLabelInPlaces(
-  labelId: string,
-  places: FeatureCollection<Point> | undefined,
-  value: string,
-  lngLat: LngLat,
-  mapZoomLevel: number,
-): FeatureCollection<Point> | undefined {
-  if (!places) return
-
-  if (!value) {
-    places.features = places.features.filter((f) => f.properties?.labelId !== labelId)
-    return places
-  }
-
-  const label = places.features.find((f) => f.properties?.labelId === labelId)
-  if (!label?.properties) return places
-
-  label.properties.name = value
-  label.properties.symbolzoom = Math.ceil(mapZoomLevel)
-  label.geometry.coordinates = [round(lngLat.lng), round(lngLat.lat)]
-
-  return places
-}
-
-function hasChanges(merged: FeatureCollection<Point>, indexedPlaces: FeatureCollection<Point>): boolean {
-  return merged.features.some((f) => {
-    const orig = f.properties?.labelId && indexedPlaces.features.find((feat) => feat?.properties?.labelId === f?.properties?.labelId)
+function hasChanges(merged: Feature<Point>[], indexedPlaces: Feature<Point>[]): boolean {
+  return merged.some((f) => {
+    const orig = f.properties?.labelId && indexedPlaces.find((feat) => feat?.properties?.labelId === f?.properties?.labelId)
     return (
       !orig ||
       orig.properties?.name !== f.properties?.name ||
@@ -74,3 +28,33 @@ function hasChanges(merged: FeatureCollection<Point>, indexedPlaces: FeatureColl
 
 const round = (n: number) => Math.round(n * 1000) / 1000
 const generateShortRandomId = () => Math.random().toString(36).substring(2, 5)
+
+export function editLabel(
+  value: string,
+  lnglat: maplibregl.LngLat,
+  features: GeoJSON.Feature<GeoJSON.Point>[],
+  oldLabelProps: string | undefined,
+  zoom: number,
+): GeoJSON.Feature<GeoJSON.Point>[] {
+  if (oldLabelProps && !value) {
+    features = features.filter((f) => f.properties?.labelId !== oldLabelProps)
+  } else if (oldLabelProps && value) {
+    const label = features.find((f) => f.properties?.labelId === oldLabelProps)
+    if (label?.properties) {
+      label.properties.name = value
+      label.properties.symbolzoom = Math.ceil(zoom)
+      label.geometry.coordinates = [round(lnglat.lng), round(lnglat.lat)]
+    }
+  } else {
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [round(lnglat.lng), round(lnglat.lat)] },
+      properties: {
+        symbolzoom: Math.ceil(zoom),
+        name: value,
+        labelId: generateShortRandomId(),
+      },
+    })
+  }
+  return features
+}
