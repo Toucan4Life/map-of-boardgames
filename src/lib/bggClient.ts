@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 
-const rawBGGUrl = 'https://boardgamegeek.com/xmlapi2'
+const rawBGGUrl = 'https://wispy-haze-6332.tdp94.workers.dev' // Worker base
 export interface GameDetail {
   imageUrl: string
   rating: string
@@ -44,7 +44,7 @@ function decodeMixedMojibake(text: string) {
 }
 
 export async function getGameInfo(thingId: string): Promise<GameDetail | undefined> {
-  const res = await fetch(`${rawBGGUrl}/thing?id=${thingId}&stats=1`)
+  const res = await fetch(`${rawBGGUrl}/xmlapi2/thing?id=${thingId}&stats=1`)
   if (!res.ok) return
 
   const xml = await res.text()

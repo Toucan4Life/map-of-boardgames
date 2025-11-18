@@ -229,10 +229,20 @@ function handleItem(item: { text: string; click: () => void }) {
 
     <!-- Made by -->
     <div class="made-by">
-      Made by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life">Toucan4Life</a>,
-      inspired by
-      <a class="normal" aria-label="Inspired by @anvaka" target="_blank" href="https://github.com/Anvaka">Anvaka</a>
+      <div>
+        Made by
+        <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life">Toucan4Life</a>,
+        inspired by
+        <a class="normal" aria-label="Inspired by @anvaka" target="_blank" href="https://github.com/Anvaka">Anvaka</a>
+      </div>
+      <div>
+        <a href="https://boardgamegeek.com/"
+          ><img
+            border="0"
+            src="https://cf.geekdo-images.com/HZy35cmzmmyV9BarSuk6ug__small/img/gbE7sulIurZE_Tx8EQJXnZSKI6w=/fit-in/200x150/filters:strip_icc()/pic7779581.png"
+            alt="User: dakarp"
+        /></a>
+      </div>
     </div>
 
     <!-- Right panel views -->
