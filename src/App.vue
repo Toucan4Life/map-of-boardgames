@@ -13,6 +13,7 @@ import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
 import type { SearchResult } from './lib/createFuzzySearcher'
 import type { AdvSearchResult } from './components/AdvSearch.vue'
 import MapView from './components/MapView.vue'
+import downloadGroupGraph from './lib/downloadGroupGraph'
 const SM_SCREEN_BREAKPOINT = 600
 const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
 // UI state
@@ -96,7 +97,12 @@ async function listCurrentConnections() {
   const groupId = lastSelected.groupId ?? (await mapViewRef.value?.getGroupIdAt(lastSelected.lat, lastSelected.lon))
   if (groupId !== undefined) {
     currentGroup.value = undefined
-    currentFocus.value = new FocusViewModel(lastSelected.id, groupId, lastSelected.text)
+    try {
+      const graph = await downloadGroupGraph(groupId)
+      currentFocus.value = new FocusViewModel(lastSelected.id, groupId, lastSelected.text, graph)
+    } catch (error) {
+      console.error(`Error: Failed to load graph for group ${groupId}`)
+    }
   }
 }
 
@@ -145,9 +151,14 @@ const showLargestHandler = (id: number, largest: Repositories[]) => {
   currentGroup.value = g
 }
 
-const focusOnRepoHandler = (repo: number, groupId: number, label: string) => {
+const focusOnRepoHandler = async (repo: number, groupId: number, label: string) => {
   currentGroup.value = undefined
-  currentFocus.value = new FocusViewModel(repo, groupId, label)
+  try {
+    const graph = await downloadGroupGraph(groupId)
+    currentFocus.value = new FocusViewModel(repo, groupId, label, graph)
+  } catch (error) {
+    console.error(`Error: Failed to load graph for group ${groupId}`)
+  }
 }
 
 const unsavedChangesHandler = (has: boolean) => {
@@ -218,10 +229,20 @@ function handleItem(item: { text: string; click: () => void }) {
 
     <!-- Made by -->
     <div class="made-by">
-      Made by
-      <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life">Toucan4Life</a>,
-      inspired by
-      <a class="normal" aria-label="Inspired by @anvaka" target="_blank" href="https://github.com/Anvaka">Anvaka</a>
+      <div>
+        Made by
+        <a class="normal" aria-label="Made by Toucan4Life, inspired by @anvaka" target="_blank" href="https://github.com/Toucan4Life">Toucan4Life</a>,
+        inspired by
+        <a class="normal" aria-label="Inspired by @anvaka" target="_blank" href="https://github.com/Anvaka">Anvaka</a>
+      </div>
+      <div>
+        <a href="https://boardgamegeek.com/"
+          ><img
+            border="0"
+            src="https://cf.geekdo-images.com/HZy35cmzmmyV9BarSuk6ug__small/img/gbE7sulIurZE_Tx8EQJXnZSKI6w=/fit-in/200x150/filters:strip_icc()/pic7779581.png"
+            alt="User: dakarp"
+        /></a>
+      </div>
     </div>
 
     <!-- Right panel views -->

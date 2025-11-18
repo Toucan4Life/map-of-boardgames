@@ -8,8 +8,10 @@ import maplibregl, {
   type PointLike,
 } from 'maplibre-gl'
 import config from './config'
-import downloadGroupGraph from './downloadGroupGraph.ts'
 import getColorTheme from './getColorTheme'
+import type { Graph } from 'ngraph.graph'
+import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.ts'
+import type { Repositories } from './FocusViewModel.ts'
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
 
@@ -33,8 +35,6 @@ export class BoardGameMap {
   dispose() {
     this.map.remove()
   }
-  backgroundEdgesFetch: Promise<void> | undefined
-  bordersCollection: Promise<{ features: MapGeoJSONFeature[] }>
   map: maplibregl.Map
   containerValue: HTMLDivElement
   constructor(containerValue: HTMLDivElement) {
@@ -42,8 +42,6 @@ export class BoardGameMap {
     this.map = new maplibregl.Map(this.getDefaultStyle())
     this.map.dragRotate.disable()
     this.map.touchZoomRotate.disableRotation()
-
-    this.bordersCollection = fetch(config.bordersSource).then((res) => res.json())
   }
 
   async LoadMap() {
@@ -198,8 +196,8 @@ export class BoardGameMap {
   }
 
   async getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
-    const collection = await this.bordersCollection
-    const feature = collection.features.find((f: MapGeoJSONFeature) => {
+    const col = (await (this.map.getSource('borders-source') as GeoJSONSource).getData()) as GeoJSON.FeatureCollection<GeoJSON.Polygon>
+    const feature = col.features.find((f) => {
       return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
     })
     return feature?.id !== undefined ? +feature.id : undefined
@@ -222,22 +220,11 @@ export class BoardGameMap {
     this.map.redraw()
   }
 
-  makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation = false): void {
-    const moveMethod = disableAnimation ? 'jumpTo' : 'flyTo'
-    this.map[moveMethod](location)
-
-    void this.map.once('moveend', () => {
-      this.drawBackgroundEdges(location.center, repository)
-    })
+  getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature {
+    return this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })[0]
   }
 
-  getBackgroundNearPoint(point: PointLike): maplibregl.MapGeoJSONFeature[] {
-    return this.map.queryRenderedFeatures(point, { layers: ['polygon-layer'] })
-  }
-
-  drawBackgroundEdges(point: PointLike, repo: string): void {
-    const bgFeature: maplibregl.MapGeoJSONFeature | undefined = this.getBackgroundNearPoint(point)[0]
-
+  drawBackgroundEdges(repo: string, bgFeature: maplibregl.MapGeoJSONFeature, groupGraph: Graph<BoardGameNodeData, BoardGameLinkData>): void {
     if (bgFeature.id === undefined) return
 
     const groupId = +bgFeature.id
@@ -253,112 +240,102 @@ export class BoardGameMap {
       features: [],
     }
 
-    this.backgroundEdgesFetch = downloadGroupGraph(groupId)
-      .then((groupGraph) => {
-        if (!groupGraph) {
-          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
-          return
-        }
-        const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string; weight: number }[] = []
+    const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string; weight: number }[] = []
 
-        // Create adjustment map inline
-        const renderedNodesAdjustment = new Map()
-        this.map
-          .querySourceFeatures('points-source', {
-            sourceLayer: 'points',
-            filter: ['==', 'parent', groupId],
-          })
-          .forEach((repo) => {
-            const lngLat = (repo.geometry as GeoJSON.Point).coordinates
-            renderedNodesAdjustment.set(repo.properties.label, { lngLat })
-          })
+    // Create adjustment map inline
+    const renderedNodesAdjustment = new Map()
+    this.map
+      .querySourceFeatures('points-source', {
+        sourceLayer: 'points',
+        filter: ['==', 'parent', groupId],
+      })
+      .forEach((repo) => {
+        const lngLat = (repo.geometry as GeoJSON.Point).coordinates
+        renderedNodesAdjustment.set(repo.properties.label, { lngLat })
+      })
 
-        let primaryNodePositionFound = false
-        const lines: {
-          from: [number, number]
-          to: [number, number]
-          color: string
-          weight: number
-        }[] = []
-        groupGraph.forEachLink((link) => {
-          if (link.data.s == undefined) {
-            // this means the status is "Shown"
-            const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
-            const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
+    let primaryNodePositionFound = false
+    const lines: {
+      from: [number, number]
+      to: [number, number]
+      color: string
+      weight: number
+    }[] = []
+    groupGraph.forEachLink((link) => {
+      if (link.data.s == undefined) {
+        // this means the status is "Shown"
+        const fromGeo: [number, number] = renderedNodesAdjustment.get(link.fromId)?.lngLat || groupGraph.getNode(link.fromId)?.data.lnglat
+        const toGeo: [number, number] = renderedNodesAdjustment.get(link.toId)?.lngLat || groupGraph.getNode(link.toId)?.data.lnglat
 
-            const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
-            const lineColor = (() => {
-              switch (true) {
-                case link.data.weight < 0.06598822:
-                  return '#4a148c'
-                case link.data.weight < 0.09264013:
-                  return '#7b1fa2'
-                case link.data.weight < 0.1295021:
-                  return '#ab47bc'
-                case link.data.weight < 0.1920555:
-                  return '#ff7043'
-                default:
-                  return '#ff5722'
-              }
-            })()
-
-            const line: { from: [number, number]; to: [number, number]; color: string; weight: number } = {
-              from: fromGeo,
-              to: toGeo,
-              color: isFirstLevel ? '#ffffff' : lineColor,
-              weight: link.data.weight,
-            }
-
-            if (isFirstLevel) {
-              firstLevelLinks.push(line)
-
-              if (!primaryNodePositionFound) {
-                highlightedNodes.features.push({
-                  type: 'Feature',
-                  geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? fromGeo : toGeo },
-                  properties: { color: primaryHighlightColor, name: repo, background: fillColor, textSize: 1.2 },
-                })
-                primaryNodePositionFound = true
-              }
-
-              const otherName = repo === groupGraph.getNode(link.fromId)?.data.label ? link.toId : link.fromId
-              highlightedNodes.features.push({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? toGeo : fromGeo },
-                properties: { color: secondaryHighlightColor, name: groupGraph.getNode(otherName)?.data.label, background: fillColor, textSize: 0.8 },
-              })
-            } else {
-              lines.push(line)
-            }
+        const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
+        const lineColor = (() => {
+          switch (true) {
+            case link.data.weight < 0.06598822:
+              return '#4a148c'
+            case link.data.weight < 0.09264013:
+              return '#7b1fa2'
+            case link.data.weight < 0.1295021:
+              return '#ab47bc'
+            case link.data.weight < 0.1920555:
+              return '#ff7043'
+            default:
+              return '#ff5722'
           }
-        })
+        })()
 
-        firstLevelLinks.forEach((line) => {
-          lines.push(line)
-        })
-        const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
-        lines.forEach((line) =>
-          GeoJSONLine.push({
+        const line: { from: [number, number]; to: [number, number]; color: string; weight: number } = {
+          from: fromGeo,
+          to: toGeo,
+          color: isFirstLevel ? '#ffffff' : lineColor,
+          weight: link.data.weight,
+        }
+
+        if (isFirstLevel) {
+          firstLevelLinks.push(line)
+
+          if (!primaryNodePositionFound) {
+            highlightedNodes.features.push({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? fromGeo : toGeo },
+              properties: { color: primaryHighlightColor, name: repo, background: fillColor, textSize: 1.2 },
+            })
+            primaryNodePositionFound = true
+          }
+
+          const otherName = repo === groupGraph.getNode(link.fromId)?.data.label ? link.toId : link.fromId
+          highlightedNodes.features.push({
             type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: [line.from, line.to],
-            },
-            properties: {
-              color: line.color,
-              weight: line.weight,
-            },
-          }),
-        )
-        ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
-        ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
-          type: 'FeatureCollection',
-          features: GeoJSONLine,
-        })
-      })
-      .catch((e: unknown) => {
-        console.error('Error fetching group graph:', e)
-      })
+            geometry: { type: 'Point', coordinates: repo === groupGraph.getNode(link.fromId)?.data.label ? toGeo : fromGeo },
+            properties: { color: secondaryHighlightColor, name: groupGraph.getNode(otherName)?.data.label, background: fillColor, textSize: 0.8 },
+          })
+        } else {
+          lines.push(line)
+        }
+      }
+    })
+
+    firstLevelLinks.forEach((line) => {
+      lines.push(line)
+    })
+    const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
+    lines.forEach((line) =>
+      GeoJSONLine.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [line.from, line.to],
+        },
+        properties: {
+          color: line.color,
+          weight: line.weight,
+        },
+      }),
+    )
+    ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
+    ;(this.map.getSource('graph-edges-source') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: GeoJSONLine,
+    })
   }
 
   findNearestCity(point: { x: number; y: number }): MapGeoJSONFeature | undefined {
@@ -544,7 +521,31 @@ export class BoardGameMap {
       },
     }
   }
+  getLargestRepositories(id: number): Map<string, Repositories> {
+    const seen = new Map<string, Repositories>()
+    const largeRepositories = this.map
+      .querySourceFeatures('points-source', {
+        sourceLayer: 'points',
+        filter: ['==', 'parent', id],
+      })
+      .sort((a, b) => b.properties.size - a.properties.size)
 
+    for (const repo of largeRepositories) {
+      const label = repo.properties.label
+      if (seen.has(label)) continue
+
+      seen.set(label, {
+        name: label,
+        lngLat: (repo.geometry as GeoJSON.Point).coordinates.slice(0, 2) as [number, number],
+        id: repo.properties.id,
+        isExternal: repo.properties.isExternal,
+        linkWeight: repo.properties.linkWeight,
+      })
+
+      if (seen.size >= 100) break
+    }
+    return seen
+  }
   getPolygonFillColor(polygonProperties: Record<string, string>): string | undefined {
     // Use find() and nullish coalescing instead of for-loop
     const colorMapping = currentColorTheme.color.find((color) => color.input === polygonProperties.fill)

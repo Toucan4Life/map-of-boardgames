@@ -24,7 +24,7 @@ export type BoardGameLinkData = {
 export async function fetchAndProcessGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
-) {
+): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
   const fileName = `${groupId.toString()}.gzip`
   const url = `${config.compressedGraphEndpoint}/${fileName}`
 
@@ -35,8 +35,7 @@ export async function fetchAndProcessGraph(
     const response = await fetch(url)
 
     if (!response.ok) {
-      console.error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
-      return
+      throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
     }
 
     // Get content length if available
@@ -45,8 +44,7 @@ export async function fetchAndProcessGraph(
 
     // Create a reader from the response body
     if (!response.body) {
-      console.error('Response body is null')
-      return
+      throw new Error(`Response body is null`)
     }
     const reader = response.body.getReader()
     let bytesReceived = 0

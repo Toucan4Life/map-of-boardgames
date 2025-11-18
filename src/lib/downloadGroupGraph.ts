@@ -7,7 +7,7 @@ const pendingRequests = new Map()
 export default async function downloadGroupGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
-): Promise<Graph<BoardGameNodeData, BoardGameLinkData> | undefined> {
+): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
   if (graphsCache.has(groupId)) {
     return graphsCache.get(groupId)
   }

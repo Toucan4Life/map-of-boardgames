@@ -7,7 +7,6 @@ export interface chatMessage {
   content: string
 }
 export default class GroupViewModel {
-  pendingRequest: { promise: Promise<void>; isCancelled: boolean } | undefined
   loading: boolean
   error: string
   chat: chatMessage[]
@@ -17,7 +16,6 @@ export default class GroupViewModel {
     this.chat = []
     this.error = ''
     this.loading = false
-    this.pendingRequest = undefined
   }
 
   setLargest(currentLargest: Repositories[]): void {
