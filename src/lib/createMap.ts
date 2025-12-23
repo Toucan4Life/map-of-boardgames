@@ -270,13 +270,13 @@ export class BoardGameMap {
         const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
         const lineColor = (() => {
           switch (true) {
-            case link.data.weight < 0.06598822:
+            case link.data.weight < 0.094656:
               return '#4a148c'
-            case link.data.weight < 0.09264013:
+            case link.data.weight < 0.133022:
               return '#7b1fa2'
-            case link.data.weight < 0.1295021:
+            case link.data.weight < 0.181576:
               return '#ab47bc'
-            case link.data.weight < 0.1920555:
+            case link.data.weight < 0.258555:
               return '#ff7043'
             default:
               return '#ff5722'
@@ -377,7 +377,7 @@ export class BoardGameMap {
             type: 'vector',
             tiles: [config.vectorTilesTiles],
             minzoom: 0,
-            maxzoom: 4,
+            maxzoom: 3,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
           place: { type: 'geojson', data: config.placesSource },

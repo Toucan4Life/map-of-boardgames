@@ -10,7 +10,7 @@ export type BoardGameNodeData = {
   label: string
   lnglat: [number, number]
   max_players: string
-  l: string
+  pos: string
   c: number
   isExternal: boolean
 }
@@ -101,7 +101,7 @@ export async function fetchAndProcessGraph(
   const graph: Graph<BoardGameNodeData, BoardGameLinkData> = fromDot.default(text)
 
   graph.forEachNode((node: Node<BoardGameNodeData>) => {
-    node.data.lnglat = node.data.l.split(',').map((x: string) => +x) as [number, number]
+    node.data.lnglat = node.data.pos.split(',').map((x: string) => +x) as [number, number]
     if (typeof node.data.c === 'string' && node.data.c === 'undefined') {
       // Nodes of external groups will have their groupId set in the `.data.c` property
       // However nodes that belong to current group will have this property set to undefined

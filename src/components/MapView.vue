@@ -61,8 +61,8 @@ async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapG
   try {
     const graph = await downloadGroupGraph(groupId)
     boardGameMap.drawBackgroundEdges(label, feat, graph)
-  } catch {
-    console.error(`Error: Failed to load graph for group ${groupId}`)
+  } catch (ex) {
+    console.error(`Error: Failed to load graph for group ${groupId},${ex}`)
   }
 }
 function makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation?: boolean): void {
@@ -177,7 +177,7 @@ async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: 
   })
 
   const bgFeature = boardGameMap.getBackgroundNearPoint(point)
-  if (!bgFeature.id) return
+  if (bgFeature.id == undefined) return
   await fetchAndDrawGroupGraph(+bgFeature.id, name, bgFeature)
 }
 
