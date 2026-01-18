@@ -75,18 +75,22 @@ export class BoardGameMap {
             'triangle-icon',
             'circle-icon',
           ],
+          // Initial icon-size; replaced with normalized-by-community after data load
           'icon-size': [
             'interpolate',
             ['linear'],
             ['zoom'],
             5,
-            ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
+            ['+', ['*', ['to-number', ['get', 'size']], 10], 0.2],
             15,
-            ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
+            ['+', ['*', ['to-number', ['get', 'size']], 150], 0.2],
           ],
           'icon-ignore-placement': true,
           'icon-allow-overlap': true,
         },
+        //  ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
+        //     15,
+        //     ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
         paint: {
           'icon-color': [
             'case',
@@ -114,6 +118,16 @@ export class BoardGameMap {
       },
       'label-layer',
     ) // Add before label-layer so labels appear on top
+
+    // Compute normalized icon-size per community once icons are available
+    this.updateIconSizeScaling()
+
+    // Recompute when new vector tiles load
+    // this.map.on('sourcedata', (e) => {
+    //   if (e.sourceId === 'points-source' && this.map.getLayer('circle-layer')) {
+    //     this.updateIconSizeScaling()
+    //   }
+    // })
     const linesLayer: AddLayerObject = {
       id: 'graph-edges',
       type: 'line',
@@ -172,7 +186,7 @@ export class BoardGameMap {
         ['>=', ['to-number', ['get', playerMaxField]], searchParameters.minPlayers],
       ],
     ]
-
+    console.log(selectedFilters)
     this.map
       .querySourceFeatures('points-source', {
         sourceLayer: 'points',
@@ -270,13 +284,13 @@ export class BoardGameMap {
         const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
         const lineColor = (() => {
           switch (true) {
-            case link.data.weight < 0.094656:
+            case link.data.weight < 0.020648:
               return '#4a148c'
-            case link.data.weight < 0.133022:
+            case link.data.weight < 0.050847:
               return '#7b1fa2'
-            case link.data.weight < 0.181576:
+            case link.data.weight < 0.07846:
               return '#ab47bc'
-            case link.data.weight < 0.258555:
+            case link.data.weight < 0.127272:
               return '#ff7043'
             default:
               return '#ff5722'
@@ -447,9 +461,9 @@ export class BoardGameMap {
                 ['linear'],
                 ['zoom'],
                 0,
-                ['*', ['to-number', ['get', 'size']], 60],
+                ['*', ['to-number', ['get', 'size']], 0.000006],
                 20,
-                ['+', ['to-number', ['get', 'size']], 45],
+                ['+', ['to-number', ['get', 'size']], 0.0000045],
               ],
             },
             paint: {
@@ -477,9 +491,9 @@ export class BoardGameMap {
                 ['linear'],
                 ['zoom'],
                 0,
-                ['*', ['to-number', ['get', 'size']], 80],
+                ['*', ['to-number', ['get', 'size']], 0.00008],
                 20,
-                ['+', ['to-number', ['get', 'size']], 60],
+                ['+', ['to-number', ['get', 'size']], 0.000006],
               ],
             },
             paint: {
@@ -562,5 +576,80 @@ export class BoardGameMap {
       }
     }
     return c
+  }
+
+  // Normalize icon sizes per community (property 'c') so each community's top node renders at the same size
+  private updateIconSizeScaling(): void {
+    try {
+      const features = this.map.querySourceFeatures('points-source', { sourceLayer: 'points' })
+      if (!features.length) return
+
+      const maxByCommunity = new Map<number, number>()
+      for (const f of features) {
+        const cRaw = (f.properties as any)?.c
+        const sizeRaw = (f.properties as any)?.size
+        const c = Number(cRaw)
+        const size = Number(sizeRaw)
+        if (!Number.isFinite(c) || !Number.isFinite(size)) continue
+        const currentMax = maxByCommunity.get(c) ?? 0
+        if (size > currentMax) maxByCommunity.set(c, size)
+      }
+
+      if (maxByCommunity.size === 0) return
+
+      // Build a match expression mapping community id -> max size (denominator for normalization)
+      const denomMatch: any[] = ['match', ['to-number', ['get', 'c']]]
+      for (const [communityId, maxSize] of maxByCommunity.entries()) {
+        denomMatch.push(communityId, maxSize > 0 ? maxSize : 1)
+      }
+      // Fallback when community not seen in current data
+      denomMatch.push(1)
+
+      const normalizedSize: any = ['/', ['to-number', ['get', 'size']], denomMatch]
+
+      const iconSizeExpr: any = [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        5,
+        ['+', ['*', normalizedSize, 0.5], 0.2],
+        15,
+        ['+', ['*', normalizedSize, 7.5], 0.2],
+      ]
+
+      this.map.setLayoutProperty('circle-layer', 'icon-size', iconSizeExpr)
+      // Also scale label text-size by normalized size so top nodes across communities get similar label prominence
+      const labelTextSizeExpr: any = [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4,
+        ['+', ['*', normalizedSize, 8], 14],
+        12,
+        ['+', ['*', normalizedSize, 12], 16],
+        20,
+        ['+', ['*', normalizedSize, 16], 18],
+      ]
+      this.map.setLayoutProperty('label-layer', 'text-size', labelTextSizeExpr)
+
+      const HlabelTextSizeExpr: any = [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4,
+        ['+', ['*', normalizedSize, 10], 20],
+        12,
+        ['+', ['*', normalizedSize, 14], 24],
+        20,
+        ['+', ['*', normalizedSize, 18], 28],
+      ]
+      this.map.setLayoutProperty('label-layer', 'text-size', labelTextSizeExpr)
+      this.map.setLayoutProperty('selected-nodes-labels-layer', 'text-size', HlabelTextSizeExpr)
+      this.map.redraw()
+    } catch (err) {
+      // Silently ignore; layout update is non-critical
+      // eslint-disable-next-line no-console
+      console.warn('Failed to update icon-size scaling', err)
+    }
   }
 }

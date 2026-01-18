@@ -1,4 +1,4 @@
-const server = 'http://localhost:3010/data' //'http://localhost:3010/data'
+const server = 'https://Toucan4Life.github.io/graph-start/src/server/data' //'http://localhost:3010/data'
 const version = '/v3'
 export default {
   serverUrl: '',
