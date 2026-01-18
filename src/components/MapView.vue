@@ -109,7 +109,7 @@ onMounted(() => {
 
   map.on('contextmenu', (e) => {
     const bg = boardGameMap.getBackgroundNearPoint(e.point)
-    if (!bg.id) return
+    if (bg.id == null) return
     const groupId = +bg.id
 
     const items: { text: string; click: () => void }[] = [

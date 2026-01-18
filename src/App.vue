@@ -77,7 +77,7 @@ function getOrCreateGroupViewModel(groupId: number) {
 }
 
 function findProject(repo: SearchResult) {
-  lastSelected = lastSelected?.text === repo.text ? lastSelected : repo
+  lastSelected = lastSelected?.id === repo.id ? lastSelected : repo
   mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
   Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
   currentFocus.value?.handleCurrentProjectChange(lastSelected.id)
@@ -107,6 +107,7 @@ async function listCurrentConnections() {
 }
 
 function search(params: AdvSearchResult) {
+  console.log('Advanced search with params:', params)
   mapViewRef.value?.highlightNode({
     minWeight: params.minWeight ?? 0,
     maxWeight: params.maxWeight ?? 10,

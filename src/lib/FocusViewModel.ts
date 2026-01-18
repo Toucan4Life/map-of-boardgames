@@ -201,7 +201,7 @@ export class FocusViewModel implements IFocusViewModel {
           isExternal: false,
           lnglat: [0, 0],
           max_players: '0',
-          l: '',
+          pos: '',
           c: 0,
           rating: '',
           complexity: '',
