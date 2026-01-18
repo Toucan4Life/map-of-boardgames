@@ -450,13 +450,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
       const lineColor = (() => {
         switch (true) {
-          case link.data.weight < 0.06598822:
+          case link.data.weight < 0.020648:
             return '#4a148c'
-          case link.data.weight < 0.09264013:
+          case link.data.weight < 0.050847:
             return '#7b1fa2'
-          case link.data.weight < 0.1295021:
+          case link.data.weight < 0.07846:
             return '#ab47bc'
-          case link.data.weight < 0.1920555:
+          case link.data.weight < 0.127272:
             return '#ff7043'
           default:
             return '#ff5722'
@@ -617,13 +617,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       if (link.fromId === nodeId || link.toId === nodeId) return
       const lineColor = (() => {
         switch (true) {
-          case link.data.weight < 0.06598822:
+          case link.data.weight < 0.020648:
             return '#4a148c'
-          case link.data.weight < 0.09264013:
+          case link.data.weight < 0.050847:
             return '#7b1fa2'
-          case link.data.weight < 0.1295021:
+          case link.data.weight < 0.07846:
             return '#ab47bc'
-          case link.data.weight < 0.1920555:
+          case link.data.weight < 0.127272:
             return '#ff7043'
           default:
             return '#ff5722'

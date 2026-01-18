@@ -4,8 +4,10 @@ import maplibregl, { GeoJSONSource, LngLat, Map as MapLibreMap, MapMouseEvent, t
 import { BoardGameMap, type SearchParameters } from '@/lib/createMap'
 import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { Repositories } from '@/lib/FocusViewModel'
-import createMarkerEditor from '@/lib/label-editor/createDOMMarkerEditor'
-import { getPlaceLabels, addLabelToPlaces, editLabelInPlaces } from '@/lib/label-editor/labelsStorage'
+import { getPlaceLabels, editLabel } from '@/lib/label-editor/labelsStorage'
+import downloadGroupGraph from '@/lib/downloadGroupGraph'
+import PopUp from './PopUp.vue'
+
 defineExpose({
   clearBorderHighlights,
   dispose,
@@ -16,6 +18,9 @@ defineExpose({
   getPlacesGeoJSON,
 })
 
+const showEditor = ref(false)
+const editorPosition = ref<[number, number]>([0, 0])
+const editorDefault = ref<string | null>(null)
 const emit = defineEmits<{
   (e: 'focusOnRepo', nearestCityId: number, bggId: number, projects: string): void
   (
@@ -37,12 +42,128 @@ const emit = defineEmits<{
   (e: 'unsaved-changes-detected', hasUnsavedChanges: boolean): void
 }>()
 
-function showDetails(nearestCity: MapGeoJSONFeature): void {
+const mapContainer = ref<HTMLDivElement | null>(null)
+let map: MapLibreMap
+let boardGameMap: BoardGameMap
+let places: GeoJSON.FeatureCollection<GeoJSON.Point>
+let oldLabelProps: string | undefined
+
+function getPlacesGeoJSON() {
+  return places
+}
+function getGroupIdAt(lat: number, lon: number) {
+  return boardGameMap.getGroupIdAt(lat, lon)
+}
+function highlightNode(searchParameters: SearchParameters): void {
+  boardGameMap.highlightNode(searchParameters)
+}
+async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapGeoJSONFeature) {
+  try {
+    const graph = await downloadGroupGraph(groupId)
+    boardGameMap.drawBackgroundEdges(label, feat, graph)
+  } catch (ex) {
+    console.error(`Error: Failed to load graph for group ${groupId},${ex}`)
+  }
+}
+function makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation?: boolean): void {
+  const moveMethod = disableAnimation ? 'jumpTo' : 'flyTo'
+  boardGameMap.map[moveMethod](location)
+  boardGameMap.map.once('moveend', async () => {
+    const feat = boardGameMap.getBackgroundNearPoint(location.center)
+    if (!feat.id) return
+    await fetchAndDrawGroupGraph(+feat.id, repository, feat)
+  })
+}
+function clearHighlights(): void {
+  boardGameMap.clearHighlights()
+}
+function clearBorderHighlights(): void {
+  boardGameMap.clearBorderHighlights()
+}
+function dispose(): void {
+  boardGameMap.dispose()
+}
+
+onMounted(() => {
+  if (!mapContainer.value) return
+  boardGameMap = new BoardGameMap(mapContainer.value)
+  map = boardGameMap.map
+
+  map.on('load', async () => {
+    try {
+      await boardGameMap.LoadMap()
+      const placeSource = map.getSource('place') as GeoJSONSource
+      places = (await placeSource.getData()) as GeoJSON.FeatureCollection<GeoJSON.Point>
+
+      const localPlaces = JSON.parse(localStorage.getItem('places') ?? '[]')
+      const labelsResult = getPlaceLabels(places.features, localPlaces)
+      places.features = labelsResult.merged
+      if (labelsResult.isChanged) emit('unsaved-changes-detected', true)
+
+      emit('labelEditorLoaded', places)
+      placeSource.setData(places)
+    } catch (error) {
+      console.error('Error loading map:', error)
+    }
+  })
+
+  map.on('contextmenu', (e) => {
+    const bg = boardGameMap.getBackgroundNearPoint(e.point)
+    if (bg.id == null) return
+    const groupId = +bg.id
+
+    const items: { text: string; click: () => void }[] = [
+      {
+        text: 'Show largest projects',
+        click: () => {
+          const seen = boardGameMap.getLargestRepositories(groupId)
+          map.setFilter('border-highlight', ['==', ['id'], groupId])
+          map.setLayoutProperty('border-highlight', 'visibility', 'visible')
+          emit('showLargestInGroup', groupId, Array.from(seen.values()))
+        },
+      },
+    ]
+
+    const labelFeature = map.queryRenderedFeatures(e.point, { layers: ['place-country-1'] })[0]
+    items.push({
+      text: 'Set label',
+      click: () => setLabel(e.lngLat, labelFeature?.properties),
+    })
+
+    const nearestCity = boardGameMap.findNearestCity(e.point)
+    const cityLabel = nearestCity?.properties.label
+    if (nearestCity && cityLabel) {
+      items.push({
+        text: `List connections of ${cityLabel}`,
+        click: () => {
+          focusMapOnRepo(nearestCity, e.point, cityLabel)
+          emit('focusOnRepo', nearestCity.properties.id, groupId, cityLabel)
+        },
+      })
+    }
+
+    emit('showContextMenu', {
+      items,
+      left: `${e.point.x}px`,
+      top: `${e.point.y}px`,
+    })
+  })
+
+  map.on('click', (e) => {
+    emit('showContextMenu', undefined)
+    const nearestCity = boardGameMap.findNearestCity(e.point)
+    const repo = nearestCity?.properties.label
+    if (!nearestCity || !repo) return
+    focusMapOnRepo(nearestCity, e.point, repo)
+  })
+})
+
+onBeforeUnmount(() => map?.remove())
+
+async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: maplibregl.Point & Object, name: string) {
   const repo = nearestCity.properties.label
   if (!repo) return
-
   const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
-
   emit('repoSelected', {
     text: repo,
     lat,
@@ -54,239 +175,45 @@ function showDetails(nearestCity: MapGeoJSONFeature): void {
     skipAnimation: false,
     html: null,
   })
+
+  const bgFeature = boardGameMap.getBackgroundNearPoint(point)
+  if (bgFeature.id == undefined) return
+  await fetchAndDrawGroupGraph(+bgFeature.id, name, bgFeature)
 }
-function showLargestProjectsContextMenuItem(bg: MapGeoJSONFeature, map: MapLibreMap): { text: string; click: () => void } {
-  return {
-    text: 'Show largest projects',
-    click: () => {
-      if (!bg.id) return
 
-      const seen = new Map<string, Repositories>()
-      const largeRepositories = map
-        .querySourceFeatures('points-source', {
-          sourceLayer: 'points',
-          filter: ['==', 'parent', bg.id],
-        })
-        .sort((a, b) => b.properties.size - a.properties.size)
-
-      for (const repo of largeRepositories) {
-        const label = repo.properties.label
-        if (seen.has(label)) continue
-
-        seen.set(label, {
-          name: label,
-          lngLat: (repo.geometry as GeoJSON.Point).coordinates.slice(0, 2) as [number, number],
-          id: repo.properties.id,
-          isExternal: repo.properties.isExternal,
-          linkWeight: repo.properties.linkWeight,
-        })
-
-        if (seen.size >= 100) break
-      }
-
-      map.setFilter('border-highlight', ['==', ['id'], bg.id.toString()])
-      map.setLayoutProperty('border-highlight', 'visibility', 'visible')
-      emit('showLargestInGroup', parseInt(bg.id.toString()), Array.from(seen.values()))
-    },
-  }
+function setLabel(lngLat: LngLat, props?: Record<string, string>): void {
+  editorPosition.value = [lngLat.lng, lngLat.lat]
+  editorDefault.value = props?.name ?? null
+  oldLabelProps = props?.labelId
+  showEditor.value = true
 }
-function getPlacesGeoJSON() {
-  return places
-}
-function getGroupIdAt(lat: number, lon: number) {
-  return boardGameMap.getGroupIdAt(lat, lon)
-}
-function highlightNode(searchParameters: SearchParameters): void {
-  boardGameMap.highlightNode(searchParameters)
-}
-function makeVisible(
-  repository: string,
-  location: {
-    center: [number, number]
-    zoom: number
-  },
-  disableAnimation?: boolean,
-): void {
-  boardGameMap.makeVisible(repository, location, disableAnimation)
-}
-function clearHighlights(): void {
-  boardGameMap.clearHighlights()
-}
-function clearBorderHighlights(): void {
-  boardGameMap.clearBorderHighlights()
-}
-function dispose(): void {
-  boardGameMap.dispose()
-}
-const mapContainer = ref<HTMLDivElement | null>(null)
-let map: MapLibreMap | null = null
-let boardGameMap: BoardGameMap
-let places: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined
 
-let oldLabelProps: Record<string, string> | undefined
-let marker = new maplibregl.Popup({ closeButton: false })
-let borderOwnerId: string | number | undefined
-onMounted(() => {
-  if (!mapContainer.value) return
-  boardGameMap = new BoardGameMap(mapContainer.value)
-  map = boardGameMap.map
-
-  map.on('load', () => {
-    boardGameMap
-      .LoadMap()
-      .then(() => {
-        if (map) {
-          ;(map.getSource('place') as GeoJSONSource).getData().then((d) => {
-            const t = getPlaceLabelss(d as GeoJSON.FeatureCollection<GeoJSON.Point>)
-            const loadedPlaces = t?.merged
-            if (t?.isChanged) {
-              emit('unsaved-changes-detected', t.isChanged)
-            }
-            if (!loadedPlaces) return
-            emit('labelEditorLoaded', loadedPlaces)
-            if (map) {
-              ;(map.getSource('place') as GeoJSONSource).setData(loadedPlaces)
-            }
-          })
-        }
-        console.log('Map loaded')
-      })
-      .catch((e: unknown) => {
-        console.error('Error loading map:', e)
-      })
-  })
-  map.on('contextmenu', (e) => {
-    const bg = boardGameMap.getBackgroundNearPoint(e.point)[0]
-    let ctxMenuItems = map ? [showLargestProjectsContextMenuItem(bg, map)] : []
-    ctxMenuItems = ctxMenuItems.concat(getContextMenuItems(e, bg.id))
-    const nearestCity = boardGameMap.findNearestCity(e.point)
-    if (nearestCity?.properties.label) {
-      const name: string = nearestCity.properties.label
-      ctxMenuItems.push({
-        text: 'List connections of ' + name,
-        click: () => {
-          showDetails(nearestCity)
-          boardGameMap.drawBackgroundEdges(e.point, name)
-          emit('focusOnRepo', nearestCity.properties.id, parseInt(bg.id?.toString() ?? '0'), name)
-        },
-      })
-    }
-
-    const contextMenuItems = {
-      items: ctxMenuItems,
-      left: e.point.x.toString() + 'px',
-      top: e.point.y.toString() + 'px',
-    }
-
-    emit('showContextMenu', contextMenuItems)
-  })
-
-  map.on('click', (e) => {
-    emit('showContextMenu', undefined)
-    const nearestCity = boardGameMap.findNearestCity(e.point)
-    const repo = nearestCity?.properties.label
-    if (!nearestCity || !repo) return
-
-    showDetails(nearestCity)
-    boardGameMap.drawBackgroundEdges(e.point, repo)
-  })
-})
-
-onBeforeUnmount(() => {
-  map?.remove()
-})
-function getContextMenuItems(e: MapMouseEvent & object, borderOwnerId: string | number | undefined): { text: string; click: () => void }[] {
-  if (!map) return []
-  const labelFeature = map.queryRenderedFeatures(e.point, { layers: ['place-country-1'] })
-  const items = []
-  if (labelFeature.length) {
-    const label = labelFeature[0].properties
-    const coordinates = (labelFeature[0].geometry as GeoJSON.Point).coordinates
-    items.push({
-      text: `Edit ${label.name as string}`,
-      click: () => {
-        editLabel(new LngLat(coordinates[0], coordinates[1]), label)
-      },
-    })
-  } else {
-    items.push({
-      text: 'Add label',
-      click: () => {
-        addLabel(e.lngLat, borderOwnerId)
-      },
-    })
-  }
-
-  return items
-}
-function saveAdd(value: string): void {
-  if (!map) return
-  places = addLabelToPlaces(places, value, marker.getLngLat(), map.getZoom(), borderOwnerId)
-  if (!places) return
+function handleSave(value: string, lnglat: LngLat) {
+  places.features = editLabel(value, lnglat, places.features, oldLabelProps, map.getZoom())
+  localStorage.setItem('places', JSON.stringify(places.features))
   ;(map.getSource('place') as GeoJSONSource).setData(places)
   emit('unsaved-changes-detected', true)
-}
-function saveEdit(value: string): void {
-  console.log('Saving edit', value, oldLabelProps)
-  if (!map) return
-  if (!oldLabelProps) return
-  places = editLabelInPlaces(oldLabelProps.labelId, places, value, marker.getLngLat(), map.getZoom())
-  if (!places) return
-  ;(map.getSource('place') as GeoJSONSource).setData(places)
-  emit('unsaved-changes-detected', true)
-}
-function getPlaceLabelss(d: GeoJSON.FeatureCollection<GeoJSON.Point>): {
-  isChanged: boolean
-  merged: GeoJSON.FeatureCollection<GeoJSON.Point>
-} {
-  let t = getPlaceLabels(d)
-  places = t.merged
-  return t
-}
-function addLabel(lngLat: LngLat, borerOwnerId: string | number | undefined): void {
-  if (!map) return
-  const markerEditor = createMarkerEditor(
-    map,
-    (value: string) => {
-      saveAdd(value)
-    },
-    null,
-  )
-  borderOwnerId = borerOwnerId
-  marker.setDOMContent(markerEditor.element)
-  marker.setLngLat(lngLat)
-  marker.addTo(map)
-
-  markerEditor.setMarker(marker)
-}
-function editLabel(lngLat: LngLatLike, oLabelProps: Record<string, string>): void {
-  if (!map) return
-  const markerEditor = createMarkerEditor(
-    map,
-    (value: string) => {
-      saveEdit(value)
-    },
-    oLabelProps.name,
-  )
-  oldLabelProps = oLabelProps
-  marker.setDOMContent(markerEditor.element)
-  marker.setLngLat(lngLat)
-  marker.addTo(map)
-
-  markerEditor.setMarker(marker)
+  showEditor.value = false
+  oldLabelProps = undefined
 }
 </script>
 
 <template>
   <div class="relative w-full h-full">
-    <!-- Map -->
+    <PopUp
+      v-if="showEditor && map"
+      :map="map"
+      :lngLat="editorPosition"
+      :defaultText="editorDefault"
+      :onSave="handleSave"
+      @closed="showEditor = false"
+    />
     <div ref="mapContainer" class="w-full h-full"></div>
     <div class="subgraph-viewer"></div>
   </div>
 </template>
 
 <style scoped>
-/* Ensure map fills container */
 .w-full {
   width: 100%;
 }

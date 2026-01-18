@@ -1,5 +1,5 @@
 import type { Graph, NodeId } from 'ngraph.graph'
-import downloadGroupGraph, { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
+import { buildLocalNeighborsGraphForGroup } from './downloadGroupGraph'
 import { createMaplibreSubgraphViewer } from './createMaplibreSubgraphViewer'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph'
 import type { SearchResult } from './createFuzzySearcher'
@@ -54,7 +54,7 @@ export class FocusViewModel implements IFocusViewModel {
   loading: boolean
   id: number | undefined
   groupId: number
-  constructor(repositoryId: number, groupId: number, label: string) {
+  constructor(repositoryId: number, groupId: number, label: string, graph: Graph<BoardGameNodeData, BoardGameLinkData>) {
     this.name = label
     this.repos = []
     this.lngLat = [0, 0]
@@ -66,42 +66,30 @@ export class FocusViewModel implements IFocusViewModel {
     this.layoutRunning = false
     this.logMessages = []
     this.currentLog = ''
-    downloadGroupGraph(groupId)
-      .then((graph) => {
-        if (!graph) {
-          this.loading = false
-          console.error(`Error: Failed to load graph for group ${groupId.toString()}`)
+    this.loading = false
+    const neighbors: Repositories[] = []
+    this.lngLat = graph.getNode(repositoryId)?.data.lnglat || [0, 0]
+    const seen = new Set()
+    graph.forEachLinkedNode(
+      repositoryId,
+      (node, link) => {
+        if (seen.has(node.id)) {
           return
         }
-        this.loading = false
-        const neighbors: Repositories[] = []
-        this.lngLat = graph.getNode(repositoryId)?.data.lnglat || [0, 0]
-        const seen = new Set()
-        graph.forEachLinkedNode(
-          repositoryId,
-          (node, link) => {
-            if (seen.has(node.id)) {
-              return
-            }
-            seen.add(node.id)
-            neighbors.push({
-              name: node.data.label,
-              lngLat: node.data.lnglat,
-              isExternal: !!link.data.e,
-              id: parseInt(node.data.id.toString(), 10),
-              linkWeight: link.data.weight,
-            })
-          },
-          false,
-        )
-        neighbors.sort((a, b) => b.linkWeight - a.linkWeight)
+        seen.add(node.id)
+        neighbors.push({
+          name: node.data.label,
+          lngLat: node.data.lnglat,
+          isExternal: !!link.data.e,
+          id: parseInt(node.data.id.toString(), 10),
+          linkWeight: link.data.weight,
+        })
+      },
+      false,
+    )
+    neighbors.sort((a, b) => b.linkWeight - a.linkWeight)
 
-        this.repos = neighbors.slice(0, 25)
-      })
-      .catch((err: unknown) => {
-        this.loading = false
-        console.error('Failed to initialize FocusViewModel:', err)
-      })
+    this.repos = neighbors.slice(0, 25)
   }
   handleCurrentProjectChange(projectName: number): void {
     // If the subgraph viewer exists, notify it of the project change
@@ -213,7 +201,7 @@ export class FocusViewModel implements IFocusViewModel {
           isExternal: false,
           lnglat: [0, 0],
           max_players: '0',
-          l: '',
+          pos: '',
           c: 0,
           rating: '',
           complexity: '',

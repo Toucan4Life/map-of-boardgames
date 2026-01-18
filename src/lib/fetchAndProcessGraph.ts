@@ -10,7 +10,7 @@ export type BoardGameNodeData = {
   label: string
   lnglat: [number, number]
   max_players: string
-  l: string
+  pos: string
   c: number
   isExternal: boolean
 }
@@ -24,7 +24,7 @@ export type BoardGameLinkData = {
 export async function fetchAndProcessGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
-) {
+): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
   const fileName = `${groupId.toString()}.gzip`
   const url = `${config.compressedGraphEndpoint}/${fileName}`
 
@@ -35,8 +35,7 @@ export async function fetchAndProcessGraph(
     const response = await fetch(url)
 
     if (!response.ok) {
-      console.error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
-      return
+      throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
     }
 
     // Get content length if available
@@ -45,8 +44,7 @@ export async function fetchAndProcessGraph(
 
     // Create a reader from the response body
     if (!response.body) {
-      console.error('Response body is null')
-      return
+      throw new Error(`Response body is null`)
     }
     const reader = response.body.getReader()
     let bytesReceived = 0
@@ -103,7 +101,7 @@ export async function fetchAndProcessGraph(
   const graph: Graph<BoardGameNodeData, BoardGameLinkData> = fromDot.default(text)
 
   graph.forEachNode((node: Node<BoardGameNodeData>) => {
-    node.data.lnglat = node.data.l.split(',').map((x: string) => +x) as [number, number]
+    node.data.lnglat = node.data.pos.split(',').map((x: string) => +x) as [number, number]
     if (typeof node.data.c === 'string' && node.data.c === 'undefined') {
       // Nodes of external groups will have their groupId set in the `.data.c` property
       // However nodes that belong to current group will have this property set to undefined

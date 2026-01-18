@@ -31,7 +31,7 @@ function search(
   maxP: number,
   minPl: number,
   maxPl: number,
-  pChoice: number,
+  pChoice: string,
   minYear: number,
   maxYear: number,
 ): void {
@@ -44,7 +44,7 @@ function search(
     maxPlaytime: timescale[maxP],
     minPlayers: playersScale[minPl],
     maxPlayers: playersScale[maxPl],
-    playerChoice: pChoice,
+    playerChoice: parseInt(pChoice, 10),
     tags: selectedTags.value,
     minYear: yearscale[minYear],
     maxYear: yearscale[maxYear],
@@ -67,7 +67,7 @@ const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 // reassigned in the template
 // eslint-disable-next-line prefer-const
-let playersChoice = 0
+let playersChoice: string = '0'
 </script>
 
 <template>
