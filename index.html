@@ -1,21 +1,63 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Analytics -->
     <script defer src="https://cloud.umami.is/script.js" data-website-id="f5dbc697-37a3-4400-adb1-e5c3163082a5"></script>
+
+    <!-- Basic Meta -->
     <meta charset="UTF-8" />
-    <meta property="og:title" content="Map of boardgames" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Map of Boardgames</title>
+    <meta
+      name="description"
+      content="Interactive map of 16,000+ board games from BoardGameGeek. Each dot is a game; proximity reflects shared reviewers. Explore clusters, search, and discover related titles."
+    />
+    <meta name="keywords" content="BoardGameGeek, board games, boardgames, map, BGG, visualization, graph, clustering, advanced search" />
+    <meta name="author" content="Toucan4Life" />
+
+    <!-- Robots -->
+    <!-- Set to 'index,follow' for production. Use 'noindex,nofollow' for private or staging. -->
+    <meta name="robots" content="index,follow" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://toucan4life.github.io/map-of-boardgames/" />
+
+    <!-- Theme Color (supports light/dark) -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#181818" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Map of Boardgames" />
     <meta
       property="og:description"
-      content="This website shows a map of boardgames. Each dot is a game. Two dots within the same cluster are connected if multiple users frequently gave review to both games"
+      content="Interactive map of 4,000+ board games from BoardGameGeek. Explore clusters, search, and discover related titles."
     />
-    <meta
-      name="Description"
-      content="This website shows a map of BoardGameGeek. Each dot is a game. Two dots within the same cluster are connected if multiple users frequently gave review to both games"
-    />
-    <meta name="keywords" content="map, boardgames, graph, visualization" />
-    <meta name="author" content="Toucan4Life" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Map of boardgames</title>
+    <meta property="og:type" content="website" />
+    <!-- TODO: Set your absolute homepage URL -->
+    <!-- <meta property="og:url" content="https://YOUR-DOMAIN.example/" /> -->
+    <!-- TODO: Provide a social preview image in /public and set URL below -->
+    <!-- <meta property="og:image" content="https://YOUR-DOMAIN.example/social-share.jpg" /> -->
+    <meta property="og:site_name" content="Map of Boardgames" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Map of Boardgames" />
+    <meta name="twitter:description" content="Explore an interactive map of 4,000+ board games from BGG and discover related titles." />
+    <!-- TODO: Set your absolute image URL -->
+    <!-- <meta name="twitter:image" content="https://YOUR-DOMAIN.example/social-share.jpg" /> -->
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Map of Boardgames",
+        "description": "Interactive map of 4,000+ board games from BoardGameGeek, showing relationships through shared reviewers.",
+        "url": "https://YOUR-DOMAIN.example/"
+      }
+    </script>
+
     <style>
       :root {
         --vt-c-white: #ffffff;
@@ -128,6 +170,10 @@
   </head>
 
   <body>
+    <!-- Accessibility: Helpful message if JS is disabled -->
+    <noscript>
+      <div class="no-js">Map of Boardgames requires JavaScript enabled to run.</div>
+    </noscript>
     <div class="boot">
       <div>Website load sequence initiated...</div>
       <div class="vue-loading"></div>
