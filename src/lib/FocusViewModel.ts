@@ -21,6 +21,7 @@ export interface Repositories {
   // isExternal: boolean
   id: number
   linkWeight: number
+  groupId?: number
 }
 export interface TreeItem {
   node: BoardGameNodeData
@@ -41,6 +42,7 @@ export interface IFocusViewModel {
   lngLat: [number, number]
   loading: boolean
   id: number | undefined
+  groupId: number
   handleCurrentProjectChange(projectName: number): void
 }
 /**
@@ -83,6 +85,7 @@ export class FocusViewModel implements IFocusViewModel {
           isExternal: !!link.data.e,
           id: parseInt(node.data.id.toString(), 10),
           linkWeight: link.data.weight,
+          groupId: node.data.c,
         })
       },
       false,
