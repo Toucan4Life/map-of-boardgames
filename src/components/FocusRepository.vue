@@ -21,6 +21,7 @@ function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
       id: node.id || 0,
       isExternal: false,
       linkWeight: 0,
+      groupId: node.c,
     },
     event,
   )
@@ -37,7 +38,7 @@ function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): v
     selected: false,
     html: null,
     year: '0',
-    groupId: 0,
+    groupId: repo.groupId || 0,
   })
 }
 function closePanel(): void {
