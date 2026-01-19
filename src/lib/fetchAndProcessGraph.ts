@@ -102,12 +102,6 @@ export async function fetchAndProcessGraph(
 
   graph.forEachNode((node: Node<BoardGameNodeData>) => {
     node.data.lnglat = node.data.pos.split(',').map((x: string) => +x) as [number, number]
-    if (typeof node.data.c === 'string' && node.data.c === 'undefined') {
-      // Nodes of external groups will have their groupId set in the `.data.c` property
-      // However nodes that belong to current group will have this property set to undefined
-      // We set it here to make sure we know which group the node belongs to
-      node.data.c = groupId
-    }
   })
 
   return graph
