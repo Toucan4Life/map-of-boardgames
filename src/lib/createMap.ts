@@ -81,36 +81,33 @@ export class BoardGameMap {
             ['linear'],
             ['zoom'],
             5,
-            ['+', ['*', ['to-number', ['get', 'size']], 10], 0.2],
-            15,
-            ['+', ['*', ['to-number', ['get', 'size']], 150], 0.2],
+            ['*', ['-', ['log10', ['+', ['to-number', ['get', 'size']], 1]], 0.301], 0.05],
+            23,
+            ['*', ['-', ['log10', ['+', ['to-number', ['get', 'size']], 1]], 0.301], 1.2],
           ],
           'icon-ignore-placement': true,
           'icon-allow-overlap': true,
         },
-        //  ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 10], 0.2],
-        //     15,
-        //     ['+', ['*', ['min', ['to-number', ['get', 'size']], 0.05], 150], 0.2],
         paint: {
           'icon-color': [
             'case',
-            ['>=', ['to-number', ['get', 'ratings']], 7.77],
+            ['>=', ['to-number', ['get', 'ratings']], 7.609174],
             '#00e9ff',
-            ['>=', ['to-number', ['get', 'ratings']], 7.46],
+            ['>=', ['to-number', ['get', 'ratings']], 7.204706],
             '#00f8d8',
-            ['>=', ['to-number', ['get', 'ratings']], 7.2],
+            ['>=', ['to-number', ['get', 'ratings']], 6.918946],
             '#00ff83',
-            ['>=', ['to-number', ['get', 'ratings']], 7.03],
+            ['>=', ['to-number', ['get', 'ratings']], 6.65909],
             '#62f25e',
-            ['>=', ['to-number', ['get', 'ratings']], 6.9],
+            ['>=', ['to-number', ['get', 'ratings']], 6.42297],
             '#87e539',
-            ['>=', ['to-number', ['get', 'ratings']], 6.76],
+            ['>=', ['to-number', ['get', 'ratings']], 6.18157],
             '#a2d600',
-            ['>=', ['to-number', ['get', 'ratings']], 6.6],
+            ['>=', ['to-number', ['get', 'ratings']], 5.900366],
             '#c3b700',
-            ['>=', ['to-number', ['get', 'ratings']], 6.4],
+            ['>=', ['to-number', ['get', 'ratings']], 5.565964],
             '#de9200',
-            ['>=', ['to-number', ['get', 'ratings']], 6.1],
+            ['>=', ['to-number', ['get', 'ratings']], 5.07692],
             '#f36300',
             '#ff0000',
           ],
@@ -118,9 +115,6 @@ export class BoardGameMap {
       },
       'label-layer',
     ) // Add before label-layer so labels appear on top
-
-    // Compute normalized icon-size per community once icons are available
-    this.updateIconSizeScaling()
 
     // Recompute when new vector tiles load
     // this.map.on('sourcedata', (e) => {
@@ -284,13 +278,13 @@ export class BoardGameMap {
         const isFirstLevel = repo === groupGraph.getNode(link.fromId)?.data.label || repo === groupGraph.getNode(link.toId)?.data.label
         const lineColor = (() => {
           switch (true) {
-            case link.data.weight < 0.020648:
+            case link.data.weight < 0.011183:
               return '#4a148c'
-            case link.data.weight < 0.050847:
+            case link.data.weight < 0.046948:
               return '#7b1fa2'
-            case link.data.weight < 0.07846:
+            case link.data.weight < 0.080745:
               return '#ab47bc'
-            case link.data.weight < 0.127272:
+            case link.data.weight < 0.142361:
               return '#ff7043'
             default:
               return '#ff5722'
@@ -391,7 +385,7 @@ export class BoardGameMap {
             type: 'vector',
             tiles: [config.vectorTilesTiles],
             minzoom: 0,
-            maxzoom: 3,
+            maxzoom: 5,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
           place: { type: 'geojson', data: config.placesSource },
@@ -445,7 +439,7 @@ export class BoardGameMap {
             type: 'symbol',
             source: 'points-source',
             'source-layer': 'points',
-            filter: ['>=', ['zoom'], 4],
+            filter: ['>=', ['zoom'], 6],
             layout: {
               'text-allow-overlap': false,
               'text-ignore-placement': false,
@@ -460,10 +454,10 @@ export class BoardGameMap {
                 'interpolate',
                 ['linear'],
                 ['zoom'],
-                0,
-                ['*', ['to-number', ['get', 'size']], 0.000006],
-                20,
-                ['+', ['to-number', ['get', 'size']], 0.0000045],
+                6,
+                ['*', ['-', ['log10', ['+', ['to-number', ['get', 'size']], 1]], 0.301], 5],
+                10,
+                ['+', ['*', ['-', ['log10', ['+', ['to-number', ['get', 'size']], 1]], 0.301], 1.5], 20],
               ],
             },
             paint: {
@@ -540,10 +534,9 @@ export class BoardGameMap {
     const largeRepositories = this.map
       .querySourceFeatures('points-source', {
         sourceLayer: 'points',
-        filter: ['==', 'parent', id],
+        filter: ['==', 'c', id.toString()],
       })
       .sort((a, b) => b.properties.size - a.properties.size)
-
     for (const repo of largeRepositories) {
       const label = repo.properties.label
       if (seen.has(label)) continue
@@ -576,80 +569,5 @@ export class BoardGameMap {
       }
     }
     return c
-  }
-
-  // Normalize icon sizes per community (property 'c') so each community's top node renders at the same size
-  private updateIconSizeScaling(): void {
-    try {
-      const features = this.map.querySourceFeatures('points-source', { sourceLayer: 'points' })
-      if (!features.length) return
-
-      const maxByCommunity = new Map<number, number>()
-      for (const f of features) {
-        const cRaw = (f.properties as any)?.c
-        const sizeRaw = (f.properties as any)?.size
-        const c = Number(cRaw)
-        const size = Number(sizeRaw)
-        if (!Number.isFinite(c) || !Number.isFinite(size)) continue
-        const currentMax = maxByCommunity.get(c) ?? 0
-        if (size > currentMax) maxByCommunity.set(c, size)
-      }
-
-      if (maxByCommunity.size === 0) return
-
-      // Build a match expression mapping community id -> max size (denominator for normalization)
-      const denomMatch: any[] = ['match', ['to-number', ['get', 'c']]]
-      for (const [communityId, maxSize] of maxByCommunity.entries()) {
-        denomMatch.push(communityId, maxSize > 0 ? maxSize : 1)
-      }
-      // Fallback when community not seen in current data
-      denomMatch.push(1)
-
-      const normalizedSize: any = ['/', ['to-number', ['get', 'size']], denomMatch]
-
-      const iconSizeExpr: any = [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        5,
-        ['+', ['*', normalizedSize, 0.5], 0.2],
-        15,
-        ['+', ['*', normalizedSize, 7.5], 0.2],
-      ]
-
-      this.map.setLayoutProperty('circle-layer', 'icon-size', iconSizeExpr)
-      // Also scale label text-size by normalized size so top nodes across communities get similar label prominence
-      const labelTextSizeExpr: any = [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        4,
-        ['+', ['*', normalizedSize, 8], 14],
-        12,
-        ['+', ['*', normalizedSize, 12], 16],
-        20,
-        ['+', ['*', normalizedSize, 16], 18],
-      ]
-      this.map.setLayoutProperty('label-layer', 'text-size', labelTextSizeExpr)
-
-      const HlabelTextSizeExpr: any = [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        4,
-        ['+', ['*', normalizedSize, 10], 20],
-        12,
-        ['+', ['*', normalizedSize, 14], 24],
-        20,
-        ['+', ['*', normalizedSize, 18], 28],
-      ]
-      this.map.setLayoutProperty('label-layer', 'text-size', labelTextSizeExpr)
-      this.map.setLayoutProperty('selected-nodes-labels-layer', 'text-size', HlabelTextSizeExpr)
-      this.map.redraw()
-    } catch (err) {
-      // Silently ignore; layout update is non-critical
-      // eslint-disable-next-line no-console
-      console.warn('Failed to update icon-size scaling', err)
-    }
   }
 }

@@ -167,23 +167,23 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       paint: {
         'icon-color': [
           'case',
-          ['>=', ['to-number', ['get', 'ratings']], 7.77],
+          ['>=', ['to-number', ['get', 'ratings']], 7.609174],
           '#00e9ff',
-          ['>=', ['to-number', ['get', 'ratings']], 7.46],
+          ['>=', ['to-number', ['get', 'ratings']], 7.204706],
           '#00f8d8',
-          ['>=', ['to-number', ['get', 'ratings']], 7.2],
+          ['>=', ['to-number', ['get', 'ratings']], 6.918946],
           '#00ff83',
-          ['>=', ['to-number', ['get', 'ratings']], 7.03],
+          ['>=', ['to-number', ['get', 'ratings']], 6.65909],
           '#62f25e',
-          ['>=', ['to-number', ['get', 'ratings']], 6.9],
+          ['>=', ['to-number', ['get', 'ratings']], 6.42297],
           '#87e539',
-          ['>=', ['to-number', ['get', 'ratings']], 6.76],
+          ['>=', ['to-number', ['get', 'ratings']], 6.18157],
           '#a2d600',
-          ['>=', ['to-number', ['get', 'ratings']], 6.6],
+          ['>=', ['to-number', ['get', 'ratings']], 5.900366],
           '#c3b700',
-          ['>=', ['to-number', ['get', 'ratings']], 6.4],
+          ['>=', ['to-number', ['get', 'ratings']], 5.565964],
           '#de9200',
-          ['>=', ['to-number', ['get', 'ratings']], 6.1],
+          ['>=', ['to-number', ['get', 'ratings']], 5.07692],
           '#f36300',
           '#ff0000',
         ],
@@ -450,13 +450,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
       const lineColor = (() => {
         switch (true) {
-          case link.data.weight < 0.020648:
+          case link.data.weight < 0.011183:
             return '#4a148c'
-          case link.data.weight < 0.050847:
+          case link.data.weight < 0.046948:
             return '#7b1fa2'
-          case link.data.weight < 0.07846:
+          case link.data.weight < 0.080745:
             return '#ab47bc'
-          case link.data.weight < 0.127272:
+          case link.data.weight < 0.142361:
             return '#ff7043'
           default:
             return '#ff5722'
@@ -617,13 +617,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       if (link.fromId === nodeId || link.toId === nodeId) return
       const lineColor = (() => {
         switch (true) {
-          case link.data.weight < 0.020648:
+          case link.data.weight < 0.011183:
             return '#4a148c'
-          case link.data.weight < 0.050847:
+          case link.data.weight < 0.046948:
             return '#7b1fa2'
-          case link.data.weight < 0.07846:
+          case link.data.weight < 0.080745:
             return '#ab47bc'
-          case link.data.weight < 0.127272:
+          case link.data.weight < 0.142361:
             return '#ff7043'
           default:
             return '#ff5722'

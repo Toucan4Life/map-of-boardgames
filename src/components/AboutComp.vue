@@ -32,28 +32,28 @@ function close(): void {
     <div class="container">
       <p>
         <!-- <img src="../../public/apple-touch-icon.png" alt="GitHub Map" class="map-image"> -->
-        Each dot is a boardgame. Two dots within the same cluster are connected if multiple users frequently reviewed both games in a similar fashion.
-        The size of the dot indicates the number of reviews the game has received, the shape indicate the complexity and the color indicate the user's
-        ratings
+        Each dot is a boardgame. Two dots within the same cluster are connected if multiple users frequently reviewed both games. The size of the dot
+        indicates the number of reviews the game has received, the shape indicate the complexity and the color indicate the user's ratings. The name
+        of the clusters were guessed one by one based on the properties of the game in the cluster. They could be non-representative.
       </p>
-      <p>Only games with over 100 ratings were taken into account for now</p>
-      <p>The map has more than <b>15906</b> games, clustered into <b>27</b> countries.</p>
+      <p>Only games with over 10 ratings were taken into account</p>
+      <p>The map has <b>40590</b> games, clustered into <b>55</b> countries.</p>
       <p>The code for this project can be found <a href=" https://github.com/Toucan4Life/map-of-boardgames" class="normal">here</a></p>
 
       <div class="row-horizontal">
         <h2>Legend</h2>
         <p>The colors are related to the user ratings. Each color is associated with 10% of the boardgames:</p>
         <ul class="legend">
-          <li><span style="background-color: #ff0000"></span> &lt;=6.1</li>
-          <li><span style="background-color: #f36300"></span> &lt;=6.4</li>
-          <li><span style="background-color: #de9200"></span> &lt;=6.6</li>
-          <li><span style="background-color: #c3b700"></span> &lt;=6.76</li>
-          <li><span style="background-color: #a2d600"></span> &lt;=6.9</li>
-          <li><span style="background-color: #87e539"></span> &lt;=7.03</li>
-          <li><span style="background-color: #62f25e"></span> &lt;=7.2</li>
-          <li><span style="background-color: #00ff83"></span> &lt;=7.46</li>
-          <li><span style="background-color: #00f8d8"></span> &lt;=7.77</li>
-          <li><span style="background-color: #00e9ff"></span> &gt;7.77</li>
+          <li><span style="background-color: #ff0000"></span> &lt;5.08</li>
+          <li><span style="background-color: #f36300"></span> &lt;=5.57</li>
+          <li><span style="background-color: #de9200"></span> &lt;=5.90</li>
+          <li><span style="background-color: #c3b700"></span> &lt;=6.18</li>
+          <li><span style="background-color: #a2d600"></span> &lt;=6.42</li>
+          <li><span style="background-color: #87e539"></span> &lt;=6.66</li>
+          <li><span style="background-color: #62f25e"></span> &lt;=6.92</li>
+          <li><span style="background-color: #00ff83"></span> &lt;=7.20</li>
+          <li><span style="background-color: #00f8d8"></span> &lt;=7.61</li>
+          <li><span style="background-color: #00e9ff"></span> &gt;7.61</li>
         </ul>
       </div>
 
