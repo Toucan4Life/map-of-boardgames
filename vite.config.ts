@@ -12,6 +12,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  worker: {
+    format: 'es',
+  },
   //needed because of this bug https://github.com/vitejs/vite/issues/16522
   server: { host: '127.0.0.1' },
   //needed for github pages to find the script and stylesheet once built
