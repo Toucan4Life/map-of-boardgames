@@ -9,7 +9,10 @@ interface Repo {
 
 const props = defineProps<Repo>()
 const gameDetail = ref<GameDetail>()
-const emit = defineEmits<(e: 'show-full-preview', id: string) => void>()
+const emit = defineEmits<{
+  'show-full-preview': [id: string]
+  close: []
+}>()
 
 watchEffect(() => {
   getGameInfo(props.id.toString())
@@ -24,11 +27,34 @@ watchEffect(() => {
 function showFullPreview() {
   emit('show-full-preview', props.name)
 }
+
+function close() {
+  emit('close')
+}
 </script>
 <template>
   <a href="#" class="small-preview-container" @click.prevent="showFullPreview">
     <div class="header">
       <span>{{ props.name }}</span>
+      <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
+      <a href="#" class="close-btn" @click.prevent.stop="close">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="feather feather-x-circle"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </a>
     </div>
     <div>
       <ul class="gameplay">
@@ -107,5 +133,14 @@ div.error {
 .byline span {
   margin-right: 8px;
   display: inline-block;
+}
+
+.close-btn {
+  cursor: pointer;
+  color: var(--color-link-hover);
+}
+
+.close-btn:hover {
+  opacity: 0.7;
 }
 </style>

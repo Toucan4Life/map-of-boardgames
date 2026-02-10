@@ -15,6 +15,16 @@ export interface GameDetail {
   minAge: string
   recommendedAge: string
   yearPublished: string
+  categories: string[]
+  mechanics: string[]
+  families: string[]
+  expansions: Array<{ id: string; name: string }>
+  accessories: string[]
+  designers: string[]
+  artists: string[]
+  publishers: string[]
+  usersRated: number
+  ranks: Array<{ name: string; value: string }>
 }
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -73,6 +83,38 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
     ? undefined
     : pollSummary.find((r: { [x: string]: string }) => r['@_name'] === 'bestwith')?.['@_value'].match(/Best with (.*?) players/)?.[1]
 
+  // Helper function to extract links by type
+  const extractLinks = (linkType: string): string[] => {
+    const links = item.link ?? []
+    const linkArray = Array.isArray(links) ? links : [links]
+    return linkArray.filter((link: { [x: string]: string }) => link['@_type'] === linkType).map((link: { [x: string]: string }) => link['@_value'])
+  }
+
+  // Extract expansions with IDs
+  const extractExpansions = (): Array<{ id: string; name: string }> => {
+    const links = item.link ?? []
+    const linkArray = Array.isArray(links) ? links : [links]
+    return linkArray
+      .filter((link: { [x: string]: string }) => link['@_type'] === 'boardgameexpansion')
+      .map((link: { [x: string]: string }) => ({
+        id: link['@_id'],
+        name: link['@_value'],
+      }))
+  }
+
+  // Extract ranks
+  const ranks = []
+  const ranksData = item.statistics?.ratings?.ranks?.rank ?? []
+  const ranksArray = Array.isArray(ranksData) ? ranksData : [ranksData]
+  for (const rank of ranksArray) {
+    if (rank && rank['@_value'] !== 'Not Ranked') {
+      ranks.push({
+        name: rank['@_friendlyname'] || '',
+        value: rank['@_value'] || '',
+      })
+    }
+  }
+
   return {
     imageUrl: item.image ?? '',
     rating: parseFloat(item.statistics?.ratings?.average?.['@_value'] ?? '0').toFixed(1),
@@ -87,5 +129,15 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
     recommendedPlayers,
     bestPlayers,
     yearPublished: item.yearpublished?.['@_value'] ?? '',
+    categories: extractLinks('boardgamecategory'),
+    mechanics: extractLinks('boardgamemechanic'),
+    families: extractLinks('boardgamefamily'),
+    expansions: extractExpansions(),
+    accessories: extractLinks('boardgameaccessory'),
+    designers: extractLinks('boardgamedesigner'),
+    artists: extractLinks('boardgameartist'),
+    publishers: extractLinks('boardgamepublisher'),
+    usersRated: parseInt(item.statistics?.ratings?.usersrated?.['@_value'] ?? '0', 10),
+    ranks,
   }
 }

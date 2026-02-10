@@ -7,6 +7,7 @@ import type { Repositories } from '@/lib/FocusViewModel'
 import { getPlaceLabels, editLabel } from '@/lib/label-editor/labelsStorage'
 import downloadGroupGraph from '@/lib/downloadGroupGraph'
 import PopUp from './PopUp.vue'
+import GraphLoadingIndicator from './GraphLoadingIndicator.vue'
 
 defineExpose({
   clearBorderHighlights,
@@ -21,6 +22,8 @@ defineExpose({
 const showEditor = ref(false)
 const editorPosition = ref<[number, number]>([0, 0])
 const editorDefault = ref<string | null>(null)
+const isLoadingGraph = ref(false)
+const loadingStatus = ref<'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing'>('downloading')
 const emit = defineEmits<{
   (e: 'focusOnRepo', nearestCityId: number, bggId: number, projects: string): void
   (
@@ -59,10 +62,22 @@ function highlightNode(searchParameters: SearchParameters): void {
 }
 async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapGeoJSONFeature) {
   try {
-    const graph = await downloadGroupGraph(groupId)
+    isLoadingGraph.value = true
+    loadingStatus.value = 'downloading'
+
+    const graph = await downloadGroupGraph(
+      groupId,
+      undefined,
+      (status) => {
+        loadingStatus.value = status
+      }
+    )
+
     boardGameMap.drawBackgroundEdges(label, feat, graph)
   } catch (ex) {
-    console.error(`Error: Failed to load graph for group ${groupId},${ex}`)
+    console.error(`Error: Failed to load graph for group ${groupId}`, ex)
+  } finally {
+    isLoadingGraph.value = false
   }
 }
 function makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation?: boolean): void {
@@ -200,6 +215,7 @@ function handleSave(value: string, lnglat: LngLat) {
 
 <template>
   <div class="relative w-full h-full">
+    <GraphLoadingIndicator v-if="isLoadingGraph" :status="loadingStatus" />
     <PopUp
       v-if="showEditor && map"
       :map="map"

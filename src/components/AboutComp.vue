@@ -40,41 +40,6 @@ function close(): void {
       <p>The map has <b>40590</b> games, clustered into <b>55</b> countries.</p>
       <p>The code for this project can be found <a href=" https://github.com/Toucan4Life/map-of-boardgames" class="normal">here</a></p>
 
-      <div class="row-horizontal">
-        <h2>Legend</h2>
-        <p>The colors are related to the user ratings. Each color is associated with 10% of the boardgames:</p>
-        <ul class="legend">
-          <li><span style="background-color: #ff0000"></span> &lt;5.08</li>
-          <li><span style="background-color: #f36300"></span> &lt;=5.57</li>
-          <li><span style="background-color: #de9200"></span> &lt;=5.90</li>
-          <li><span style="background-color: #c3b700"></span> &lt;=6.18</li>
-          <li><span style="background-color: #a2d600"></span> &lt;=6.42</li>
-          <li><span style="background-color: #87e539"></span> &lt;=6.66</li>
-          <li><span style="background-color: #62f25e"></span> &lt;=6.92</li>
-          <li><span style="background-color: #00ff83"></span> &lt;=7.20</li>
-          <li><span style="background-color: #00f8d8"></span> &lt;=7.61</li>
-          <li><span style="background-color: #00e9ff"></span> &gt;7.61</li>
-        </ul>
-      </div>
-
-      <div class="row-horizontal">
-        <p>The shape are related to the bgg complexity of the game:</p>
-
-        <ul class="legend">
-          <li><img src="../../public/circle.png" style="width: 40px; height: auto" alt="circle" class="map-image" /> &lt;=2</li>
-          <li><img src="../../public/triangle.png" style="width: 40px; height: auto" alt="triangle" class="map-image" /> &lt;=3</li>
-          <li><img src="../../public/diamond.png" style="width: 40px; height: auto" alt="diamond" class="map-image" /> &lt;=4</li>
-          <li><img src="../../public/star.png" style="width: 40px; height: auto" alt="star" class="map-image" /> &gt;4</li>
-        </ul>
-      </div>
-
-      <div class="row-horizontal">
-        <p>
-          The link color represent the strength of the relationship between 2 boardgames. Strong relationships will be orange, weaker ones will be
-          purple
-        </p>
-      </div>
-
       <h2>Credits</h2>
       <p>A huge thanks to <b>Anvaka</b> which inspired me to do this project and did the tools that enabled me to come this far.</p>
 
@@ -86,26 +51,6 @@ function close(): void {
 </template>
 
 <style scoped>
-/* basic positioning */
-
-.legend {
-  list-style: none;
-  margin-right: -10px;
-}
-
-.legend li {
-  float: left;
-  margin-right: 10px;
-}
-
-.legend span {
-  border: 1px solid #ccc;
-  float: left;
-  width: 12px;
-  height: 12px;
-  margin: 2px;
-}
-
 .row-horizontal {
   flex-direction: column;
   display: flex;
@@ -132,6 +77,7 @@ function close(): void {
   align-items: center;
   display: flex;
   padding: 0 8px;
+  color: hsla(160, 100%, 37%, 1);
 }
 
 .container {
