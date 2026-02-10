@@ -7,6 +7,7 @@ const pendingRequests = new Map()
 export default async function downloadGroupGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
+  processingCallback?: (status: 'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing') => void,
 ): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
   if (graphsCache.has(groupId)) {
     return graphsCache.get(groupId)
@@ -17,7 +18,7 @@ export default async function downloadGroupGraph(
     return pendingRequests.get(groupId)
   }
 
-  const promise = fetchAndProcessGraph(groupId, progressCallback)
+  const promise = fetchAndProcessGraph(groupId, progressCallback, processingCallback)
   pendingRequests.set(groupId, promise)
 
   try {
@@ -71,10 +72,24 @@ export async function buildLocalNeighborsGraphForGroup(
     }
   }
 
+  // Create a processing status tracker
+  const processingStatusCallback = (status: 'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing') => {
+    if (!logCallback) return
+
+    const statusMessages = {
+      downloading: 'Downloading...',
+      decompressing: 'Decompressing data...',
+      parsing: 'Parsing graph structure...',
+      serializing: 'Preparing data...',
+      reconstructing: 'Building graph...'
+    }
+    logCallback(statusMessages[status])
+  }
+
   // Fetch the initial group's graph with progress tracking
   let rootGraph: Graph<BoardGameNodeData, BoardGameLinkData> | undefined
   try {
-    rootGraph = await downloadGroupGraph(groupId, downloadProgressCallback)
+    rootGraph = await downloadGroupGraph(groupId, downloadProgressCallback, processingStatusCallback)
     if (!rootGraph) {
       if (logCallback) logCallback(`Error: Failed to load graph for group ${groupId.toString()}`)
       return
@@ -130,7 +145,7 @@ export async function buildLocalNeighborsGraphForGroup(
       if (logCallback) {
         logCallback(`Loading external group: ${currentGroupId.toString()} (external group)`)
       }
-      currentGraph = await downloadGroupGraph(currentGroupId, downloadProgressCallback)
+      currentGraph = await downloadGroupGraph(currentGroupId, downloadProgressCallback, processingStatusCallback)
       if (!currentGraph) {
         if (logCallback) {
           logCallback(`Warning: Failed to load external group ${currentGroupId.toString()}. Skipping its neighbors.`)

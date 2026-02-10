@@ -268,6 +268,7 @@ img.avatar {
   align-items: center;
   padding: 0 8px;
   background: var(--color-background-soft);
+  color: hsla(160, 100%, 37%, 1);
 }
 
 .menu-opener:hover,

@@ -1,6 +1,44 @@
 import type { Graph, Node } from 'ngraph.graph'
 import config from './config'
-import pako from 'pako'
+
+// Create a single shared worker instance for decompression and parsing
+let decompressWorker: Worker | null = null
+let workerId = 0
+
+function getDecompressWorker(): Worker {
+  if (!decompressWorker) {
+    decompressWorker = new Worker(new URL('./decompress.worker.ts', import.meta.url), { type: 'module' })
+  }
+  return decompressWorker
+}
+
+async function decompressAndParseInWorker(
+  data: Uint8Array,
+  onProgress?: (status: 'decompressing' | 'parsing' | 'serializing') => void
+): Promise<{ nodes: any[], links: any[] }> {
+  const worker = getDecompressWorker()
+  const id = workerId++
+
+  return new Promise((resolve, reject) => {
+    const handler = (e: MessageEvent) => {
+      if (e.data.id === id) {
+        if (e.data.type === 'progress') {
+          onProgress?.(e.data.status)
+        } else if (e.data.type === 'complete') {
+          worker.removeEventListener('message', handler)
+          if (e.data.error) {
+            reject(new Error(e.data.error))
+          } else {
+            resolve({ nodes: e.data.nodes, links: e.data.links })
+          }
+        }
+      }
+    }
+
+    worker.addEventListener('message', handler)
+    worker.postMessage({ data, id })
+  })
+}
 
 export type BoardGameNodeData = {
   rating: string
@@ -24,11 +62,13 @@ export type BoardGameLinkData = {
 export async function fetchAndProcessGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
+  processingCallback?: (status: 'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing') => void,
 ): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
+  processingCallback?.('downloading')
   const fileName = `${groupId.toString()}.gzip`
   const url = `${config.compressedGraphEndpoint}/${fileName}`
 
-  let text
+  let compressedData: Uint8Array
 
   if (progressCallback) {
     // Fetch with progress tracking
@@ -48,7 +88,7 @@ export async function fetchAndProcessGraph(
     }
     const reader = response.body.getReader()
     let bytesReceived = 0
-    const chunks = []
+    const chunks: Uint8Array[] = []
 
     let done = false
     while (!done) {
@@ -78,28 +118,39 @@ export async function fetchAndProcessGraph(
       position += chunk.length
     }
 
-    // Convert to text
-    text = new TextDecoder('utf-8').decode(pako.inflate(chunksAll))
+    compressedData = chunksAll
   } else {
     // Standard fetch without progress
     const response = await fetch(url)
 
+    if (!response.ok) {
+      throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
+    }
+
     // Get the compressed data as ArrayBuffer
     const compressedBuffer = await response.arrayBuffer()
-    const compressedBytes = new Uint8Array(compressedBuffer)
-
-    // Decompress (lz4js expects Uint8Array input)
-    const decompressedBytes = pako.inflate(compressedBytes)
-
-    // If the decompressed data is text (UTF-8)
-    const decoder = new TextDecoder('utf-8')
-    text = decoder.decode(decompressedBytes)
+    compressedData = new Uint8Array(compressedBuffer)
   }
 
-  const fromDot = await import('ngraph.fromdot')
+  // Decompress and parse in Web Worker (non-blocking)
+  const { nodes, links } = await decompressAndParseInWorker(compressedData, processingCallback)
 
-  const graph: Graph<BoardGameNodeData, BoardGameLinkData> = fromDot.default(text)
+  // Reconstruct graph from serialized data on main thread
+  processingCallback?.('reconstructing')
+  const createGraph = await import('ngraph.graph')
+  const graph: Graph<BoardGameNodeData, BoardGameLinkData> = createGraph.default()
 
+  // Add all nodes
+  for (const nodeData of nodes) {
+    graph.addNode(nodeData.id, nodeData.data)
+  }
+
+  // Add all links
+  for (const linkData of links) {
+    graph.addLink(linkData.fromId, linkData.toId, linkData.data)
+  }
+
+  // Process node positions
   graph.forEachNode((node: Node<BoardGameNodeData>) => {
     node.data.lnglat = node.data.pos.split(',').map((x: string) => +x) as [number, number]
   })

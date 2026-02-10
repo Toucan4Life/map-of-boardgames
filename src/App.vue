@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, onBeforeMount, computed, reactive } from 'vue'
+import { ref, onBeforeUnmount, onBeforeMount, computed, reactive, watch } from 'vue'
 import TypeAhead from './components/Type-Ahead.vue'
 import GithubRepository from './components/GithubRepository.vue'
 import SmallPreview from './components/SmallPreview.vue'
@@ -23,6 +23,7 @@ const advSearchVisible = ref(false)
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
+const legendExpanded = ref(false)
 let loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined>(undefined)
 // Project state
 const defaultProjectState = {
@@ -52,6 +53,17 @@ let lastSelected: SearchResult | undefined
 const groupCache = new Map<number, GroupViewModel>()
 
 const typeAheadVisible = computed(() => !(isSmallScreen.value && currentGroup.value && !project.current))
+
+// Collapse legend on mobile when small preview appears
+watch(
+  () => project.smallPreviewName,
+  (newVal) => {
+    if (isSmallScreen.value && newVal && legendExpanded.value) {
+      legendExpanded.value = false
+    }
+  },
+)
+
 function showFullPreview() {
   if (!lastSelected) return
   Object.assign(project, {
@@ -166,6 +178,13 @@ const unsavedChangesHandler = (has: boolean) => {
   hasUnsavedChanges.value = has
 }
 
+const closeSmallPreview = () => {
+  Object.assign(project, {
+    smallPreviewName: '',
+    currentId: 0,
+  })
+}
+
 onBeforeMount(() => {
   window.addEventListener('resize', resizeHandler)
 })
@@ -226,6 +245,86 @@ function handleItem(item: { text: string; click: () => void }) {
       You have unsaved labels in local storage.
       <a href="#" class="normal" @click.prevent="unsavedChangesVisible = true">Click here</a>
       to see them.
+    </div>
+
+    <!-- Legend Card -->
+    <div class="legend-card" :class="{ 'mobile-collapsed': isSmallScreen && !legendExpanded, 'mobile-expanded': isSmallScreen && legendExpanded }">
+      <div v-if="isSmallScreen && !legendExpanded" class="legend-toggle" @click="legendExpanded = true">
+        <span>Legend</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div v-else-if="isSmallScreen && legendExpanded" class="legend-toggle" @click="legendExpanded = false">
+        <span>Legend</span>
+        <span class="toggle-icon">▲</span>
+      </div>
+      <div v-show="!isSmallScreen || legendExpanded" class="legend-content">
+        <div class="legend-section">
+          <div class="legend-title">Rating</div>
+          <div class="legend-bar">
+            <div class="segment" style="background-color: #ff0000" title="<5.1"></div>
+            <div class="segment" style="background-color: #ff4400" title="5.1-5.6"></div>
+            <div class="segment" style="background-color: #ff8800" title="5.6-5.9"></div>
+            <div class="segment" style="background-color: #ffcc00" title="5.9-6.2"></div>
+            <div class="segment" style="background-color: #ffff00" title="6.2-6.4"></div>
+            <div class="segment" style="background-color: #ccff00" title="6.4-6.7"></div>
+            <div class="segment" style="background-color: #88ff00" title="6.7-6.9"></div>
+            <div class="segment" style="background-color: #00ff88" title="6.9-7.2"></div>
+            <div class="segment" style="background-color: #00ffee" title="7.2-7.6"></div>
+            <div class="segment" style="background-color: #00aaff" title=">7.6"></div>
+          </div>
+          <div class="legend-labels">
+            <span class="label" style="left: 10%">5.1</span>
+            <span class="label" style="left: 20%">5.6</span>
+            <span class="label" style="left: 30%">5.9</span>
+            <span class="label" style="left: 40%">6.2</span>
+            <span class="label" style="left: 50%">6.4</span>
+            <span class="label" style="left: 60%">6.7</span>
+            <span class="label" style="left: 70%">6.9</span>
+            <span class="label" style="left: 80%">7.2</span>
+            <span class="label" style="left: 90%">7.6</span>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <div class="legend-title">Complexity</div>
+          <div class="legend-bar shape-bar">
+            <div class="shape-segment" title="Light (1-2)">
+              <img src="/circle.png" alt="circle" class="shape-icon" />
+            </div>
+            <div class="shape-segment" title="Medium (2-3)">
+              <img src="/triangle.png" alt="triangle" class="shape-icon" />
+            </div>
+            <div class="shape-segment" title="Heavy (3-4)">
+              <img src="/diamond.png" alt="diamond" class="shape-icon" />
+            </div>
+            <div class="shape-segment" title="Expert (4+)">
+              <img src="/star.png" alt="star" class="shape-icon" />
+            </div>
+          </div>
+          <div class="legend-labels">
+            <span class="label" style="left: 0%; transform: translateX(0)">1</span>
+            <span class="label" style="left: 25%">2</span>
+            <span class="label" style="left: 50%">3</span>
+            <span class="label" style="left: 75%">4</span>
+            <span class="label" style="left: 100%; transform: translateX(-100%)">5</span>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <div class="legend-title">Link Strength</div>
+          <div class="legend-bar">
+            <div class="segment" style="background-color: #4a148c" title="Weak"></div>
+            <div class="segment" style="background-color: #7b1fa2" title="Light"></div>
+            <div class="segment" style="background-color: #ab47bc" title="Moderate"></div>
+            <div class="segment" style="background-color: #ff7043" title="Strong"></div>
+            <div class="segment" style="background-color: #ff5722" title="Very Strong"></div>
+          </div>
+          <div class="legend-labels">
+            <span class="label" style="left: 0%; transform: translateX(0)">Low</span>
+            <span class="label" style="left: 100%; transform: translateX(-100%)">High</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Made by -->
@@ -289,6 +388,7 @@ function handleItem(item: { text: string; click: () => void }) {
         :name="project.smallPreviewName"
         class="small-preview"
         @show-full-preview="showFullPreview"
+        @close="closeSmallPreview"
       />
     </transition>
 
@@ -324,6 +424,124 @@ function handleItem(item: { text: string; click: () => void }) {
 }
 </style>
 <style scoped>
+.legend-card {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 12px 14px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  width: 340px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.legend-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+  font-size: 12px;
+  user-select: none;
+  color: hsla(160, 100%, 37%, 1);
+}
+
+.toggle-icon {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.legend-content {
+  transition: all 0.3s ease;
+}
+
+.legend-section {
+  margin-bottom: 10px;
+}
+
+.legend-section:last-child {
+  margin-bottom: 0;
+}
+
+.legend-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.legend-bar {
+  display: flex;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.legend-bar.shape-bar {
+  height: 34px;
+  background: linear-gradient(to right, rgba(0, 233, 255, 0.2), rgba(0, 255, 131, 0.2));
+}
+
+.segment {
+  flex: 1;
+  cursor: default;
+  transition: transform 0.2s;
+}
+
+.segment:hover {
+  transform: scaleY(1.1);
+  z-index: 1;
+}
+
+.shape-segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: transform 0.2s;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.shape-segment:last-child {
+  border-right: none;
+}
+
+.shape-segment:hover {
+  transform: scaleY(1.1);
+  z-index: 1;
+}
+
+.shape-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.legend-labels {
+  position: relative;
+  height: 16px;
+  margin-top: 4px;
+}
+
+.label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
 .made-by {
   position: fixed;
   right: 0;
@@ -525,6 +743,63 @@ function handleItem(item: { text: string; click: () => void }) {
 }
 
 @media (max-width: 600px) {
+  .legend-card {
+    width: calc(100% - 16px);
+    left: 8px;
+    bottom: 8px;
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  .legend-section {
+    margin-bottom: 8px;
+  }
+
+  .legend-title {
+    font-size: 10px;
+    margin-bottom: 3px;
+  }
+
+  .legend-card.mobile-collapsed {
+    width: auto;
+    padding: 8px 12px;
+  }
+
+  .legend-card.mobile-expanded {
+    width: calc(100% - 16px);
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .legend-toggle {
+    font-size: 14px;
+    padding: 6px 0;
+  }
+
+  .legend-bar {
+    height: 16px;
+    border-radius: 3px;
+  }
+
+  .legend-bar.shape-bar {
+    height: 22px;
+  }
+
+  .shape-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .legend-labels {
+    height: 12px;
+    margin-top: 2px;
+  }
+
+  .label {
+    font-size: 8px;
+  }
+
   .repo-viewer {
     width: 100%;
   }

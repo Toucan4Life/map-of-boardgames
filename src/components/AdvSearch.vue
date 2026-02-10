@@ -230,6 +230,7 @@ let playersChoice: string = '0'
   align-items: center;
   display: flex;
   padding: 0 8px;
+  color: hsla(160, 100%, 37%, 1);
 }
 
 .container {
