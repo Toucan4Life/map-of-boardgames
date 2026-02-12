@@ -1,5 +1,5 @@
 const explorer = {
-  background: '#030E2E',
+  background: '#0d1117', // Dark neutral gray (GitHub dark theme)
 
   circleColor: '#EAEDEF',
   circleStrokeColor: '#000',
@@ -11,13 +11,11 @@ const explorer = {
   placeLabelsHaloColor: '#000',
   placeLabelsHaloWidth: 0.2,
   color: [
-    { input: '#516ebc', output: '#013185' }, // '#AAD8E6'},
-    { input: '#00529c', output: '#1373A9' }, // '#2B7499'},
-    { input: '#153477', output: '#05447C' }, // '#56A9CE'},
-    { input: '#37009c', output: '#013161' }, // '#2692C6'},
-    { input: '#00789c', output: '#022D6D' }, // '#1CA0E3'},
-    { input: '#37549c', output: '#00154D' }, // '#00396D'},
-    { input: '#9c4b00', output: '#00154D' }, // '#00396D'}
+    // Four distinct muted colors for regions (four color theorem)
+    { input: '#516ebc', output: '#3D4E6F' }, // Muted blue-slate
+    { input: '#00529c', output: '#3D5E5E' }, // Muted teal
+    { input: '#153477', output: '#5E4A45' }, // Muted brown-red
+    { input: '#37009c', output: '#4E5C42' }, // Muted olive-green
   ],
 }
 

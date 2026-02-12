@@ -1,48 +1,366 @@
+/* ==========================================
+   IMPORTS
+   ========================================== */
+@import './design-tokens.css';
+
+/* ==========================================
+   BASE STYLES
+   ========================================== */
 #app {
-  font-weight: normal;
+  font-weight: var(--font-normal);
+  font-family: var(--font-family-base);
+  line-height: var(--leading-normal);
 }
 
-.mini-label .accept {
-  color: var(--critical-call-to-action);
+/* ==========================================
+   TYPOGRAPHY
+   ========================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-heading);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  margin: 0;
 }
 
-a.critical {
-  color: var(--critical-call-to-action);
+h1 {
+  font-size: var(--text-3xl);
+}
+h2 {
+  font-size: var(--text-2xl);
+}
+h3 {
+  font-size: var(--text-xl);
+}
+h4 {
+  font-size: var(--text-lg);
+}
+h5 {
+  font-size: var(--text-md);
+}
+h6 {
+  font-size: var(--text-base);
 }
 
-a.normal {
-  color: var(--color-link-hover);
+p {
+  margin: 0;
+  line-height: var(--leading-relaxed);
 }
 
+/* ==========================================
+   LINKS
+   ========================================== */
 a {
   text-decoration: none;
-  transition: 0.4s;
+  transition: color var(--duration-fast) var(--ease-out);
   color: var(--color-text);
 }
 
+a.normal {
+  color: var(--color-link);
+}
+
+a.critical {
+  color: var(--color-critical);
+}
+
 a:hover,
-a:focus,
-.mini-label .accept:hover,
-.mini-label .accept:focus {
+a:focus-visible {
   color: var(--color-link-hover);
 }
+
+a.critical:hover,
+a.critical:focus-visible {
+  color: var(--color-critical-hover);
+}
+
+/* ==========================================
+   FOCUS STYLES (Accessibility)
+   ========================================== */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--color-focus-ring);
+}
+
+/* ==========================================
+   ACCESSIBILITY UTILITIES
+   ========================================== */
+
+/* Screen reader only - visually hidden but accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip to content link - visible on focus for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-4);
+  z-index: var(--z-loading);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: white;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: top var(--duration-fast) var(--ease-out);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ==========================================
+   UTILITY CLASSES - Spacing
+   ========================================== */
+.p-0 {
+  padding: var(--space-0);
+}
+.p-1 {
+  padding: var(--space-1);
+}
+.p-2 {
+  padding: var(--space-2);
+}
+.p-3 {
+  padding: var(--space-3);
+}
+.p-4 {
+  padding: var(--space-4);
+}
+.p-5 {
+  padding: var(--space-5);
+}
+.p-6 {
+  padding: var(--space-6);
+}
+
+.m-0 {
+  margin: var(--space-0);
+}
+.m-1 {
+  margin: var(--space-1);
+}
+.m-2 {
+  margin: var(--space-2);
+}
+.m-3 {
+  margin: var(--space-3);
+}
+.m-4 {
+  margin: var(--space-4);
+}
+.m-5 {
+  margin: var(--space-5);
+}
+.m-6 {
+  margin: var(--space-6);
+}
+
+.gap-1 {
+  gap: var(--space-1);
+}
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-3 {
+  gap: var(--space-3);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+.gap-5 {
+  gap: var(--space-5);
+}
+
+/* ==========================================
+   UTILITY CLASSES - Typography
+   ========================================== */
+.text-xs {
+  font-size: var(--text-xs);
+}
+.text-sm {
+  font-size: var(--text-sm);
+}
+.text-base {
+  font-size: var(--text-base);
+}
+.text-md {
+  font-size: var(--text-md);
+}
+.text-lg {
+  font-size: var(--text-lg);
+}
+.text-xl {
+  font-size: var(--text-xl);
+}
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+
+.font-normal {
+  font-weight: var(--font-normal);
+}
+.font-medium {
+  font-weight: var(--font-medium);
+}
+.font-semibold {
+  font-weight: var(--font-semibold);
+}
+.font-bold {
+  font-weight: var(--font-bold);
+}
+
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+.tracking-wide {
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ==========================================
+   UTILITY CLASSES - Layout
+   ========================================== */
+.flex {
+  display: flex;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.items-center {
+  align-items: center;
+}
+.items-start {
+  align-items: flex-start;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-center {
+  justify-content: center;
+}
+.flex-1 {
+  flex: 1;
+}
+
+.relative {
+  position: relative;
+}
+.absolute {
+  position: absolute;
+}
+.fixed {
+  position: fixed;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-auto {
+  overflow: auto;
+}
+
+/* ==========================================
+   UTILITY CLASSES - Border Radius
+   ========================================== */
+.rounded-none {
+  border-radius: var(--radius-none);
+}
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+.rounded-full {
+  border-radius: var(--radius-full);
+}
+
+/* ==========================================
+   UTILITY CLASSES - Shadows
+   ========================================== */
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+.shadow-xl {
+  box-shadow: var(--shadow-xl);
+}
+
+/* ==========================================
+   LABEL EDITOR - Mini Label Component
+   ========================================== */
+.mini-label .accept {
+  color: var(--color-critical);
+}
+
+.mini-label .accept:hover,
+.mini-label .accept:focus-visible {
+  color: var(--color-critical-hover);
+}
+
 .mini-label .commands {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .mini-label input::placeholder {
-  color: var(--color-border-hover);
-}
-/* @media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-} */
-
-@media (min-width: 1024px) {
+  color: var(--color-text-mute);
 }
 
+/* ==========================================
+   MAP & SUBGRAPH VIEWER
+   ========================================== */
 #map,
 .subgraph-viewer {
   position: absolute;
@@ -68,69 +386,89 @@ a:focus,
   pointer-events: auto;
   background-color: var(--color-background);
 }
+
+/* Label Marker Popup */
 .label-marker {
-  font-size: 14px;
-  padding: 8px;
-  background: var(--color-background);
+  font-size: var(--text-base);
+  padding: var(--space-2);
+  background: var(--color-background-elevated);
+  border-radius: var(--radius-sm);
 }
+
 .label-marker input[type='text'] {
   padding: 0;
   text-align: center;
+  font-size: var(--text-base);
 }
+
+/* MapLibre Popup Styling */
 #map .mapboxgl-popup-content,
 #map .maplibregl-popup-content {
   padding: 0;
-}
-#map .mapboxgl-popup-anchor-bottom .maplibregl-popup-tip {
-  border-top-color: var(--color-background);
-}
-#map .mapboxgl-popup-anchor-top .maplibregl-popup-tip {
-  border-bottom-color: var(--color-background);
-}
-#map .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
-  border-right-color: var(--color-background);
-}
-#map .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
-  border-left-color: var(--color-background);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
+#map .mapboxgl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--color-background-elevated);
+}
+
+#map .mapboxgl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--color-background-elevated);
+}
+
+#map .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: var(--color-background-elevated);
+}
+
+#map .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: var(--color-background-elevated);
+}
+
+/* ==========================================
+   CUSTOM SLIDER COMPONENT
+   ========================================== */
 .slider-cont {
   width: 300px;
 }
 
 .custom-slider {
-  --trackHeight: 0.35rem;
-  --thumbRadius: 1rem;
+  --trackHeight: 6px;
+  --thumbRadius: 16px;
+  --slider-track-bg: var(--accent-800);
+  --slider-progress-bg: var(--accent-500);
+  --slider-thumb-bg: var(--accent-600);
+  --slider-thumb-border: var(--accent-400);
 }
 
-/* style the input element with type "range" */
+/* Base range input styling */
 .custom-slider input[type='range'] {
   position: relative;
   appearance: none;
   background: none;
-  border-radius: 999px;
-  z-index: 0;
+  border-radius: var(--radius-full);
+  z-index: var(--z-base);
   height: 100%;
   pointer-events: none;
 }
 
-/* ::before element to replace the slider track */
+/* Progress indicator */
 .custom-slider input[type='range']::before {
   content: '';
   display: block;
   position: absolute;
   width: var(--ProgressPercent, 100%);
   height: 100%;
-  background: #00865a;
-  border-radius: 999px;
+  background: var(--slider-progress-bg);
+  border-radius: var(--radius-full);
 }
 
-/* `::-webkit-slider-runnable-track` targets the track (background) of a range slider in chrome and safari browsers. */
+/* Webkit (Chrome, Safari, Edge) */
 .custom-slider input[type='range']::-webkit-slider-runnable-track {
   appearance: none;
-  background: #005a3c;
+  background: var(--slider-track-bg);
   height: var(--trackHeight);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .custom-slider input[type='range']::-webkit-slider-thumb {
@@ -138,20 +476,31 @@ a:focus,
   width: var(--thumbRadius);
   height: var(--thumbRadius);
   margin-top: calc((var(--trackHeight) - var(--thumbRadius)) / 2);
-  background: #005a3c;
-  border: 1px solid #00865a;
-  border-radius: 999px;
+  background: var(--slider-thumb-bg);
+  border: 2px solid var(--slider-thumb-border);
+  border-radius: var(--radius-full);
   pointer-events: all;
   appearance: none;
-  z-index: 1;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
-/* `::-moz-range-track` targets the track (background) of a range slider in Mozilla Firefox. */
-.custom-slider.default input[type='range']::-moz-range-track {
+.custom-slider input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.custom-slider input[type='range']::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+/* Firefox */
+.custom-slider input[type='range']::-moz-range-track {
   appearance: none;
-  background: #005a3c;
+  background: var(--slider-track-bg);
   height: var(--trackHeight);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .custom-slider input[type='range']::-moz-range-thumb {
@@ -159,21 +508,32 @@ a:focus,
   box-sizing: border-box;
   width: var(--thumbRadius);
   height: var(--thumbRadius);
-  margin-top: calc((var(--trackHeight) - var(--thumbRadius)) / 2);
-  background: #005a3c;
-  border: 1px solid #00865a;
-  border-radius: 999px;
+  background: var(--slider-thumb-bg);
+  border: 2px solid var(--slider-thumb-border);
+  border-radius: var(--radius-full);
   pointer-events: all;
   appearance: none;
-  z-index: 1;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
+.custom-slider input[type='range']::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+.custom-slider input[type='range']::-moz-range-thumb:active {
+  transform: scale(0.95);
+}
+
+/* Min-Max Range Slider */
 .custom-slider.minmax {
   position: relative;
   height: var(--trackHeight);
-  background: #005a3c;
-  border-radius: 999px;
-  margin: 0.5rem 0;
+  background: var(--slider-track-bg);
+  border-radius: var(--radius-full);
+  margin: var(--space-2) 0;
   --progressLeft: 0%;
   --progressRight: 0%;
 }
@@ -184,20 +544,50 @@ a:focus,
   pointer-events: none;
   left: var(--thumbRadius);
   right: var(--thumbRadius);
+  z-index: 1;
 }
 
 .custom-slider .minmax-indicator::before {
   content: '';
   position: absolute;
-  background: #00865a;
+  background: var(--slider-progress-bg);
   height: 100%;
   left: var(--progressLeft);
   right: var(--progressRight);
+  border-radius: var(--radius-full);
 }
 
 .custom-slider.minmax input[type='range'] {
   position: absolute;
   width: calc(100% - var(--thumbRadius));
+}
+
+/* Webkit thumb z-index for minmax sliders */
+.custom-slider.minmax input[type='range']::-webkit-slider-thumb {
+  z-index: 3;
+}
+
+.custom-slider.minmax input[type='range'][name='min']::-webkit-slider-thumb {
+  z-index: 4;
+}
+
+.custom-slider.minmax input[type='range']:active::-webkit-slider-thumb,
+.custom-slider.minmax input[type='range']:focus::-webkit-slider-thumb {
+  z-index: 5;
+}
+
+/* Firefox thumb z-index for minmax sliders */
+.custom-slider.minmax input[type='range']::-moz-range-thumb {
+  z-index: 3;
+}
+
+.custom-slider.minmax input[type='range'][name='min']::-moz-range-thumb {
+  z-index: 4;
+}
+
+.custom-slider.minmax input[type='range']:active::-moz-range-thumb,
+.custom-slider.minmax input[type='range']:focus::-moz-range-thumb {
+  z-index: 5;
 }
 
 .custom-slider.minmax input[type='range'][name='max'] {
@@ -212,11 +602,25 @@ a:focus,
   display: none;
 }
 
+/* Min-Max Input Fields */
 .minmax-inputs {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .minmax-inputs input {
-  width: 50px;
+  width: 60px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-soft);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.minmax-inputs input:focus {
+  border-color: var(--color-focus);
+  outline: none;
 }

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { getGameInfo, type GameDetail } from '@/lib/bggClient'
 import { computed, ref, watchEffect } from 'vue'
+import BaseCard from './base/BaseCard.vue'
+import BaseChip from './base/BaseChip.vue'
+import BaseButton from './base/BaseButton.vue'
 
 interface Repo {
   name: string
@@ -25,16 +28,17 @@ const shapeImage = computed(() => {
 
 const ratingColor = computed(() => {
   const rating = Number(gameDetail.value?.rating ?? 0)
-  if (rating < 5.1) return '#ff0000'
-  if (rating < 5.6) return '#ff4400'
-  if (rating < 5.9) return '#ff8800'
-  if (rating < 6.2) return '#ffcc00'
-  if (rating < 6.4) return '#ffff00'
-  if (rating < 6.7) return '#ccff00'
-  if (rating < 6.9) return '#88ff00'
-  if (rating < 7.2) return '#00ff88'
-  if (rating < 7.6) return '#00ffee'
-  return '#00aaff'
+  // Using our colorblind-safe rating scale from design tokens
+  if (rating < 5.1) return 'var(--rating-1)'
+  if (rating < 5.6) return 'var(--rating-2)'
+  if (rating < 5.9) return 'var(--rating-3)'
+  if (rating < 6.2) return 'var(--rating-4)'
+  if (rating < 6.4) return 'var(--rating-5)'
+  if (rating < 6.7) return 'var(--rating-6)'
+  if (rating < 6.9) return 'var(--rating-7)'
+  if (rating < 7.2) return 'var(--rating-8)'
+  if (rating < 7.6) return 'var(--rating-9)'
+  return 'var(--rating-10)'
 })
 
 watchEffect(() => {
@@ -128,7 +132,7 @@ function listConnections(): void {
 
       <!-- Actions -->
       <div class="actions">
-        <a href="#" @click.prevent="listConnections()" class="action-link">List connections</a>
+        <BaseButton variant="secondary" size="md" fullWidth @click="listConnections()"> List connections </BaseButton>
       </div>
 
       <!-- Game Details Section -->
@@ -161,25 +165,25 @@ function listConnections(): void {
         <!-- All Tags Grouped Together -->
         <div v-if="gameDetail?.categories?.length || gameDetail?.mechanics?.length || gameDetail?.families?.length" class="tags-section">
           <div v-if="gameDetail?.categories?.length" class="tag-group">
-            <span class="tag-group-label">Categories</span>
+            <h4 class="tag-group-label">Categories</h4>
             <div class="tag-list">
-              <span v-for="category in gameDetail.categories" :key="category" class="game-tag category-tag">{{ category }}</span>
+              <BaseChip v-for="category in gameDetail.categories" :key="category" variant="primary" size="sm">{{ category }}</BaseChip>
             </div>
           </div>
 
           <div v-if="gameDetail?.mechanics?.length" class="tag-group">
-            <span class="tag-group-label">Mechanics</span>
+            <h4 class="tag-group-label">Mechanics</h4>
             <div class="tag-list">
-              <span v-for="mechanic in gameDetail.mechanics" :key="mechanic" class="game-tag mechanic-tag">{{ mechanic }}</span>
+              <BaseChip v-for="mechanic in gameDetail.mechanics" :key="mechanic" variant="accent" size="sm">{{ mechanic }}</BaseChip>
             </div>
           </div>
 
           <div v-if="gameDetail?.families?.length && gameDetail.families.filter((f) => !f.includes('Admin:')).length > 0" class="tag-group">
-            <span class="tag-group-label">Families</span>
+            <h4 class="tag-group-label">Families</h4>
             <div class="tag-list">
-              <span v-for="family in gameDetail.families.filter((f) => !f.includes('Admin:'))" :key="family" class="game-tag family-tag">{{
+              <BaseChip v-for="family in gameDetail.families.filter((f) => !f.includes('Admin:'))" :key="family" variant="success" size="sm">{{
                 family
-              }}</span>
+              }}</BaseChip>
             </div>
           </div>
         </div>
@@ -204,25 +208,35 @@ function listConnections(): void {
 </template>
 
 <style scoped>
+/* ==========================================
+   GAME DETAILS PANEL
+   ========================================== */
 .repo-viewer {
-  padding-top: 70px;
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-bottom: 16px;
-  max-width: 100%;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--color-background);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  z-index: var(--z-overlay);
+  padding: calc(var(--header-height) + var(--space-2)) var(--space-3) var(--space-4);
 }
 
 .game-container {
   max-width: 100%;
 }
 
-/* Header Section - Image and Info Side by Side */
+/* ==========================================
+   HEADER SECTION
+   ========================================== */
 .game-header {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--color-border);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 2px solid var(--color-border-strong);
 }
 
 .game-image-wrapper {
@@ -233,8 +247,8 @@ function listConnections(): void {
 .game-image {
   width: 100%;
   height: auto;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
 }
 
 .game-header-content {
@@ -243,46 +257,50 @@ function listConnections(): void {
 }
 
 .game-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
-  line-height: 1.3;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  margin: 0 0 var(--space-1) 0;
+  line-height: var(--leading-tight);
+  color: var(--color-heading);
 }
 
 .game-title a {
-  color: var(--color-link-hover);
+  color: var(--color-link);
   text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .game-title a:hover {
+  color: var(--color-link-hover);
   text-decoration: underline;
 }
 
 .game-year {
-  font-size: 13px;
-  color: var(--color-text);
-  opacity: 0.7;
-  margin-bottom: 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
+  margin-bottom: var(--space-2);
 }
 
 .game-stats-badges {
   display: flex;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .stat-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--color-background-mute);
-  border-radius: 4px;
-  font-size: 12px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
 }
 
 .rating-badge {
-  font-weight: 700;
+  font-weight: var(--font-bold);
 }
 
 .badge-icon {
@@ -291,36 +309,22 @@ function listConnections(): void {
 }
 
 .badge-text {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.weight-badge {
-  display: flex;
-  gap: 4px;
-}
-
-.badge-label {
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-.badge-value {
-  font-weight: 700;
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
 }
 
 .ratings-count {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
 }
 
 .ratings-text {
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
 }
 
 .game-description {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
   color: var(--color-text);
   margin: 0;
   display: -webkit-box;
@@ -330,21 +334,24 @@ function listConnections(): void {
   overflow: hidden;
 }
 
-/* Gameplay Stats Grid */
+/* ==========================================
+   GAMEPLAY STATS GRID
+   ========================================== */
 .gameplay-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .gameplay-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 8px;
-  background: var(--color-background-mute);
-  border-radius: 6px;
+  padding: var(--space-3) var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
@@ -356,81 +363,61 @@ function listConnections(): void {
 }
 
 .stat-value {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
   color: var(--color-heading);
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text);
-  opacity: 0.7;
-  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-soft);
+  font-weight: var(--font-semibold);
 }
 
 .stat-meta {
-  font-size: 9px;
-  color: var(--color-text);
-  opacity: 0.6;
-  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-mute);
+  margin-top: var(--space-1);
 }
 
-/* Actions */
+/* ==========================================
+   ACTIONS
+   ========================================== */
 .actions {
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 12px;
-  padding: 0;
+  margin-bottom: var(--space-4);
 }
 
-.action-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-  background: var(--color-background-mute);
-  text-decoration: none;
-  color: var(--color-link-hover);
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.action-link:hover {
-  background: var(--color-background-soft);
-  text-decoration: underline;
-}
-
-/* Game Details Section */
+/* ==========================================
+   GAME DETAILS SECTION
+   ========================================== */
 .game-details {
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
 
 /* Info Grid */
 .info-grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
 .info-item {
   display: flex;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
 }
 
 .info-label {
-  font-weight: 600;
-  min-width: 85px;
+  font-weight: var(--font-semibold);
+  min-width: 90px;
   flex-shrink: 0;
-  color: var(--color-text);
-  opacity: 0.8;
+  color: var(--color-text-soft);
 }
 
 .info-value {
@@ -440,134 +427,97 @@ function listConnections(): void {
 
 .more-count {
   font-style: italic;
-  opacity: 0.7;
-  font-size: 11px;
+  color: var(--color-text-mute);
+  font-size: var(--text-xs);
 }
 
-/* Tags Section */
+/* ==========================================
+   TAGS SECTION
+   ========================================== */
 .tags-section {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .tag-group {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-4);
+}
+
+.tag-group:last-child {
+  margin-bottom: 0;
 }
 
 .tag-group-label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-  color: var(--color-text);
-  opacity: 0.7;
+  letter-spacing: var(--tracking-wide);
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-text-soft);
 }
 
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: var(--space-2);
 }
 
-.game-tag {
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.3;
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
-}
-
-.game-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.category-tag {
-  background-color: #e3f2fd;
-  color: #1565c0;
-}
-
-.mechanic-tag {
-  background-color: #f3e5f5;
-  color: #6a1b9a;
-}
-
-.family-tag {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-/* Dark mode support for tags */
-@media (prefers-color-scheme: dark) {
-  .category-tag {
-    background-color: #1a237e;
-    color: #90caf9;
-  }
-
-  .mechanic-tag {
-    background-color: #4a148c;
-    color: #ce93d8;
-  }
-
-  .family-tag {
-    background-color: #1b5e20;
-    color: #a5d6a7;
-  }
-}
-
-/* Expansions Section */
+/* ==========================================
+   EXPANSIONS SECTION
+   ========================================== */
 .expansions-section {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .section-title {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 8px 0;
-  color: var(--color-text);
-  opacity: 0.7;
+  letter-spacing: var(--tracking-wide);
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-text-soft);
 }
 
 .expansion-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .expansion-item {
-  font-size: 12px;
-  padding: 3px 0;
-  color: var(--color-link-hover);
-  opacity: 0.85;
-  line-height: 1.4;
+  font-size: var(--text-sm);
+  padding: var(--space-1) 0;
+  color: var(--color-link);
+  line-height: var(--leading-relaxed);
   text-decoration: none;
   display: block;
-  transition: opacity 0.2s;
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .expansion-item:hover {
-  opacity: 1;
+  color: var(--color-link-hover);
   text-decoration: underline;
 }
 
 .expansion-item::before {
   content: '• ';
-  color: var(--color-text);
-  opacity: 0.5;
-  margin-right: 6px;
+  color: var(--color-text-mute);
+  margin-right: var(--space-2);
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
+/* ==========================================
+   RESPONSIVE - MOBILE
+   ========================================== */
+@media (max-width: 640px) {
+  .repo-viewer {
+    width: 100%;
+    max-width: 100%;
+    padding: calc(var(--header-height-mobile) + var(--space-2)) var(--space-2) var(--space-3);
+  }
+
   .game-header {
     flex-direction: column;
+    gap: var(--space-3);
   }
 
   .game-image-wrapper {
@@ -583,14 +533,18 @@ function listConnections(): void {
   .game-stats-badges {
     flex-wrap: wrap;
   }
+
+  .game-title {
+    font-size: var(--text-lg);
+  }
 }
 
+/* ==========================================
+   RESPONSIVE - DESKTOP
+   ========================================== */
 @media (min-width: 1024px) {
   .repo-viewer {
-    padding-top: 70px;
-    padding-left: 16px;
-    padding-right: 16px;
-    padding-bottom: 24px;
+    padding: calc(var(--header-height) + var(--space-2)) var(--space-4) var(--space-6);
   }
 
   .game-image-wrapper {
@@ -598,7 +552,11 @@ function listConnections(): void {
   }
 
   .game-title {
-    font-size: 24px;
+    font-size: var(--text-2xl);
+  }
+
+  .stat-value {
+    font-size: var(--text-lg);
   }
 }
 </style>

@@ -1,0 +1,318 @@
+/**
+ * Design Tokens - Board Game Map
+ * Data-focused dashboard design system
+ * Version: 2.0
+ */
+
+:root {
+  /* ==========================================
+     SPACING SCALE (8pt grid system)
+     ========================================== */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --space-10: 64px;
+
+  /* ==========================================
+     TYPOGRAPHY SCALE (Modular scale: 1.2 ratio)
+     ========================================== */
+  --font-family-base: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* Font Sizes */
+  --text-xs: 10px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  /* ==========================================
+     COLORS - Base Palette
+     ========================================== */
+
+  /* Neutrals - Light Mode */
+  --neutral-50: #fafafa;
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e5e5e5;
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+  --neutral-700: #404040;
+  --neutral-800: #262626;
+  --neutral-900: #171717;
+  --neutral-950: #0a0a0a;
+
+  /* Primary - Data Blue (Professional, trustworthy) */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  /* Accent - Teal (Distinctive, energetic) */
+  --accent-50: #f0fdfa;
+  --accent-100: #ccfbf1;
+  --accent-200: #99f6e4;
+  --accent-300: #5eead4;
+  --accent-400: #2dd4bf;
+  --accent-500: #14b8a6;
+  --accent-600: #0d9488;
+  --accent-700: #0f766e;
+  --accent-800: #115e59;
+  --accent-900: #134e4a;
+
+  /* Semantic Colors */
+  --success-500: #10b981;
+  --success-600: #059669;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --info-500: #06b6d4;
+  --info-600: #0891b2;
+
+  /* ==========================================
+     DATA VISUALIZATION - Colorblind Safe
+     ========================================== */
+
+  /* Rating Scale (Blue-Orange Diverging - Deuteranopia safe) */
+  --rating-1: #d7301f; /* Poor: Dark red-orange */
+  --rating-2: #fc8d59;
+  --rating-3: #fdcc8a;
+  --rating-4: #fef0d9;
+  --rating-5: #d0d1e6; /* Average: Light purple-gray */
+  --rating-6: #a6bddb;
+  --rating-7: #74a9cf;
+  --rating-8: #3690c0;
+  --rating-9: #0570b0;
+  --rating-10: #034e7b; /* Excellent: Deep blue */
+
+  /* Complexity Scale (Sequential - Single hue) */
+  --complexity-light: #74c0fc; /* Light blue */
+  --complexity-medium: #4dabf7;
+  --complexity-heavy: #339af0;
+  --complexity-expert: #1c7ed6; /* Dark blue */
+
+  /* Link Strength (Purple-Orange Sequential) */
+  --link-weak: #543005;
+  --link-light: #8c510a;
+  --link-moderate: #bf812d;
+  --link-strong: #dfc27d;
+  --link-very-strong: #f6e8c3;
+
+  /* ==========================================
+     SEMANTIC COLOR ASSIGNMENTS
+     ========================================== */
+
+  /* Light Mode */
+  --color-background: #ffffff;
+  --color-background-soft: var(--neutral-50);
+  --color-background-mute: var(--neutral-100);
+  --color-background-elevated: #ffffff;
+
+  --color-surface: var(--neutral-100);
+  --color-surface-hover: var(--neutral-200);
+
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-strong: var(--neutral-300);
+  --color-border-hover: var(--neutral-400);
+
+  --color-text: var(--neutral-900);
+  --color-text-soft: var(--neutral-600);
+  --color-text-mute: var(--neutral-500);
+  --color-text-inverse: #ffffff;
+
+  --color-heading: var(--neutral-950);
+
+  --color-link: var(--primary-600);
+  --color-link-hover: var(--primary-700);
+
+  --color-focus: var(--accent-500);
+  --color-focus-ring: rgba(20, 184, 166, 0.3);
+
+  /* Interactive States */
+  --color-interactive: var(--primary-600);
+  --color-interactive-hover: var(--primary-700);
+  --color-interactive-active: var(--primary-800);
+
+  /* Critical Actions */
+  --color-critical: #ff1493;
+  --color-critical-hover: #e01280;
+
+  /* ==========================================
+     DARK MODE OVERRIDES
+     ========================================== */
+
+  @media (prefers-color-scheme: dark) {
+    --color-background: #0f0f0f;
+    --color-background-soft: var(--neutral-900);
+    --color-background-mute: var(--neutral-800);
+    --color-background-elevated: var(--neutral-900);
+
+    --color-surface: var(--neutral-800);
+    --color-surface-hover: var(--neutral-700);
+
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-border-strong: var(--neutral-700);
+    --color-border-hover: var(--neutral-600);
+
+    --color-text: var(--neutral-100);
+    --color-text-soft: var(--neutral-400);
+    --color-text-mute: var(--neutral-500);
+    --color-text-inverse: var(--neutral-900);
+
+    --color-heading: var(--neutral-50);
+
+    --color-link: var(--accent-400);
+    --color-link-hover: var(--accent-300);
+
+    --color-interactive: var(--primary-500);
+    --color-interactive-hover: var(--primary-400);
+    --color-interactive-active: var(--primary-300);
+  }
+
+  /* ==========================================
+     BORDER RADIUS
+     ========================================== */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ==========================================
+     SHADOWS (Elevation System)
+     ========================================== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Dark mode shadows */
+  @media (prefers-color-scheme: dark) {
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ==========================================
+     Z-INDEX LAYERS
+     ========================================== */
+  --z-base: 0;
+  --z-raised: 1;
+  --z-dropdown: 100;
+  --z-sticky: 150;
+  --z-overlay: 200;
+  --z-modal: 300;
+  --z-popover: 350;
+  --z-toast: 400;
+  --z-loading: 500;
+
+  /* ==========================================
+     TRANSITIONS & ANIMATIONS
+     ========================================== */
+  --duration-instant: 75ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ==========================================
+     BREAKPOINTS (for reference in JS)
+     ========================================== */
+  --breakpoint-mobile: 640px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-wide: 1280px;
+  --breakpoint-ultrawide: 1536px;
+
+  /* ==========================================
+     DIMENSIONS
+     ========================================== */
+  --sidebar-width: 400px;
+  --sidebar-width-mobile: 100vw;
+  --header-height: 60px;
+  --header-height-mobile: 56px;
+
+  --touch-target-min: 44px; /* iOS HIG minimum */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* ==========================================
+     BACKDROP EFFECTS
+     ========================================== */
+  --backdrop-blur-sm: blur(4px);
+  --backdrop-blur-md: blur(8px);
+  --backdrop-blur-lg: blur(12px);
+  --backdrop-blur-xl: blur(16px);
+}
+
+/* ==========================================
+   REDUCED MOTION PREFERENCES
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

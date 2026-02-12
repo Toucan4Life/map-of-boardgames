@@ -87,7 +87,9 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
   const extractLinks = (linkType: string): string[] => {
     const links = item.link ?? []
     const linkArray = Array.isArray(links) ? links : [links]
-    return linkArray.filter((link: { [x: string]: string }) => link['@_type'] === linkType).map((link: { [x: string]: string }) => link['@_value'])
+    return linkArray
+      .filter((link: { [x: string]: string }) => link['@_type'] === linkType)
+      .map((link: { [x: string]: string }) => decodeMixedMojibake(link['@_value']))
   }
 
   // Extract expansions with IDs
@@ -98,7 +100,7 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
       .filter((link: { [x: string]: string }) => link['@_type'] === 'boardgameexpansion')
       .map((link: { [x: string]: string }) => ({
         id: link['@_id'],
-        name: link['@_value'],
+        name: decodeMixedMojibake(link['@_value']),
       }))
   }
 

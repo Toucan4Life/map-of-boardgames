@@ -57,21 +57,17 @@ function getPlacesGeoJSON() {
 function getGroupIdAt(lat: number, lon: number) {
   return boardGameMap.getGroupIdAt(lat, lon)
 }
-function highlightNode(searchParameters: SearchParameters): void {
-  boardGameMap.highlightNode(searchParameters)
+function highlightNode(searchParameters: SearchParameters): Promise<SearchResult[]> {
+  return boardGameMap.highlightNode(searchParameters)
 }
 async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapGeoJSONFeature) {
   try {
     isLoadingGraph.value = true
     loadingStatus.value = 'downloading'
 
-    const graph = await downloadGroupGraph(
-      groupId,
-      undefined,
-      (status) => {
-        loadingStatus.value = status
-      }
-    )
+    const graph = await downloadGroupGraph(groupId, undefined, (status) => {
+      loadingStatus.value = status
+    })
 
     boardGameMap.drawBackgroundEdges(label, feat, graph)
   } catch (ex) {
@@ -178,7 +174,7 @@ onBeforeUnmount(() => map?.remove())
 async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: maplibregl.Point & Object, name: string) {
   const repo = nearestCity.properties.label
   if (!repo) return
-  const [lat, lon] = (nearestCity.geometry as GeoJSON.Point).coordinates
+  const [lon, lat] = (nearestCity.geometry as GeoJSON.Point).coordinates
   emit('repoSelected', {
     text: repo,
     lat,

@@ -1,0 +1,8 @@
+# Map of Boardgames - Robots.txt
+# Allow all crawlers to index the entire site
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://toucan4life.github.io/map-of-boardgames/sitemap.xml
