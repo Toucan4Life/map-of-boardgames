@@ -167,25 +167,25 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       paint: {
         'icon-color': [
           'case',
-          ['>=', ['to-number', ['get', 'ratings']], 7.609174],
-          '#00aaff',
-          ['>=', ['to-number', ['get', 'ratings']], 7.204706],
-          '#00ffee',
-          ['>=', ['to-number', ['get', 'ratings']], 6.918946],
-          '#00ff88',
-          ['>=', ['to-number', ['get', 'ratings']], 6.65909],
-          '#88ff00',
-          ['>=', ['to-number', ['get', 'ratings']], 6.42297],
-          '#ccff00',
-          ['>=', ['to-number', ['get', 'ratings']], 6.18157],
-          '#ffff00',
-          ['>=', ['to-number', ['get', 'ratings']], 5.900366],
-          '#ffcc00',
-          ['>=', ['to-number', ['get', 'ratings']], 5.565964],
-          '#ff8800',
-          ['>=', ['to-number', ['get', 'ratings']], 5.07692],
-          '#ff4400',
-          '#ff0000',
+          ['>=', ['to-number', ['get', 'ratings']], 7.6],
+          '#034e7b', // rating 10 - Excellent
+          ['>=', ['to-number', ['get', 'ratings']], 7.2],
+          '#0570b0', // rating 9
+          ['>=', ['to-number', ['get', 'ratings']], 6.9],
+          '#3690c0', // rating 8 - Good
+          ['>=', ['to-number', ['get', 'ratings']], 6.7],
+          '#74a9cf', // rating 7
+          ['>=', ['to-number', ['get', 'ratings']], 6.4],
+          '#a6bddb', // rating 6
+          ['>=', ['to-number', ['get', 'ratings']], 6.2],
+          '#d0d1e6', // rating 5 - Average
+          ['>=', ['to-number', ['get', 'ratings']], 5.9],
+          '#fef0d9', // rating 4
+          ['>=', ['to-number', ['get', 'ratings']], 5.6],
+          '#fdcc8a', // rating 3
+          ['>=', ['to-number', ['get', 'ratings']], 5.1],
+          '#fc8d59', // rating 2
+          '#d7301f', // rating 1 - Poor
         ],
       },
     })
@@ -451,15 +451,15 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       const lineColor = (() => {
         switch (true) {
           case link.data.weight < 0.011183:
-            return '#4a148c'
+            return '#543005'
           case link.data.weight < 0.046948:
-            return '#7b1fa2'
+            return '#8c510a'
           case link.data.weight < 0.080745:
-            return '#ab47bc'
+            return '#bf812d'
           case link.data.weight < 0.142361:
-            return '#ff7043'
+            return '#dfc27d'
           default:
-            return '#ff5722'
+            return '#f6e8c3'
         }
       })()
       const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? '#ffffff' : lineColor)
@@ -618,15 +618,15 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       const lineColor = (() => {
         switch (true) {
           case link.data.weight < 0.011183:
-            return '#4a148c'
+            return '#543005'
           case link.data.weight < 0.046948:
-            return '#7b1fa2'
+            return '#8c510a'
           case link.data.weight < 0.080745:
-            return '#ab47bc'
+            return '#bf812d'
           case link.data.weight < 0.142361:
-            return '#ff7043'
+            return '#dfc27d'
           default:
-            return '#ff5722'
+            return '#f6e8c3'
         }
       })()
       const line = createLinkLine(link.fromId, link.toId, lineColor) // Semi-transparent for background connections

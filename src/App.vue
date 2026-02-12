@@ -8,22 +8,23 @@ import advSearch from './components/AdvSearch.vue'
 import UnsavedChanges from './components/UnsavedChanges.vue'
 import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
+import LegendCard from './components/LegendCard.vue'
 import GroupViewModel from './lib/GroupViewModel'
 import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
 import type { SearchResult } from './lib/createFuzzySearcher'
 import type { AdvSearchResult } from './components/AdvSearch.vue'
 import MapView from './components/MapView.vue'
 import downloadGroupGraph from './lib/downloadGroupGraph'
-const SM_SCREEN_BREAKPOINT = 600
+const SM_SCREEN_BREAKPOINT = 640
 const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
 // UI state
 const sidebarVisible = ref(false)
 const aboutVisible = ref(false)
 const advSearchVisible = ref(false)
+const advSearchResults = ref<SearchResult[]>()
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
-const legendExpanded = ref(false)
 let loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined>(undefined)
 // Project state
 const defaultProjectState = {
@@ -54,16 +55,6 @@ const groupCache = new Map<number, GroupViewModel>()
 
 const typeAheadVisible = computed(() => !(isSmallScreen.value && currentGroup.value && !project.current))
 
-// Collapse legend on mobile when small preview appears
-watch(
-  () => project.smallPreviewName,
-  (newVal) => {
-    if (isSmallScreen.value && newVal && legendExpanded.value) {
-      legendExpanded.value = false
-    }
-  },
-)
-
 function showFullPreview() {
   if (!lastSelected) return
   Object.assign(project, {
@@ -90,7 +81,7 @@ function getOrCreateGroupViewModel(groupId: number) {
 
 function findProject(repo: SearchResult) {
   lastSelected = lastSelected?.id === repo.id ? lastSelected : repo
-  mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lat, lastSelected.lon], zoom: 12 }, lastSelected.skipAnimation)
+  mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lon, lastSelected.lat], zoom: 10 }, lastSelected.skipAnimation)
   Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
   currentFocus.value?.handleCurrentProjectChange(lastSelected.id)
   const reposs = currentFocus.value?.getCoordinates(lastSelected.id)
@@ -106,6 +97,7 @@ async function listCurrentConnections() {
   }
   currentFocus.value?.disposeSubgraphViewer()
   contextMenu.value = undefined
+  advSearchVisible.value = false
   const groupId = lastSelected.groupId ?? (await mapViewRef.value?.getGroupIdAt(lastSelected.lat, lastSelected.lon))
   if (groupId !== undefined) {
     currentGroup.value = undefined
@@ -118,9 +110,8 @@ async function listCurrentConnections() {
   }
 }
 
-function search(params: AdvSearchResult) {
-  console.log('Advanced search with params:', params)
-  mapViewRef.value?.highlightNode({
+async function search(params: AdvSearchResult) {
+  const results = await mapViewRef.value?.highlightNode({
     minWeight: params.minWeight ?? 0,
     maxWeight: params.maxWeight ?? 10,
     minRating: params.minRating ?? 0,
@@ -132,7 +123,9 @@ function search(params: AdvSearchResult) {
     maxPlayers: params.maxPlayers ?? 20,
     minYear: params.minYear ?? 1900,
     maxYear: params.maxYear ?? new Date().getFullYear(),
+    tags: params.tags,
   })
+  advSearchResults.value = results || []
 }
 
 const resizeHandler = () => {
@@ -162,10 +155,12 @@ const showLargestHandler = (id: number, largest: Repositories[]) => {
   g.setLargest(largest)
   currentFocus.value = undefined
   currentGroup.value = g
+  advSearchVisible.value = false
 }
 
 const focusOnRepoHandler = async (repo: number, groupId: number, label: string) => {
   currentGroup.value = undefined
+  advSearchVisible.value = false
   try {
     const graph = await downloadGroupGraph(groupId)
     currentFocus.value = new FocusViewModel(repo, groupId, label, graph)
@@ -221,6 +216,11 @@ function closeFocusView() {
   currentFocus.value = undefined
 }
 
+function closeAdvSearch() {
+  advSearchVisible.value = false
+  advSearchResults.value = undefined
+}
+
 function handleItem(item: { text: string; click: () => void }) {
   contextMenu.value = undefined
   item.click()
@@ -229,10 +229,23 @@ function handleItem(item: { text: string; click: () => void }) {
 
 <template>
   <div>
+    <!-- Skip to content link for keyboard navigation -->
+    <a href="#main-map" class="skip-link">Skip to map</a>
+
+    <!-- Screen reader announcements for dynamic content -->
+    <div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+      <span v-if="project.current">Viewing details for {{ project.current }}</span>
+      <span v-else-if="currentFocus">Viewing connections for {{ currentFocus.name }}</span>
+      <span v-else-if="currentGroup">Viewing regional games</span>
+    </div>
+
     <!-- MapLibre Map -->
     <MapView
+      id="main-map"
       ref="mapViewRef"
       class="map-container"
+      role="application"
+      aria-label="Interactive map of board games"
       @focus-on-repo="focusOnRepoHandler"
       @show-context-menu="showContextMenuHandler"
       @repo-selected="repoSelectedHandler"
@@ -248,84 +261,7 @@ function handleItem(item: { text: string; click: () => void }) {
     </div>
 
     <!-- Legend Card -->
-    <div class="legend-card" :class="{ 'mobile-collapsed': isSmallScreen && !legendExpanded, 'mobile-expanded': isSmallScreen && legendExpanded }">
-      <div v-if="isSmallScreen && !legendExpanded" class="legend-toggle" @click="legendExpanded = true">
-        <span>Legend</span>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div v-else-if="isSmallScreen && legendExpanded" class="legend-toggle" @click="legendExpanded = false">
-        <span>Legend</span>
-        <span class="toggle-icon">▲</span>
-      </div>
-      <div v-show="!isSmallScreen || legendExpanded" class="legend-content">
-        <div class="legend-section">
-          <div class="legend-title">Rating</div>
-          <div class="legend-bar">
-            <div class="segment" style="background-color: #ff0000" title="<5.1"></div>
-            <div class="segment" style="background-color: #ff4400" title="5.1-5.6"></div>
-            <div class="segment" style="background-color: #ff8800" title="5.6-5.9"></div>
-            <div class="segment" style="background-color: #ffcc00" title="5.9-6.2"></div>
-            <div class="segment" style="background-color: #ffff00" title="6.2-6.4"></div>
-            <div class="segment" style="background-color: #ccff00" title="6.4-6.7"></div>
-            <div class="segment" style="background-color: #88ff00" title="6.7-6.9"></div>
-            <div class="segment" style="background-color: #00ff88" title="6.9-7.2"></div>
-            <div class="segment" style="background-color: #00ffee" title="7.2-7.6"></div>
-            <div class="segment" style="background-color: #00aaff" title=">7.6"></div>
-          </div>
-          <div class="legend-labels">
-            <span class="label" style="left: 10%">5.1</span>
-            <span class="label" style="left: 20%">5.6</span>
-            <span class="label" style="left: 30%">5.9</span>
-            <span class="label" style="left: 40%">6.2</span>
-            <span class="label" style="left: 50%">6.4</span>
-            <span class="label" style="left: 60%">6.7</span>
-            <span class="label" style="left: 70%">6.9</span>
-            <span class="label" style="left: 80%">7.2</span>
-            <span class="label" style="left: 90%">7.6</span>
-          </div>
-        </div>
-
-        <div class="legend-section">
-          <div class="legend-title">Complexity</div>
-          <div class="legend-bar shape-bar">
-            <div class="shape-segment" title="Light (1-2)">
-              <img src="/circle.png" alt="circle" class="shape-icon" />
-            </div>
-            <div class="shape-segment" title="Medium (2-3)">
-              <img src="/triangle.png" alt="triangle" class="shape-icon" />
-            </div>
-            <div class="shape-segment" title="Heavy (3-4)">
-              <img src="/diamond.png" alt="diamond" class="shape-icon" />
-            </div>
-            <div class="shape-segment" title="Expert (4+)">
-              <img src="/star.png" alt="star" class="shape-icon" />
-            </div>
-          </div>
-          <div class="legend-labels">
-            <span class="label" style="left: 0%; transform: translateX(0)">1</span>
-            <span class="label" style="left: 25%">2</span>
-            <span class="label" style="left: 50%">3</span>
-            <span class="label" style="left: 75%">4</span>
-            <span class="label" style="left: 100%; transform: translateX(-100%)">5</span>
-          </div>
-        </div>
-
-        <div class="legend-section">
-          <div class="legend-title">Link Strength</div>
-          <div class="legend-bar">
-            <div class="segment" style="background-color: #4a148c" title="Weak"></div>
-            <div class="segment" style="background-color: #7b1fa2" title="Light"></div>
-            <div class="segment" style="background-color: #ab47bc" title="Moderate"></div>
-            <div class="segment" style="background-color: #ff7043" title="Strong"></div>
-            <div class="segment" style="background-color: #ff5722" title="Very Strong"></div>
-          </div>
-          <div class="legend-labels">
-            <span class="label" style="left: 0%; transform: translateX(0)">Low</span>
-            <span class="label" style="left: 100%; transform: translateX(-100%)">High</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <LegendCard />
 
     <!-- Made by -->
     <div class="made-by">
@@ -346,12 +282,22 @@ function handleItem(item: { text: string; click: () => void }) {
     </div>
 
     <!-- Right panel views -->
-    <largest-repositories v-if="currentGroup" :repos="currentGroup" class="right-panel" @selected="findProject" @close="closeGroupView" />
+    <largest-repositories
+      v-if="currentGroup"
+      :repos="currentGroup"
+      class="right-panel"
+      role="complementary"
+      aria-label="Regional games list"
+      @selected="findProject"
+      @close="closeGroupView"
+    />
 
     <focus-repository
       v-if="currentFocus"
       :vm="currentFocus"
-      class="right-panel"
+      class="right-panel focus-panel"
+      role="complementary"
+      aria-label="Game connections"
       @selected="findProject"
       @close="closeFocusView"
       @cleared="clearProjectStateIfSmallScreen"
@@ -363,17 +309,19 @@ function handleItem(item: { text: string; click: () => void }) {
       v-if="project.current && project.currentId"
       :id="project.currentId"
       :name="project.current"
+      role="complementary"
+      aria-label="Game details panel"
       @list-connections="listCurrentConnections"
     />
 
     <!-- Search bar -->
-    <form v-if="typeAheadVisible" class="search-box" @submit.prevent>
+    <form v-if="typeAheadVisible" class="search-box" role="search" aria-label="Game search" @submit.prevent>
       <type-ahead
         placeholder="Find Game"
         :show-clear-button="project.current ? 'true' : 'false'"
         :query="project.current"
         @menu-clicked="aboutVisible = true"
-        @show-advanced-search="advSearchVisible = true"
+        @show-advanced-search="advSearchVisible = !advSearchVisible"
         @selected="findProject"
         @before-clear="clearProjectState"
         @cleared="clearProjectState"
@@ -408,282 +356,119 @@ function handleItem(item: { text: string; click: () => void }) {
     <transition name="slide-top">
       <unsaved-changes :geojson="loadedPlaces" v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false" />
     </transition>
-    <transition name="slide-left">
-      <about v-if="aboutVisible" class="about" @close="aboutVisible = false" />
-    </transition>
-    <transition name="slide-right">
-      <advSearch v-if="advSearchVisible" class="adv-search" @search="search" @close="advSearchVisible = false" />
-    </transition>
+    <about v-model:is-open="aboutVisible" @close="aboutVisible = false" />
+    <advSearch
+      v-model:is-open="advSearchVisible"
+      :search-results="advSearchResults"
+      @search="search"
+      @result-selected="findProject"
+      @close="closeAdvSearch"
+    />
   </div>
 </template>
+
 <style scoped>
+/* ==========================================
+   LAYOUT
+   ========================================== */
 .map-container {
   width: 100%;
   height: 100vh;
   position: relative;
 }
-</style>
-<style scoped>
-.legend-card {
-  position: fixed;
-  left: 8px;
-  bottom: 8px;
-  background: rgba(0, 0, 0, 0.75);
-  padding: 12px 14px;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 12px;
-  width: 340px;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-}
 
-.legend-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding: 4px 0;
-  font-weight: 600;
-  font-size: 12px;
-  user-select: none;
-  color: hsla(160, 100%, 37%, 1);
-}
-
-.toggle-icon {
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.legend-content {
-  transition: all 0.3s ease;
-}
-
-.legend-section {
-  margin-bottom: 10px;
-}
-
-.legend-section:last-child {
-  margin-bottom: 0;
-}
-
-.legend-title {
-  font-weight: 600;
-  margin-bottom: 4px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.legend-bar {
-  display: flex;
-  height: 24px;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.legend-bar.shape-bar {
-  height: 34px;
-  background: linear-gradient(to right, rgba(0, 233, 255, 0.2), rgba(0, 255, 131, 0.2));
-}
-
-.segment {
-  flex: 1;
-  cursor: default;
-  transition: transform 0.2s;
-}
-
-.segment:hover {
-  transform: scaleY(1.1);
-  z-index: 1;
-}
-
-.shape-segment {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-  transition: transform 0.2s;
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.shape-segment:last-child {
-  border-right: none;
-}
-
-.shape-segment:hover {
-  transform: scaleY(1.1);
-  z-index: 1;
-}
-
-.shape-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
-}
-
-.legend-labels {
-  position: relative;
-  height: 16px;
-  margin-top: 4px;
-}
-
-.label {
-  position: absolute;
-  transform: translateX(-50%);
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
+/* ==========================================
+   MADE BY ATTRIBUTION
+   ========================================== */
 .made-by {
   position: fixed;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px;
-  font-size: 12px;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: var(--backdrop-blur-sm);
+  padding: var(--space-1);
+  font-size: var(--text-sm);
+  color: #ffffff;
+  z-index: var(--z-raised);
+  border-top-left-radius: var(--radius-sm);
 }
 
 .made-by a {
-  color: hsla(160, 100%, 37%, 1);
+  color: var(--accent-400);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
+.made-by a:hover {
+  color: var(--accent-300);
+}
+
+/* ==========================================
+   SEARCH BOX
+   ========================================== */
 .search-box {
   position: absolute;
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    0 -1px 0px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-lg);
   height: 48px;
-  font-size: 16px;
-  margin-top: 16px;
+  font-size: var(--text-md);
+  margin-top: var(--space-4);
   padding: 0;
   cursor: text;
-  left: 8px;
-  top: 8px;
-  width: calc(var(--side-panel-width) - 8px);
+  left: var(--space-2);
+  top: var(--space-2);
+  width: calc(var(--sidebar-width) - var(--space-2));
+  z-index: var(--z-modal);
 }
 
-.tooltip {
-  position: absolute;
-  background: var(--color-background-soft);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--color-text);
-  z-index: 1;
-  pointer-events: none;
-  white-space: nowrap;
-  transform: translate(-50%, calc(-100% - 12px));
-}
-
+/* ==========================================
+   PANELS & OVERLAYS
+   ========================================== */
 .right-panel {
   position: fixed;
   right: 0;
-  padding: 8px;
+  padding: var(--space-2);
   background: var(--color-background);
   height: 100%;
   bottom: 0;
-  width: 400px;
+  width: var(--sidebar-width);
   overflow: hidden;
   border-left: 1px solid var(--color-border);
+  z-index: var(--z-raised);
+}
+
+.focus-panel {
+  z-index: var(--z-popover);
 }
 
 .unsaved-changes {
   position: absolute;
   top: 60px;
-  left: 8px;
-  padding: 8px;
-  font-size: 12px;
+  left: var(--space-2);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
   color: var(--color-text);
-  background: var(--color-background);
-  width: calc(var(--side-panel-width) - 8px);
-}
-
-.slide-top-enter-active,
-.slide-top-leave-active {
-  transition: opacity 0.3s cubic-bezier(0, 0, 0.58, 1);
-}
-
-.slide-top-enter,
-.slide-top-leave-to {
-  opacity: 0;
+  background: var(--color-background-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  width: calc(var(--sidebar-width) - var(--space-2));
+  z-index: var(--z-dropdown);
 }
 
 .changes-window {
   position: fixed;
   transform: translate(-50%, -50%);
-  top: 0;
   left: 50%;
   top: 50%;
   width: 400px;
+  max-width: 90vw;
   background: var(--color-background);
-  z-index: 2;
-  box-shadow: 0 -1px 24px rgb(0 0 0);
-  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  padding: var(--space-2) var(--space-4);
   overflow-y: auto;
-  max-height: 100%;
-}
-
-.context-menu {
-  position: absolute;
-  background: var(--color-background-soft);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--color-text);
-  z-index: 2;
-  white-space: nowrap;
-  display: flex;
-  flex-direction: column;
-}
-
-.repo-viewer {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: calc(var(--side-panel-width) + 16px);
-  height: 100vh;
-  overflow: auto;
-  background: var(--color-background);
-  border-right: 1px solid var(--color-border);
-}
-
-.slide-bottom-enter-active,
-.slide-bottom-leave-active {
-  transition: transform 0.3s cubic-bezier(0, 0, 0.58, 1);
-}
-
-.slide-bottom-enter,
-.slide-bottom-leave-to {
-  transform: translateY(84px);
-}
-
-.slide-left-enter-active,
-.slide-left-leave-active {
-  transition: transform 150ms cubic-bezier(0, 0, 0.58, 1);
-}
-
-.slide-left-enter,
-.slide-left-leave-to {
-  transform: translateX(-100%);
-}
-
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: transform 150ms cubic-bezier(0, 0, 0.58, 1);
-}
-
-.slide-right-enter,
-.slide-right-leave-to {
-  transform: translateX(100%);
+  max-height: 90vh;
+  z-index: var(--z-modal);
 }
 
 .small-preview {
@@ -691,47 +476,110 @@ function handleItem(item: { text: string; click: () => void }) {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 84px;
   background: var(--color-background);
-  box-shadow: 0 -4px 4px rgba(0, 0, 0, 0.42);
+  box-shadow: var(--shadow-xl);
+  border-top: 1px solid var(--color-border);
+  z-index: var(--z-overlay);
 }
 
-.about {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: var(--side-panel-width);
-  background: var(--color-background);
-  z-index: 2;
-  box-shadow: 0 -1px 24px rgb(0 0 0);
+/* ==========================================
+   TOOLTIP & CONTEXT MENU
+   ========================================== */
+.tooltip {
+  position: absolute;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+
+.context-menu {
+  position: absolute;
+  background: var(--color-background-elevated);
+  border: 1px solid var(--color-border);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  white-space: nowrap;
   display: flex;
   flex-direction: column;
-  max-width: 90%;
+  gap: 2px;
 }
 
-.adv-search {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: var(--side-panel-width);
-  background: var(--color-background);
-  z-index: 2;
-  box-shadow: 0 -1px 24px rgb(0 0 0);
-  display: flex;
-  flex-direction: column;
-  max-width: 100%;
+.context-menu a {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
-@media (max-width: 800px) {
-  .repo-viewer,
+.context-menu a:hover {
+  background-color: var(--color-surface-hover);
+}
+
+/* ==========================================
+   TRANSITIONS
+   ========================================== */
+.slide-top-enter-active,
+.slide-top-leave-active {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.slide-top-enter-from,
+.slide-top-leave-to {
+  opacity: 0;
+}
+
+.slide-bottom-enter-active,
+.slide-bottom-leave-active {
+  transition: transform var(--duration-normal) var(--ease-emphasized);
+}
+
+.slide-bottom-enter-from,
+.slide-bottom-leave-to {
+  transform: translateY(100%);
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: transform var(--duration-fast) var(--ease-emphasized);
+}
+
+.slide-left-enter-from,
+.slide-left-leave-to {
+  transform: translateX(-100%);
+}
+
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform var(--duration-fast) var(--ease-emphasized);
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
+/* ==========================================
+   RESPONSIVE - TABLET
+   ========================================== */
+@media (max-width: 768px) {
   .search-box,
   .right-panel {
     width: 45vw;
   }
 
   .search-box {
-    margin: 0;
+    margin-top: 0;
     left: 0;
   }
 
@@ -742,84 +590,48 @@ function handleItem(item: { text: string; click: () => void }) {
   }
 }
 
-@media (max-width: 600px) {
-  .legend-card {
-    width: calc(100% - 16px);
-    left: 8px;
-    bottom: 8px;
-    font-size: 10px;
-    padding: 6px 8px;
-  }
-
-  .legend-section {
-    margin-bottom: 8px;
-  }
-
-  .legend-title {
-    font-size: 10px;
-    margin-bottom: 3px;
-  }
-
-  .legend-card.mobile-collapsed {
-    width: auto;
-    padding: 8px 12px;
-  }
-
-  .legend-card.mobile-expanded {
-    width: calc(100% - 16px);
-    max-height: 80vh;
-    overflow-y: auto;
-    z-index: 10;
-  }
-
-  .legend-toggle {
-    font-size: 14px;
-    padding: 6px 0;
-  }
-
-  .legend-bar {
-    height: 16px;
-    border-radius: 3px;
-  }
-
-  .legend-bar.shape-bar {
-    height: 22px;
-  }
-
-  .shape-icon {
-    width: 16px;
-    height: 16px;
-  }
-
-  .legend-labels {
-    height: 12px;
-    margin-top: 2px;
-  }
-
-  .label {
-    font-size: 8px;
-  }
-
-  .repo-viewer {
-    width: 100%;
-  }
-
+/* ==========================================
+   RESPONSIVE - MOBILE
+   ========================================== */
+@media (max-width: 640px) {
   .search-box {
     left: 0;
     margin-top: 0;
     width: 100%;
+    border-radius: 0;
   }
 
   .right-panel {
     width: 100%;
   }
 
+  .focus-panel {
+    top: auto;
+    bottom: 0;
+    height: 40vh;
+    max-height: 40vh;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-2xl);
+  }
+
+  .unsaved-changes {
+    width: calc(100% - var(--space-4));
+    left: var(--space-2);
+  }
+
+  .made-by {
+    font-size: var(--text-xs);
+    padding: 4px;
+  }
+
   .neighbors-container {
     height: 30%;
     top: 70%;
-    z-index: 2;
+    z-index: var(--z-overlay);
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -4px 4px rgba(0, 0, 0, 0.42);
+    box-shadow: var(--shadow-xl);
   }
 }
 </style>

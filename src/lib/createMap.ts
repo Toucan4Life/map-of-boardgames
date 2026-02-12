@@ -11,7 +11,9 @@ import config from './config'
 import getColorTheme from './getColorTheme'
 import type { Graph } from 'ngraph.graph'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.ts'
+import type { SearchResult } from './createFuzzySearcher.js'
 import type { Repositories } from './FocusViewModel.ts'
+
 const primaryHighlightColor = '#bf2072'
 const secondaryHighlightColor = '#e56aaa'
 
@@ -29,6 +31,7 @@ export interface SearchParameters {
   maxPlayers: number
   minYear: number
   maxYear: number
+  tags?: string[]
 }
 
 export class BoardGameMap {
@@ -91,25 +94,25 @@ export class BoardGameMap {
         paint: {
           'icon-color': [
             'case',
-            ['>=', ['to-number', ['get', 'ratings']], 7.609174],
-            '#00aaff',
-            ['>=', ['to-number', ['get', 'ratings']], 7.204706],
-            '#00ffee',
-            ['>=', ['to-number', ['get', 'ratings']], 6.918946],
-            '#00ff88',
-            ['>=', ['to-number', ['get', 'ratings']], 6.65909],
-            '#88ff00',
-            ['>=', ['to-number', ['get', 'ratings']], 6.42297],
-            '#ccff00',
-            ['>=', ['to-number', ['get', 'ratings']], 6.18157],
-            '#ffff00',
-            ['>=', ['to-number', ['get', 'ratings']], 5.900366],
-            '#ffcc00',
-            ['>=', ['to-number', ['get', 'ratings']], 5.565964],
-            '#ff8800',
-            ['>=', ['to-number', ['get', 'ratings']], 5.07692],
-            '#ff4400',
-            '#ff0000',
+            ['>=', ['to-number', ['get', 'ratings']], 7.6],
+            '#034e7b', // rating 10 - Excellent
+            ['>=', ['to-number', ['get', 'ratings']], 7.2],
+            '#0570b0', // rating 9
+            ['>=', ['to-number', ['get', 'ratings']], 6.9],
+            '#3690c0', // rating 8 - Good
+            ['>=', ['to-number', ['get', 'ratings']], 6.7],
+            '#74a9cf', // rating 7
+            ['>=', ['to-number', ['get', 'ratings']], 6.4],
+            '#a6bddb', // rating 6
+            ['>=', ['to-number', ['get', 'ratings']], 6.2],
+            '#d0d1e6', // rating 5 - Average
+            ['>=', ['to-number', ['get', 'ratings']], 5.9],
+            '#fef0d9', // rating 4
+            ['>=', ['to-number', ['get', 'ratings']], 5.6],
+            '#fdcc8a', // rating 3
+            ['>=', ['to-number', ['get', 'ratings']], 5.1],
+            '#fc8d59', // rating 2
+            '#d7301f', // rating 1 - Poor
           ],
         },
       },
@@ -137,13 +140,20 @@ export class BoardGameMap {
     this.map.addLayer(linesLayer, 'circle-layer')
   }
 
-  highlightNode(searchParameters: SearchParameters): void {
-    if (this.map.getZoom() < 3) this.map.setZoom(3)
+  async highlightNode(searchParameters: SearchParameters): Promise<SearchResult[]> {
+    this.map.setZoom(2)
+
+    // Wait for the map to finish rendering at the new zoom level
+    await new Promise<void>((resolve) => {
+      this.map.once('idle', () => resolve())
+    })
 
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
     }
+
+    const results: SearchResult[] = []
 
     let playerMinField: string
     let playerMaxField: string
@@ -161,52 +171,160 @@ export class BoardGameMap {
         playerMaxField = 'max_players'
     }
 
-    const selectedFilters: FilterSpecification = [
-      'all',
-      ['>=', ['to-number', ['get', 'complexity']], searchParameters.minWeight],
-      ['<=', ['to-number', ['get', 'complexity']], searchParameters.maxWeight],
-      ['>=', ['to-number', ['get', 'ratings']], searchParameters.minRating],
-      ['<=', ['to-number', ['get', 'ratings']], searchParameters.maxRating],
-      ['>=', ['to-number', ['get', 'year']], searchParameters.minYear],
-      ['<=', ['to-number', ['get', 'year']], searchParameters.maxYear],
-      [
-        'all',
-        ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
-        ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
-      ],
-      [
-        'all',
-        ['<=', ['to-number', ['get', playerMinField]], searchParameters.maxPlayers],
-        ['>=', ['to-number', ['get', playerMaxField]], searchParameters.minPlayers],
-      ],
-    ]
-    console.log(selectedFilters)
-    this.map
-      .querySourceFeatures('points-source', {
-        sourceLayer: 'points',
-        filter: selectedFilters,
-      })
-      .forEach((repo) => {
-        const coordinates = (repo.geometry as GeoJSON.Point).coordinates
-        highlightedNodes.features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates },
-          properties: {
-            color: primaryHighlightColor,
-            name: repo.properties.label,
-            background: '#ff0000',
-            textSize: 1.2,
-          },
+    // When tags are specified, we need to get all features because MapLibre can't filter by tags
+    // We'll apply all filters in JavaScript after tag matching
+    const useTagFiltering = searchParameters.tags && searchParameters.tags.length > 0
+
+    const selectedFilters: FilterSpecification = useTagFiltering
+      ? ['==', '$type', 'Point'] // Get all points when filtering by tags
+      : [
+          'all',
+          ['>=', ['to-number', ['get', 'complexity']], searchParameters.minWeight],
+          ['<=', ['to-number', ['get', 'complexity']], searchParameters.maxWeight],
+          ['>=', ['to-number', ['get', 'ratings']], searchParameters.minRating],
+          ['<=', ['to-number', ['get', 'ratings']], searchParameters.maxRating],
+          ['>=', ['to-number', ['get', 'year']], searchParameters.minYear],
+          ['<=', ['to-number', ['get', 'year']], searchParameters.maxYear],
+          [
+            'all',
+            ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
+            ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
+          ],
+          [
+            'all',
+            ['<=', ['to-number', ['get', playerMinField]], searchParameters.maxPlayers],
+            ['>=', ['to-number', ['get', playerMaxField]], searchParameters.minPlayers],
+          ],
+        ]
+    const features = this.map.querySourceFeatures('points-source', {
+      sourceLayer: 'points',
+      filter: selectedFilters,
+    })
+
+    // Track seen IDs to deduplicate results (querySourceFeatures can return duplicates from different tiles)
+    const seenIds = new Set<number>()
+
+    features.forEach((repo) => {
+      const id = repo.properties.id
+
+      // Skip if we've already processed this game
+      if (seenIds.has(id)) {
+        return
+      }
+      seenIds.add(id)
+
+      // Filter by tags if specified
+      if (searchParameters.tags && searchParameters.tags.length > 0) {
+        const nodeTags = repo.properties.tags?.toString() || ''
+        // Parse node tags: "category1,category2;mechanic1,mechanic2;family1,family2"
+        const parts = nodeTags.split(';')
+        const nodeCategories = parts[0]
+          ? parts[0]
+              .split(',')
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+          : []
+        const nodeMechanics = parts[1]
+          ? parts[1]
+              .split(',')
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+          : []
+        const nodeFamilies = parts[2]
+          ? parts[2]
+              .split(',')
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+          : []
+
+        // Check if any of the search tags match the node tags (by type and ID)
+        const hasMatchingTag = searchParameters.tags.some((tagKey: string) => {
+          const parts = tagKey.split('-')
+          if (parts.length < 2) return false
+
+          const type = parts[0]
+          const id = parts.slice(1).join('-')
+
+          if (type === 'category') {
+            return nodeCategories.includes(id)
+          } else if (type === 'mechanic') {
+            return nodeMechanics.includes(id)
+          } else if (type === 'family') {
+            return nodeFamilies.includes(id)
+          }
+          return false
         })
+
+        if (!hasMatchingTag) {
+          return
+        }
+      }
+
+      // When using tag filtering, also apply the other filters in JavaScript
+      if (useTagFiltering) {
+        const complexity = Number(repo.properties.complexity) || 0
+        const rating = Number(repo.properties.ratings) || 0
+        const year = Number(repo.properties.year) || 0
+        const minTime = Number(repo.properties.min_time) || 0
+        const maxTime = Number(repo.properties.max_time) || 0
+        const minPlayers = Number(repo.properties[playerMinField]) || 0
+        const maxPlayers = Number(repo.properties[playerMaxField]) || 0
+
+        // Skip filters for fields with missing data (value is 0)
+        if (complexity > 0 && (complexity < searchParameters.minWeight || complexity > searchParameters.maxWeight)) {
+          return
+        }
+        if (rating > 0 && (rating < searchParameters.minRating || rating > searchParameters.maxRating)) {
+          return
+        }
+        if (year > 0 && (year < searchParameters.minYear || year > searchParameters.maxYear)) {
+          return
+        }
+        if (maxTime > 0 && (minTime < searchParameters.minPlaytime || maxTime > searchParameters.maxPlaytime)) {
+          return
+        }
+        if (maxPlayers > 0 && (minPlayers > searchParameters.maxPlayers || maxPlayers < searchParameters.minPlayers)) {
+          return
+        }
+      }
+
+      const coordinates = (repo.geometry as GeoJSON.Point).coordinates
+      highlightedNodes.features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates },
+        properties: {
+          color: primaryHighlightColor,
+          name: repo.properties.label,
+          background: '#ff0000',
+          textSize: 1.2,
+        },
       })
+
+      // Add to results array
+      results.push({
+        text: repo.properties.label,
+        lat: coordinates[1],
+        lon: coordinates[0],
+        id: repo.properties.id,
+        year: repo.properties.year?.toString() || '0',
+        groupId: repo.properties.c,
+        selected: false,
+        skipAnimation: false,
+        html: null,
+        rating: repo.properties.ratings ? Number(repo.properties.ratings) : undefined,
+        weight: repo.properties.complexity ? Number(repo.properties.complexity) : undefined,
+        size: repo.properties.size ? Number(repo.properties.size) : undefined,
+      })
+    })
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
     this.map.redraw()
+    return results
   }
 
   async getGroupIdAt(lat: number, lon: number): Promise<number | undefined> {
     const col = (await (this.map.getSource('borders-source') as GeoJSONSource).getData()) as GeoJSON.FeatureCollection<GeoJSON.Polygon>
     const feature = col.features.find((f) => {
-      return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lat, lon)
+      return this.polygonContainsPoint((f.geometry as GeoJSON.Polygon).coordinates[0], lon, lat)
     })
     return feature?.id !== undefined ? +feature.id : undefined
   }
@@ -279,15 +397,15 @@ export class BoardGameMap {
         const lineColor = (() => {
           switch (true) {
             case link.data.weight < 0.011183:
-              return '#4a148c'
+              return '#543005'
             case link.data.weight < 0.046948:
-              return '#7b1fa2'
+              return '#8c510a'
             case link.data.weight < 0.080745:
-              return '#ab47bc'
+              return '#bf812d'
             case link.data.weight < 0.142361:
-              return '#ff7043'
+              return '#dfc27d'
             default:
-              return '#ff5722'
+              return '#f6e8c3'
           }
         })()
 
@@ -385,7 +503,7 @@ export class BoardGameMap {
             type: 'vector',
             tiles: [config.vectorTilesTiles],
             minzoom: 0,
-            maxzoom: 5,
+            maxzoom: 6,
             bounds: [-154.781, -147.422, 154.781, 147.422],
           },
           place: { type: 'geojson', data: config.placesSource },
@@ -418,7 +536,19 @@ export class BoardGameMap {
             source: 'borders-source',
             filter: ['==', '$type', 'Polygon'],
             paint: {
-              'fill-color': ['get', 'fill'],
+              'fill-color': [
+                'match',
+                ['get', 'fill'],
+                '#516ebc',
+                '#27313A',
+                '#00529c',
+                '#2C3A33',
+                '#153477',
+                '#352C36',
+                '#37009c',
+                '#2F2F34',
+                ['get', 'fill'],
+              ],
             },
           },
           {

@@ -3,6 +3,9 @@ import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { IFocusViewModel, Repositories } from '@/lib/FocusViewModel'
 import TreeView from './TreeView.vue'
 import type { BoardGameNodeData } from '@/lib/fetchAndProcessGraph'
+import BaseIconButton from './base/BaseIconButton.vue'
+import BaseButton from './base/BaseButton.vue'
+import BaseCard from './base/BaseCard.vue'
 
 const props = defineProps<{ vm: IFocusViewModel }>()
 
@@ -17,7 +20,7 @@ function handleNodeSelected(node: BoardGameNodeData, event: MouseEvent) {
   showDetails(
     {
       name: node.label,
-      lngLat: props.vm.lngLat,
+      lngLat: node.lnglat,
       id: node.id || 0,
       isExternal: false,
       linkWeight: 0,
@@ -31,8 +34,8 @@ function showDetails(repo: IFocusViewModel | Repositories, event: MouseEvent): v
   if (!repo.id) return
   emit('selected', {
     text: repo.name?.toString() ?? '',
-    lon: repo.lngLat[1],
-    lat: repo.lngLat[0],
+    lon: repo.lngLat[0],
+    lat: repo.lngLat[1],
     skipAnimation: event.altKey,
     id: repo.id,
     selected: false,
@@ -61,65 +64,79 @@ function expandGraph() {
 }
 </script>
 <template>
-  <div class="neighbors-container">
-    <div class="names-container">
-      <div class="header-container">
-        <div class="header">
-          <h2>
-            <a :href="getLink(props.vm)" class="normal" @click.prevent="showDetails(props.vm, $event)">{{ props.vm.name }}</a>
-          </h2>
-          <!-- Graph view header -->
-          <div v-if="vm.graphData" class="minimal-header">
-            <span>Graph view active.</span>
-            <a href="#" class="inline-action-link" :class="{ disabled: vm.expandingGraph }" @click.prevent="vm.goBackToDirectConnections()"> Exit </a>
-          </div>
-          <div v-if="vm.graphData" class="minimal-header">
-            <span v-if="vm.layoutRunning" class="layout-status">
-              Layout is running. <a href="#" class="inline-action-link" @click.prevent="vm.setLayout(false)">Stop</a>
-            </span>
-            <span v-else class="layout-status">
-              Layout is stopped. <a href="#" class="inline-action-link" @click.prevent="vm.setLayout(true)">Resume</a>
-            </span>
-          </div>
+  <div class="focus-container">
+    <div class="focus-header">
+      <div class="header-content">
+        <h2 class="focus-title">
+          <a :href="getLink(props.vm)" class="title-link" @click.prevent="showDetails(props.vm, $event)">
+            {{ props.vm.name }}
+          </a>
+        </h2>
 
-          <!-- Direct connections view header -->
-          <div v-else class="minimal-header">
-            <span v-if="!vm.loading">
-              {{ vm.repos.length }} direct connections shown.
-              <a v-if="!vm.expandingGraph" href="#" class="inline-action-link" @click.prevent="expandGraph()"> Expand to graph view </a>
-            </span>
-          </div>
+        <!-- Graph view status -->
+        <div v-if="vm.graphData" class="status-info">
+          <span class="status-text">Graph view active</span>
+          <BaseButton variant="ghost" size="sm" :disabled="vm.expandingGraph" @click="vm.goBackToDirectConnections()"> Exit </BaseButton>
         </div>
-        <a class="close-btn" href="#" @click.prevent="closePanel()">
-          <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="feather feather-x-circle"
-          >
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="15" y1="9" x2="9" y2="15"></line>
-            <line x1="9" y1="9" x2="15" y2="15"></line>
-          </svg>
-        </a>
+
+        <!-- Layout controls -->
+        <div v-if="vm.graphData" class="status-info">
+          <span v-if="vm.layoutRunning" class="status-text">
+            Layout running
+            <BaseButton variant="ghost" size="sm" @click="vm.setLayout(false)">Stop</BaseButton>
+          </span>
+          <span v-else class="status-text">
+            Layout stopped
+            <BaseButton variant="ghost" size="sm" @click="vm.setLayout(true)">Resume</BaseButton>
+          </span>
+        </div>
+
+        <!-- Direct connections view -->
+        <div v-else class="status-info">
+          <span v-if="!vm.loading" class="status-text">
+            {{ vm.repos.length }} direct connections
+            <BaseButton v-if="!vm.expandingGraph" variant="ghost" size="sm" @click="expandGraph()"> Expand to graph view </BaseButton>
+          </span>
+        </div>
       </div>
-      <!-- Show either the regular repo list or the expanded graph tree view -->
-      <div v-if="!vm.graphData" class="repo-list-container">
-        <ul v-if="vm.repos && !vm.expandingGraph">
-          <li v-for="repo in vm.repos" :key="repo.name">
-            <a :href="getLink(repo)" target="_blank" @click.prevent="showDetails(repo, $event)"
-              >{{ repo.name }} <span v-if="repo.isExternal" title="External country">E</span>
-            </a>
+
+      <BaseIconButton ariaLabel="Close focus view" variant="ghost" size="md" @click="closePanel">
+        <!-- Icon copyright (c) 2013-2017 Cole Bemis: https://github.com/feathericons/feather/blob/master/LICENSE -->
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </BaseIconButton>
+    </div>
+
+    <!-- Content Area -->
+    <div class="focus-content">
+      <!-- Regular repo list -->
+      <div v-if="!vm.graphData" class="list-view">
+        <ul v-if="vm.repos && !vm.expandingGraph" class="game-list">
+          <li v-for="repo in vm.repos" :key="repo.name" class="game-list-item">
+            <BaseCard elevation="sm" interactive>
+              <a :href="getLink(repo)" class="game-link" @click.prevent="showDetails(repo, $event)">
+                {{ repo.name }}
+                <span v-if="repo.isExternal" class="external-badge" title="External region">E</span>
+              </a>
+            </BaseCard>
           </li>
         </ul>
-        <div v-if="vm.expandingGraph" class="loading">
+
+        <!-- Loading state -->
+        <div v-if="vm.expandingGraph" class="loading-container">
           <div class="loading-logs">
             <div class="log-header">Loading expanded graph view...</div>
             <div v-if="vm.currentLog" class="current-log">{{ vm.currentLog }}</div>
@@ -131,165 +148,223 @@ function expandGraph() {
           </div>
         </div>
       </div>
-      <div v-else class="tree-view-container">
+
+      <!-- Tree view for expanded graph -->
+      <div v-else class="tree-view">
         <TreeView :tree="vm.graphData" @node-selected="handleNodeSelected" />
       </div>
     </div>
   </div>
 </template>
 <style scoped>
-.names-container {
+/* ==========================================
+   FOCUS VIEW CONTAINER
+   ========================================== */
+.focus-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
   overflow: hidden;
 }
-h2 {
-  margin-bottom: 4px;
-}
-.minimal-header {
-  font-size: 14px;
-  color: var(--color-text-light, #888);
-  margin-bottom: 8px;
-}
-.inline-action-link {
-  color: var(--color-link-hover);
-  text-decoration: none;
-  margin-left: 5px;
-  font-weight: 500;
-}
-.inline-action-link:hover {
-  text-decoration: underline;
-}
-.inline-action-link.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
+
+/* Header */
+.focus-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  flex-shrink: 0;
+  gap: var(--space-2);
+  z-index: var(--z-sticky);
 }
 
-ul {
-  list-style: none;
-  padding: 0;
-  overflow-y: auto;
+.header-content {
+  flex: 1;
+  min-width: 0;
 }
-.repo-list-container,
-.tree-view-container {
-  overflow-y: auto;
-  height: calc(100% - 60px);
+
+.focus-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-heading);
+  line-height: var(--leading-tight);
 }
-.chat-container {
-  height: 100%;
+
+.title-link {
+  color: var(--color-link);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.title-link:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+/* Status Info */
+.status-info {
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
+  margin-bottom: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.status-text {
+  line-height: var(--leading-relaxed);
+}
+
+/* Content Area */
+.focus-content {
+  flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--color-border);
 }
 
-.close-btn {
-  margin: 8px;
-}
-.header-container {
-  display: flex;
-}
-.header {
+.list-view,
+.tree-view {
   flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
 }
-.connections-header {
+
+/* Game List */
+.game-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.game-list-item {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.game-link {
+  display: flex;
   align-items: center;
-  margin-bottom: 8px;
-}
-.action-button {
-  margin-left: 8px;
-}
-.action-link {
-  display: inline-block;
-  padding: 4px 10px;
-  background: var(--color-background-soft);
-  color: var(--color-text);
+  justify-content: space-between;
+  padding: var(--space-3);
   text-decoration: none;
-  border-radius: 4px;
-  font-size: 14px;
-  border: 1px solid var(--color-border);
-  transition: all 0.3s ease;
+  color: var(--color-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  transition: color var(--duration-fast) var(--ease-out);
 }
-.action-link:hover {
+
+.game-link:hover {
   color: var(--color-link-hover);
-  border-color: var(--color-border-hover);
 }
-.action-link.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
+
+.external-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  margin-left: var(--space-2);
 }
-.back-link {
-  display: inline-block;
-  background: var(--color-background-mute);
-  margin-top: 8px;
-}
-.title-row h3 {
-  margin-bottom: 0;
-  color: var(--color-text);
-}
-.graph-controls {
-  margin-top: 8px;
-  padding: 4px 0;
-}
-.loading {
+
+/* Loading State */
+.loading-container {
   height: 100%;
   overflow-y: auto;
 }
+
 .loading-logs {
   font-family: monospace;
-  font-size: 13px;
-  border-radius: 4px;
-  background: var(--color-background-mute);
-  padding: 12px;
+  font-size: var(--text-xs);
+  background: var(--color-surface-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   height: 100%;
   overflow: auto;
 }
+
 .log-header {
-  font-weight: bold;
-  color: var(--critical-call-to-action);
-  margin-bottom: 8px;
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
 }
+
 .current-log {
   color: var(--color-link-hover);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   white-space: pre-wrap;
   word-break: break-all;
+  line-height: var(--leading-relaxed);
 }
+
 .log-messages {
-  color: var(--color-text);
+  color: var(--color-text-soft);
   max-height: 300px;
   overflow-y: auto;
 }
+
 .log-message {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   white-space: pre-wrap;
   word-break: break-all;
+  opacity: 0.8;
 }
-@media (max-width: 600px) {
+
+/* ==========================================
+   RESPONSIVE - MOBILE
+   ========================================== */
+@media (max-width: 640px) {
+  .focus-container {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .focus-header {
+    padding: var(--space-2);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .focus-title {
+    font-size: var(--text-md);
+  }
+
+  .list-view,
+  .tree-view {
+    padding: var(--space-2);
+  }
+
   .loading-logs {
-    padding: 8px;
+    padding: var(--space-2);
   }
 
   .log-header {
-    font-size: 12px;
-    margin-bottom: 4px;
+    font-size: var(--text-xs);
+    margin-bottom: var(--space-1);
   }
 
-  /* Hide all log messages except current-log on mobile */
+  /* Hide detailed log messages on mobile for performance */
   .log-messages {
     display: none;
   }
 
-  /* Make current log more visible */
   .current-log {
     margin-bottom: 0;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 </style>

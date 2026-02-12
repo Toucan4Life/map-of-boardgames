@@ -8,4 +8,7 @@ export interface SearchResult {
   lon: number
   id: number
   year: string
+  rating?: number
+  weight?: number
+  size?: number
 }
