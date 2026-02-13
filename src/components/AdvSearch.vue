@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import CustomMinMaxSlider from './CustomMinMaxSlider.vue'
 import BaseButton from './base/BaseButton.vue'
 import BaseCard from './base/BaseCard.vue'
@@ -19,6 +19,27 @@ const pageSize = 20
 const isExpandedMobile = ref(false)
 const sortBy = ref<'name' | 'year' | 'rating' | 'complexity' | 'numRatings'>('name')
 const sortDirection = ref<'asc' | 'desc'>('asc')
+const resultsSection = ref<HTMLElement | null>(null)
+
+// Helper function to check if we're on mobile
+function isMobileView(): boolean {
+  return window.innerWidth <= 640
+}
+
+// Watch for search results and auto-scroll to them on mobile
+watch(
+  () => props.searchResults,
+  (newResults) => {
+    if (newResults && newResults.length > 0 && isMobileView()) {
+      nextTick(() => {
+        resultsSection.value?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    }
+  }
+)
 
 function close(): void {
   isOpen.value = false
@@ -479,7 +500,7 @@ const filteredTags = computed(() => {
         </BaseButton>
 
         <!-- Search Results -->
-        <div v-if="searchResults && searchResults.length > 0" class="search-results">
+        <div v-if="searchResults && searchResults.length > 0" ref="resultsSection" class="search-results">
           <div class="results-header">
             <h3 class="results-title">Results ({{ totalResults }})</h3>
             <div class="sort-controls">
