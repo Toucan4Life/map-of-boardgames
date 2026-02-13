@@ -19,7 +19,6 @@ const pageSize = 20
 const isExpandedMobile = ref(false)
 const sortBy = ref<'name' | 'year' | 'rating' | 'complexity' | 'numRatings'>('name')
 const sortDirection = ref<'asc' | 'desc'>('asc')
-const searchResultsRef = ref<HTMLElement | null>(null)
 
 function close(): void {
   isOpen.value = false
@@ -185,13 +184,6 @@ function getColorForRating(rating?: number): string {
 function handleSearch(...args: Parameters<typeof search>) {
   currentPage.value = 1
   search(...args)
-
-  // Scroll to results on mobile after a short delay to ensure results are rendered
-  setTimeout(() => {
-    if (searchResultsRef.value) {
-      searchResultsRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, 100)
 }
 
 function toggleSortDirection() {
@@ -487,7 +479,7 @@ const filteredTags = computed(() => {
         </BaseButton>
 
         <!-- Search Results -->
-        <div v-if="searchResults && searchResults.length > 0" ref="searchResultsRef" class="search-results">
+        <div v-if="searchResults && searchResults.length > 0" class="search-results">
           <div class="results-header">
             <h3 class="results-title">Results ({{ totalResults }})</h3>
             <div class="sort-controls">
@@ -1028,8 +1020,6 @@ const filteredTags = computed(() => {
 .search-results {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
@@ -1112,10 +1102,6 @@ const filteredTags = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .result-item {
@@ -1299,10 +1285,6 @@ const filteredTags = computed(() => {
 
   .slider-label {
     font-size: var(--text-sm);
-  }
-
-  .results-list {
-    min-height: 150px;
   }
 
   .result-link {
