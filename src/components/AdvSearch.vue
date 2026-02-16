@@ -88,7 +88,7 @@ const selectedTags = ref<string[]>([])
 const tagMappings = ref<TagMappings>({ categories: [], mechanics: [], families: [] })
 const tagSearchQuery = ref('')
 const showTagDropdown = ref(false)
-const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2020, 2021, 2022, 2023, 2024, 2025]
+const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2021, 2022, 2023, 2024, 2025, 2026]
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
 // reassigned in the template
