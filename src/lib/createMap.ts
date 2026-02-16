@@ -148,6 +148,83 @@ export class BoardGameMap {
       this.map.once('idle', () => resolve())
     })
 
+    // Build API URL with search parameters
+    const apiUrl = new URL('https://solitary-dust-dc64.tdp94.workers.dev/')
+    const params = apiUrl.searchParams
+
+    // Add numeric filters
+    params.set('ratings_min', searchParameters.minRating.toString())
+    params.set('ratings_max', searchParameters.maxRating.toString())
+    params.set('complexity_min', searchParameters.minWeight.toString())
+    params.set('complexity_max', searchParameters.maxWeight.toString())
+    params.set('year_min', searchParameters.minYear.toString())
+    params.set('year_max', searchParameters.maxYear.toString())
+
+    // Add playtime filters
+    params.set('playtime_min', searchParameters.minPlaytime.toString())
+    params.set('playtime_max', searchParameters.maxPlaytime.toString())
+
+    // Add player filter based on playerChoice
+    switch (searchParameters.playerChoice) {
+      case 1: // Recommended players
+        params.set('rec_players_min', searchParameters.minPlayers.toString())
+        params.set('rec_players_max', searchParameters.maxPlayers.toString())
+        break
+      case 2: // Best players
+        params.set('best_players_min', searchParameters.minPlayers.toString())
+        params.set('best_players_max', searchParameters.maxPlayers.toString())
+        break
+      default: // Regular players
+        params.set('players_min', searchParameters.minPlayers.toString())
+        params.set('players_max', searchParameters.maxPlayers.toString())
+    }
+
+    // Add tag filters
+    if (searchParameters.tags && searchParameters.tags.length > 0) {
+      const categories: string[] = []
+      const mechanics: string[] = []
+      const families: string[] = []
+
+      searchParameters.tags.forEach((tagKey) => {
+        const parts = tagKey.split('-')
+        if (parts.length < 2) return
+
+        const type = parts[0]
+        const id = parts.slice(1).join('-')
+
+        if (type === 'category') {
+          categories.push(id)
+        } else if (type === 'mechanic') {
+          mechanics.push(id)
+        } else if (type === 'family') {
+          families.push(id)
+        }
+      })
+
+      if (categories.length > 0) {
+        params.set('category', categories.join(','))
+      }
+      if (mechanics.length > 0) {
+        params.set('mechanic', mechanics.join(','))
+      }
+      if (families.length > 0) {
+        params.set('family', families.join(','))
+      }
+    }
+
+    // Set pagination and sorting
+    params.set('limit', '1000')
+    params.set('sort_by', 'ratings')
+    params.set('sort_order', 'desc')
+
+    // Fetch from API
+    const response = await fetch(apiUrl.toString())
+    if (!response.ok) {
+      throw new Error(`Failed to fetch search results: ${response.status}`)
+    }
+
+    const apiResults = await response.json()
+
     const highlightedNodes: GeoJSON.GeoJSON = {
       type: 'FeatureCollection',
       features: [],
@@ -155,165 +232,34 @@ export class BoardGameMap {
 
     const results: SearchResult[] = []
 
-    let playerMinField: string
-    let playerMaxField: string
-    switch (searchParameters.playerChoice) {
-      case 1:
-        playerMinField = 'min_players_rec'
-        playerMaxField = 'max_players_rec'
-        break
-      case 2:
-        playerMinField = 'min_players_best'
-        playerMaxField = 'max_players_best'
-        break
-      default:
-        playerMinField = 'min_players'
-        playerMaxField = 'max_players'
-    }
+    // Process API results
+    apiResults.forEach((game: any) => {
+      const coordinates = [game.lon, game.lat]
 
-    // When tags are specified, we need to get all features because MapLibre can't filter by tags
-    // We'll apply all filters in JavaScript after tag matching
-    const useTagFiltering = searchParameters.tags && searchParameters.tags.length > 0
-
-    const selectedFilters: FilterSpecification = useTagFiltering
-      ? ['==', '$type', 'Point'] // Get all points when filtering by tags
-      : [
-          'all',
-          ['>=', ['to-number', ['get', 'complexity']], searchParameters.minWeight],
-          ['<=', ['to-number', ['get', 'complexity']], searchParameters.maxWeight],
-          ['>=', ['to-number', ['get', 'ratings']], searchParameters.minRating],
-          ['<=', ['to-number', ['get', 'ratings']], searchParameters.maxRating],
-          ['>=', ['to-number', ['get', 'year']], searchParameters.minYear],
-          ['<=', ['to-number', ['get', 'year']], searchParameters.maxYear],
-          [
-            'all',
-            ['>=', ['to-number', ['get', 'min_time']], searchParameters.minPlaytime],
-            ['<=', ['to-number', ['get', 'max_time']], searchParameters.maxPlaytime],
-          ],
-          [
-            'all',
-            ['<=', ['to-number', ['get', playerMinField]], searchParameters.maxPlayers],
-            ['>=', ['to-number', ['get', playerMaxField]], searchParameters.minPlayers],
-          ],
-        ]
-    const features = this.map.querySourceFeatures('points-source', {
-      sourceLayer: 'points',
-      filter: selectedFilters,
-    })
-
-    // Track seen IDs to deduplicate results (querySourceFeatures can return duplicates from different tiles)
-    const seenIds = new Set<number>()
-
-    features.forEach((repo) => {
-      const id = repo.properties.id
-
-      // Skip if we've already processed this game
-      if (seenIds.has(id)) {
-        return
-      }
-      seenIds.add(id)
-
-      // Filter by tags if specified
-      if (searchParameters.tags && searchParameters.tags.length > 0) {
-        const nodeTags = repo.properties.tags?.toString() || ''
-        // Parse node tags: "category1,category2;mechanic1,mechanic2;family1,family2"
-        const parts = nodeTags.split(';')
-        const nodeCategories = parts[0]
-          ? parts[0]
-              .split(',')
-              .map((t: string) => t.trim())
-              .filter((t: string) => t.length > 0)
-          : []
-        const nodeMechanics = parts[1]
-          ? parts[1]
-              .split(',')
-              .map((t: string) => t.trim())
-              .filter((t: string) => t.length > 0)
-          : []
-        const nodeFamilies = parts[2]
-          ? parts[2]
-              .split(',')
-              .map((t: string) => t.trim())
-              .filter((t: string) => t.length > 0)
-          : []
-
-        // Check if any of the search tags match the node tags (by type and ID)
-        const hasMatchingTag = searchParameters.tags.some((tagKey: string) => {
-          const parts = tagKey.split('-')
-          if (parts.length < 2) return false
-
-          const type = parts[0]
-          const id = parts.slice(1).join('-')
-
-          if (type === 'category') {
-            return nodeCategories.includes(id)
-          } else if (type === 'mechanic') {
-            return nodeMechanics.includes(id)
-          } else if (type === 'family') {
-            return nodeFamilies.includes(id)
-          }
-          return false
-        })
-
-        if (!hasMatchingTag) {
-          return
-        }
-      }
-
-      // When using tag filtering, also apply the other filters in JavaScript
-      if (useTagFiltering) {
-        const complexity = Number(repo.properties.complexity) || 0
-        const rating = Number(repo.properties.ratings) || 0
-        const year = Number(repo.properties.year) || 0
-        const minTime = Number(repo.properties.min_time) || 0
-        const maxTime = Number(repo.properties.max_time) || 0
-        const minPlayers = Number(repo.properties[playerMinField]) || 0
-        const maxPlayers = Number(repo.properties[playerMaxField]) || 0
-
-        // Skip filters for fields with missing data (value is 0)
-        if (complexity > 0 && (complexity < searchParameters.minWeight || complexity > searchParameters.maxWeight)) {
-          return
-        }
-        if (rating > 0 && (rating < searchParameters.minRating || rating > searchParameters.maxRating)) {
-          return
-        }
-        if (year > 0 && (year < searchParameters.minYear || year > searchParameters.maxYear)) {
-          return
-        }
-        if (maxTime > 0 && (minTime < searchParameters.minPlaytime || maxTime > searchParameters.maxPlaytime)) {
-          return
-        }
-        if (maxPlayers > 0 && (minPlayers > searchParameters.maxPlayers || maxPlayers < searchParameters.minPlayers)) {
-          return
-        }
-      }
-
-      const coordinates = (repo.geometry as GeoJSON.Point).coordinates
       highlightedNodes.features.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates },
         properties: {
           color: primaryHighlightColor,
-          name: repo.properties.label,
+          name: game.label,
           background: '#ff0000',
           textSize: 1.2,
         },
       })
 
-      // Add to results array
       results.push({
-        text: repo.properties.label,
-        lat: coordinates[1],
-        lon: coordinates[0],
-        id: repo.properties.id,
-        year: repo.properties.year?.toString() || '0',
-        groupId: repo.properties.c,
+        text: game.label,
+        lat: game.lat,
+        lon: game.lon,
+        id: game.id,
+        year: game.year?.toString() || '0',
+        groupId: undefined, // API doesn't return groupId
         selected: false,
         skipAnimation: false,
         html: null,
-        rating: repo.properties.ratings ? Number(repo.properties.ratings) : undefined,
-        weight: repo.properties.complexity ? Number(repo.properties.complexity) : undefined,
-        size: repo.properties.size ? Number(repo.properties.size) : undefined,
+        rating: game.ratings ? Number(game.ratings) : undefined,
+        weight: game.complexity ? Number(game.complexity) : undefined,
+        size: game.size ? Number(game.size) : undefined,
       })
     })
     ;(this.map.getSource('selected-nodes') as GeoJSONSource).setData(highlightedNodes)
