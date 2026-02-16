@@ -38,7 +38,7 @@ watch(
         })
       })
     }
-  }
+  },
 )
 
 function close(): void {
@@ -503,6 +503,9 @@ const filteredTags = computed(() => {
         <div v-if="searchResults && searchResults.length > 0" ref="resultsSection" class="search-results">
           <div class="results-header">
             <h3 class="results-title">Results ({{ totalResults }})</h3>
+            <p v-if="totalResults >= 1000" class="results-limit-notice">
+              ⚠️ Showing first 1,000 results only. Refine your search for more specific results.
+            </p>
             <div class="sort-controls">
               <label class="sort-label">Sort by:</label>
               <div class="sort-buttons">
@@ -1059,6 +1062,16 @@ const filteredTags = computed(() => {
   font-weight: var(--font-semibold);
   margin: 0;
   color: var(--color-text);
+}
+
+.results-limit-notice {
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+  margin: var(--space-1) 0 0 0;
+  padding: var(--space-2);
+  background: var(--color-warning-soft, rgba(255, 193, 7, 0.1));
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-warning);
 }
 
 .sort-controls {
