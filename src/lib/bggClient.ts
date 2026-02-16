@@ -54,92 +54,104 @@ function decodeMixedMojibake(text: string) {
 }
 
 export async function getGameInfo(thingId: string): Promise<GameDetail | undefined> {
-  const res = await fetch(`${rawBGGUrl}/xmlapi2/thing?id=${thingId}&stats=1`)
-  if (!res.ok) return
+  try {
+    const res = await fetch(`${rawBGGUrl}/xmlapi2/thing?id=${thingId}&stats=1`)
 
-  const xml = await res.text()
-  const p = parser.parse(xml)
-  const item = p.items?.item
-  if (!item) return
-
-  const poll = item.poll ?? []
-  const suggestedAgePoll = poll.find((t: { [x: string]: string }) => t['@_name'] === 'suggested_playerage')
-  const recommendedAge =
-    suggestedAgePoll?.results?.result.sort((a: { [x: string]: number }, b: { [x: string]: number }) => b['@_numvotes'] - a['@_numvotes'])[0]?.[
-      '@_value'
-    ] ?? ''
-
-  const suggestedNumPlayersPoll = poll.find((t: { [x: string]: string }) => t['@_name'] === 'suggested_numplayers')
-  const noVotes = suggestedNumPlayersPoll?.['@_totalvotes'] === '0'
-
-  // poll-summary is sometimes undefined, so safe check
-  const pollSummary = item['poll-summary']?.result ?? []
-
-  const recommendedPlayers = noVotes
-    ? undefined
-    : pollSummary.find((r: { [x: string]: string }) => r['@_name'] === 'recommmendedwith')?.['@_value'].match(/Recommended with (.*?) players/)?.[1]
-
-  const bestPlayers = noVotes
-    ? undefined
-    : pollSummary.find((r: { [x: string]: string }) => r['@_name'] === 'bestwith')?.['@_value'].match(/Best with (.*?) players/)?.[1]
-
-  // Helper function to extract links by type
-  const extractLinks = (linkType: string): string[] => {
-    const links = item.link ?? []
-    const linkArray = Array.isArray(links) ? links : [links]
-    return linkArray
-      .filter((link: { [x: string]: string }) => link['@_type'] === linkType)
-      .map((link: { [x: string]: string }) => decodeMixedMojibake(link['@_value']))
-  }
-
-  // Extract expansions with IDs
-  const extractExpansions = (): Array<{ id: string; name: string }> => {
-    const links = item.link ?? []
-    const linkArray = Array.isArray(links) ? links : [links]
-    return linkArray
-      .filter((link: { [x: string]: string }) => link['@_type'] === 'boardgameexpansion')
-      .map((link: { [x: string]: string }) => ({
-        id: link['@_id'],
-        name: decodeMixedMojibake(link['@_value']),
-      }))
-  }
-
-  // Extract ranks
-  const ranks = []
-  const ranksData = item.statistics?.ratings?.ranks?.rank ?? []
-  const ranksArray = Array.isArray(ranksData) ? ranksData : [ranksData]
-  for (const rank of ranksArray) {
-    if (rank && rank['@_value'] !== 'Not Ranked') {
-      ranks.push({
-        name: rank['@_friendlyname'] || '',
-        value: rank['@_value'] || '',
-      })
+    if (!res.ok) {
+      console.warn(`BGG API returned ${res.status} for game ${thingId}`)
+      return undefined
     }
-  }
 
-  return {
-    imageUrl: item.image ?? '',
-    rating: parseFloat(item.statistics?.ratings?.average?.['@_value'] ?? '0').toFixed(1),
-    description: decodeMixedMojibake(item.description ?? '').split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s+/)[0],
-    minPlayTime: item.minplaytime?.['@_value'] ?? '',
-    maxPlayTime: item.maxplaytime?.['@_value'] ?? '',
-    weight: parseFloat(item.statistics?.ratings?.averageweight?.['@_value'] ?? '0').toFixed(2),
-    minAge: item.minage?.['@_value'] ?? '',
-    recommendedAge,
-    minPlayers: item.minplayers?.['@_value'] ?? '',
-    maxPlayers: item.maxplayers?.['@_value'] ?? '',
-    recommendedPlayers,
-    bestPlayers,
-    yearPublished: item.yearpublished?.['@_value'] ?? '',
-    categories: extractLinks('boardgamecategory'),
-    mechanics: extractLinks('boardgamemechanic'),
-    families: extractLinks('boardgamefamily'),
-    expansions: extractExpansions(),
-    accessories: extractLinks('boardgameaccessory'),
-    designers: extractLinks('boardgamedesigner'),
-    artists: extractLinks('boardgameartist'),
-    publishers: extractLinks('boardgamepublisher'),
-    usersRated: parseInt(item.statistics?.ratings?.usersrated?.['@_value'] ?? '0', 10),
-    ranks,
+    const xml = await res.text()
+    const p = parser.parse(xml)
+    const item = p.items?.item
+    if (!item) {
+      console.warn(`No game data found for ID ${thingId}`)
+      return undefined
+    }
+
+    const poll = item.poll ?? []
+    const suggestedAgePoll = poll.find((t: { [x: string]: string }) => t['@_name'] === 'suggested_playerage')
+    const recommendedAge =
+      suggestedAgePoll?.results?.result.sort((a: { [x: string]: number }, b: { [x: string]: number }) => b['@_numvotes'] - a['@_numvotes'])[0]?.[
+        '@_value'
+      ] ?? ''
+
+    const suggestedNumPlayersPoll = poll.find((t: { [x: string]: string }) => t['@_name'] === 'suggested_numplayers')
+    const noVotes = suggestedNumPlayersPoll?.['@_totalvotes'] === '0'
+
+    // poll-summary is sometimes undefined, so safe check
+    const pollSummary = item['poll-summary']?.result ?? []
+
+    const recommendedPlayers = noVotes
+      ? undefined
+      : pollSummary.find((r: { [x: string]: string }) => r['@_name'] === 'recommmendedwith')?.['@_value'].match(/Recommended with (.*?) players/)?.[1]
+
+    const bestPlayers = noVotes
+      ? undefined
+      : pollSummary.find((r: { [x: string]: string }) => r['@_name'] === 'bestwith')?.['@_value'].match(/Best with (.*?) players/)?.[1]
+
+    // Helper function to extract links by type
+    const extractLinks = (linkType: string): string[] => {
+      const links = item.link ?? []
+      const linkArray = Array.isArray(links) ? links : [links]
+      return linkArray
+        .filter((link: { [x: string]: string }) => link['@_type'] === linkType)
+        .map((link: { [x: string]: string }) => decodeMixedMojibake(link['@_value']))
+    }
+
+    // Extract expansions with IDs
+    const extractExpansions = (): Array<{ id: string; name: string }> => {
+      const links = item.link ?? []
+      const linkArray = Array.isArray(links) ? links : [links]
+      return linkArray
+        .filter((link: { [x: string]: string }) => link['@_type'] === 'boardgameexpansion')
+        .map((link: { [x: string]: string }) => ({
+          id: link['@_id'],
+          name: decodeMixedMojibake(link['@_value']),
+        }))
+    }
+
+    // Extract ranks
+    const ranks = []
+    const ranksData = item.statistics?.ratings?.ranks?.rank ?? []
+    const ranksArray = Array.isArray(ranksData) ? ranksData : [ranksData]
+    for (const rank of ranksArray) {
+      if (rank && rank['@_value'] !== 'Not Ranked') {
+        ranks.push({
+          name: rank['@_friendlyname'] || '',
+          value: rank['@_value'] || '',
+        })
+      }
+    }
+
+    return {
+      imageUrl: item.image ?? '',
+      rating: parseFloat(item.statistics?.ratings?.average?.['@_value'] ?? '0').toFixed(1),
+      description: decodeMixedMojibake(item.description ?? '').split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s+/)[0],
+      minPlayTime: item.minplaytime?.['@_value'] ?? '',
+      maxPlayTime: item.maxplaytime?.['@_value'] ?? '',
+      weight: parseFloat(item.statistics?.ratings?.averageweight?.['@_value'] ?? '0').toFixed(2),
+      minAge: item.minage?.['@_value'] ?? '',
+      recommendedAge,
+      minPlayers: item.minplayers?.['@_value'] ?? '',
+      maxPlayers: item.maxplayers?.['@_value'] ?? '',
+      recommendedPlayers,
+      bestPlayers,
+      yearPublished: item.yearpublished?.['@_value'] ?? '',
+      categories: extractLinks('boardgamecategory'),
+      mechanics: extractLinks('boardgamemechanic'),
+      families: extractLinks('boardgamefamily'),
+      expansions: extractExpansions(),
+      accessories: extractLinks('boardgameaccessory'),
+      designers: extractLinks('boardgamedesigner'),
+      artists: extractLinks('boardgameartist'),
+      publishers: extractLinks('boardgamepublisher'),
+      usersRated: parseInt(item.statistics?.ratings?.usersrated?.['@_value'] ?? '0', 10),
+      ranks,
+    }
+  } catch (error) {
+    console.error(`Failed to fetch game info for ID ${thingId}:`, error)
+    return undefined
   }
 }
