@@ -11,6 +11,8 @@ interface Repo {
 }
 
 const gameDetail = ref<GameDetail>()
+const isLoading = ref(true)
+const hasError = ref(false)
 const props = defineProps<Repo>()
 
 const emit = defineEmits<{ listConnections: [] }>()
@@ -42,14 +44,48 @@ const ratingColor = computed(() => {
 })
 
 watchEffect(() => {
+  isLoading.value = true
+  hasError.value = false
+
   getGameInfo(props.id.toString())
     .then((resp) => {
-      if (resp) gameDetail.value = resp
+      if (resp) {
+        gameDetail.value = resp
+        hasError.value = false
+      } else {
+        hasError.value = true
+      }
     })
     .catch((error: unknown) => {
       console.error('Error fetching game info:', error)
+      hasError.value = true
+    })
+    .finally(() => {
+      isLoading.value = false
     })
 })
+
+function retryFetch(): void {
+  isLoading.value = true
+  hasError.value = false
+
+  getGameInfo(props.id.toString())
+    .then((resp) => {
+      if (resp) {
+        gameDetail.value = resp
+        hasError.value = false
+      } else {
+        hasError.value = true
+      }
+    })
+    .catch((error: unknown) => {
+      console.error('Error fetching game info:', error)
+      hasError.value = true
+    })
+    .finally(() => {
+      isLoading.value = false
+    })
+}
 
 function listConnections(): void {
   emit('listConnections')
@@ -58,7 +94,25 @@ function listConnections(): void {
 
 <template>
   <div class="repo-viewer">
-    <div class="game-container">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="state-message">
+      <div class="loading-spinner"></div>
+      <p>Loading game details...</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="hasError" class="state-message error-state">
+      <div class="error-icon">⚠️</div>
+      <h3>Unable to Load Game Details</h3>
+      <p>The BoardGameGeek server might be busy or experiencing issues. Please try again.</p>
+      <BaseButton variant="primary" size="md" @click="retryFetch()"> Retry </BaseButton>
+      <div class="game-id-fallback">
+        <a :href="repoLink" target="_blank">View on BoardGameGeek</a>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div v-else class="game-container">
       <!-- Compact Header with Image and Info Side by Side -->
       <div class="game-header">
         <div class="game-image-wrapper">
@@ -100,6 +154,7 @@ function listConnections(): void {
             </div>
             <div class="stat-value" v-else>{{ gameDetail?.minPlayers }}</div>
             <div class="stat-label">Players</div>
+            <div class="stat-meta" v-if="gameDetail?.recommendedPlayers">Rec: {{ gameDetail?.recommendedPlayers }}</div>
             <div class="stat-meta" v-if="gameDetail?.bestPlayers">Best: {{ gameDetail?.bestPlayers }}</div>
           </div>
         </div>
@@ -222,6 +277,72 @@ function listConnections(): void {
   overflow-y: auto;
   z-index: var(--z-overlay);
   padding: calc(var(--header-height) + var(--space-2)) var(--space-3) var(--space-4);
+}
+
+/* ==========================================
+   LOADING & ERROR STATES
+   ========================================== */
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  min-height: 300px;
+}
+
+.state-message p {
+  color: var(--color-text-soft);
+  margin: var(--space-2) 0;
+  font-size: var(--text-sm);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--space-3);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-state {
+  gap: var(--space-3);
+}
+
+.error-state h3 {
+  color: var(--color-heading);
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-2);
+}
+
+.game-id-fallback {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.game-id-fallback a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.game-id-fallback a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
 }
 
 .game-container {
