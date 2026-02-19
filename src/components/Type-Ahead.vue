@@ -16,18 +16,6 @@
       </svg>
     </BaseIconButton>
 
-    <BaseIconButton variant="ghost" size="md" ariaLabel="Advanced search filters" title="Advanced Filters" @click="emit('showAdvancedSearch')">
-      <svg fill="currentColor" viewBox="0 0 300.906 300.906" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978c0,3.688,2.03,7.076,5.281,8.816
-             c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33c2.782-1.854,4.453-4.977,4.453-8.32v-80.978
-             l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0z M167.587,166.77
-             c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531h199.736
-             L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
-        />
-      </svg>
-    </BaseIconButton>
-
     <div class="typeahead__input-wrapper">
       <svg
         class="typeahead__search-icon"
@@ -61,6 +49,26 @@
         @keydown="handleKeydown"
       />
     </div>
+
+    <!-- Prominent Advanced Search Button -->
+    <button
+      class="typeahead__advanced-search"
+      type="button"
+      aria-label="Open advanced search filters"
+      title="Filter by rating, complexity, player count, and more"
+      @click="emit('showAdvancedSearch')"
+    >
+      <svg class="filter-icon" fill="currentColor" viewBox="0 0 300.906 300.906" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M288.953,0h-277c-5.522,0-10,4.478-10,10v49.531c0,5.522,4.478,10,10,10h12.372l91.378,107.397v113.978c0,3.688,2.03,7.076,5.281,8.816
+             c1.479,0.792,3.101,1.184,4.718,1.184c1.94,0,3.875-0.564,5.548-1.68l49.5-33c2.782-1.854,4.453-4.977,4.453-8.32v-80.978
+             l91.378-107.397h12.372c5.522,0,10-4.478,10-10V10C298.953,4.478,294.476,0,288.953,0z M167.587,166.77
+             c-1.539,1.809-2.384,4.105-2.384,6.48v79.305l-29.5,19.666V173.25c0-2.375-0.845-4.672-2.384-6.48L50.585,69.531h199.736
+             L167.587,166.77z M278.953,49.531h-257V20h257V49.531z"
+        />
+      </svg>
+      <span class="advanced-search-text">Advanced</span>
+    </button>
 
     <BaseIconButton
       v-if="shouldShowClearButton"
@@ -308,9 +316,10 @@ function handleKeydown(event: KeyboardEvent) {
 
 .typeahead__clear {
   position: absolute;
-  right: 0;
+  right: 120px;
   top: 0;
   height: 100%;
+  z-index: 2;
 }
 
 /* Icon buttons - Link color for discoverability */
@@ -320,6 +329,66 @@ function handleKeydown(event: KeyboardEvent) {
 
 .typeahead :deep(.base-icon-button:hover:not(:disabled)) {
   color: var(--color-link-hover);
+}
+
+/* ==========================================
+   ADVANCED SEARCH BUTTON
+   ========================================== */
+.typeahead__advanced-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-right: var(--space-1);
+  background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  box-shadow: 0 2px 4px rgba(20, 184, 166, 0.2);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.typeahead__advanced-search::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--duration-normal) var(--ease-out);
+  pointer-events: none;
+}
+
+.typeahead__advanced-search:hover {
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-700));
+  box-shadow: 0 4px 8px rgba(20, 184, 166, 0.3);
+  transform: translateY(-1px);
+}
+
+.typeahead__advanced-search:hover::before {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.typeahead__advanced-search:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(20, 184, 166, 0.3);
+}
+
+.typeahead__advanced-search .filter-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.advanced-search-text {
+  white-space: nowrap;
 }
 
 /* ==========================================
@@ -346,7 +415,7 @@ function handleKeydown(event: KeyboardEvent) {
 input[type='text'] {
   height: 100%;
   width: 100%;
-  padding: 0 calc(var(--touch-target-min) + var(--space-2)) 0 calc(var(--space-3) + 20px + var(--space-2));
+  padding: 0 100px 0 calc(var(--space-3) + 20px + var(--space-2));
   font-size: var(--text-lg);
   border: 0;
   border-radius: 0;
@@ -462,6 +531,29 @@ input[type='text']::placeholder {
 }
 
 /* ==========================================
+   RESPONSIVE - TABLET
+   ========================================== */
+@media (max-width: 768px) {
+  .advanced-search-text {
+    display: none;
+  }
+
+  .typeahead__advanced-search {
+    padding: var(--space-2);
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  input[type='text'] {
+    padding-right: 80px;
+  }
+
+  .typeahead__clear {
+    right: 50px;
+  }
+}
+
+/* ==========================================
    RESPONSIVE - MOBILE
    ========================================== */
 @media (max-width: 640px) {
@@ -477,10 +569,15 @@ input[type='text']::placeholder {
 
   input[type='text'] {
     font-size: var(--text-md);
+    padding-right: 80px;
   }
 
   .typeahead__suggestions {
     border-radius: 0;
+  }
+
+  .typeahead__advanced-search {
+    margin-right: 0;
   }
 }
 </style>

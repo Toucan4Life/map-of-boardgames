@@ -22,7 +22,8 @@
         "EditorConfig.EditorConfig",
         "esbenp.prettier-vscode",
         "yoavbls.pretty-ts-errors",
-        "usernamehw.errorlens"
+        "usernamehw.errorlens",
+        "firefox-devtools.vscode-firefox-debug"
       ]
     }
   }
