@@ -337,7 +337,10 @@ const filteredTags = computed(() => {
   <div v-if="isOpen" class="adv-search-container">
     <div :class="['adv-search-panel', { 'adv-search-panel--expanded': isExpandedMobile }]">
       <div class="panel-header">
-        <h2 class="panel-title">Advanced Search</h2>
+        <div class="panel-title-group">
+          <h2 class="panel-title">Advanced Search</h2>
+          <p class="panel-subtitle">Filter games by multiple criteria</p>
+        </div>
         <div class="header-buttons">
           <button
             class="expand-button"
@@ -623,11 +626,23 @@ const filteredTags = computed(() => {
   flex-shrink: 0;
 }
 
+.panel-title-group {
+  flex: 1;
+}
+
 .panel-title {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: var(--font-bold);
   margin: 0;
   color: var(--color-heading);
+  line-height: var(--leading-tight);
+}
+
+.panel-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
+  margin: var(--space-1) 0 0 0;
+  line-height: var(--leading-snug);
 }
 
 .close-button {

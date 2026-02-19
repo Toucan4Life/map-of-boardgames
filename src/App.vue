@@ -25,6 +25,7 @@ const advSearchResults = ref<SearchResult[]>()
 const unsavedChangesVisible = ref(false)
 const hasUnsavedChanges = ref(false)
 const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
+const showAdvSearchHint = ref(!localStorage.getItem('advSearchHintDismissed'))
 let loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined>(undefined)
 // Project state
 const defaultProjectState = {
@@ -132,6 +133,14 @@ const resizeHandler = () => {
   isSmallScreen.value = window.innerWidth < SM_SCREEN_BREAKPOINT
 }
 
+function handleAdvSearchToggle() {
+  advSearchVisible.value = !advSearchVisible.value
+  // Dismiss hint when user interacts with advanced search
+  if (showAdvSearchHint.value) {
+    dismissAdvSearchHint()
+  }
+}
+
 // Keep handler references for cleanup
 const repoSelectedHandler = (repo: SearchResult, fullView = false) => {
   lastSelected = repo
@@ -224,6 +233,11 @@ function closeAdvSearch() {
 function handleItem(item: { text: string; click: () => void }) {
   contextMenu.value = undefined
   item.click()
+}
+
+function dismissAdvSearchHint() {
+  showAdvSearchHint.value = false
+  localStorage.setItem('advSearchHintDismissed', 'true')
 }
 </script>
 
@@ -321,12 +335,32 @@ function handleItem(item: { text: string; click: () => void }) {
         :show-clear-button="project.current ? 'true' : 'false'"
         :query="project.current"
         @menu-clicked="aboutVisible = true"
-        @show-advanced-search="advSearchVisible = !advSearchVisible"
+        @show-advanced-search="handleAdvSearchToggle"
         @selected="findProject"
         @before-clear="clearProjectState"
         @cleared="clearProjectState"
       />
     </form>
+
+    <!-- Advanced Search Hint Banner -->
+    <transition name="slide-down">
+      <div v-if="typeAheadVisible && showAdvSearchHint" class="adv-search-hint" role="status" aria-live="polite">
+        <div class="hint-content">
+          <svg class="hint-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+          </svg>
+          <span class="hint-text">
+            <strong>New to the map?</strong> Use <strong>Advanced Search</strong> to filter games by rating, complexity, player count, and more!
+          </span>
+        </div>
+        <button class="hint-close" @click="dismissAdvSearchHint" aria-label="Dismiss hint">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </transition>
 
     <!-- Small preview -->
     <transition name="slide-bottom">
@@ -417,6 +451,83 @@ function handleItem(item: { text: string; click: () => void }) {
   top: var(--space-2);
   width: calc(var(--sidebar-width) - var(--space-2));
   z-index: var(--z-modal);
+}
+
+/* ==========================================
+   ADVANCED SEARCH HINT BANNER
+   ========================================== */
+.adv-search-hint {
+  position: absolute;
+  left: var(--space-2);
+  top: 68px;
+  width: calc(var(--sidebar-width) - var(--space-2));
+  background: linear-gradient(135deg, var(--accent-50), var(--accent-100));
+  border: 2px solid var(--accent-400);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  animation: subtle-bounce 0.5s ease-out;
+}
+
+@keyframes subtle-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.hint-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.hint-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent-600);
+  margin-top: 2px;
+}
+
+.hint-text {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--accent-900);
+}
+
+.hint-text strong {
+  font-weight: var(--font-semibold);
+  color: var(--accent-700);
+}
+
+.hint-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent-600);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.hint-close:hover {
+  color: var(--accent-800);
+}
+
+.hint-close svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* ==========================================
@@ -529,6 +640,21 @@ function handleItem(item: { text: string; click: () => void }) {
 /* ==========================================
    TRANSITIONS
    ========================================== */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all var(--duration-normal) var(--ease-emphasized);
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 .slide-top-enter-active,
 .slide-top-leave-active {
   transition: opacity var(--duration-normal) var(--ease-out);
@@ -588,6 +714,17 @@ function handleItem(item: { text: string; click: () => void }) {
     left: 0;
     top: 48px;
   }
+
+  .adv-search-hint {
+    width: 45vw;
+    left: 0;
+    top: 56px;
+    padding: var(--space-2);
+  }
+
+  .hint-text {
+    font-size: var(--text-xs);
+  }
 }
 
 /* ==========================================
@@ -619,6 +756,22 @@ function handleItem(item: { text: string; click: () => void }) {
   .unsaved-changes {
     width: calc(100% - var(--space-4));
     left: var(--space-2);
+  }
+
+  .adv-search-hint {
+    width: calc(100% - var(--space-4));
+    left: var(--space-2);
+    top: 56px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .hint-text {
+    font-size: var(--text-xs);
+  }
+
+  .hint-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .made-by {
