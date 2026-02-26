@@ -17,42 +17,38 @@
     <meta name="google-site-verification" content="ZstTQTg-ZwRn0k7YSIzfCCY4FTFZX2yabPfiJs5YGxM" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Map of Boardgames</title>
-    <meta name="description" content="Interactive map of 40,000+ board games from BoardGameGeek. Each dot is a game; proximity reflects shared reviewers. Explore clusters, search, and discover related titles." />
-    <meta name="keywords" content="BoardGameGeek, board games, boardgames, map, BGG, visualization, graph, clustering, advanced search" />
-    <meta name="author" content="Toucan4Life" />
 
-    <!-- Robots -->
-    <!-- Set to 'index,follow' for production. Use 'noindex,nofollow' for private or staging. -->
+    <title>Board Game Recommendation Tool - Interactive BGG Similarity Map</title>
+
+    <meta
+      name="description"
+      content="Discover new board games with this interactive BoardGameGeek recommendation tool. Explore a similarity map of 40,000+ games, find titles like your favourites, and navigate hidden clusters."
+    />
+
+    <meta name="author" content="Toucan4Life" />
     <meta name="robots" content="index,follow" />
 
-    <!-- Canonical URL -->
     <link rel="canonical" href="https://toucan4life.github.io/map-of-boardgames/" />
 
-    <!-- Theme Color (supports light/dark) -->
+    <!-- Theme Color -->
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#181818" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Map of Boardgames" />
-    <meta property="og:description" content="Interactive map of 40,000+ board games from BoardGameGeek. Explore clusters, search, and discover related titles." />
+    <meta property="og:title" content="Board Game Recommendation Tool - Interactive BGG Map" />
+    <meta
+      property="og:description"
+      content="Explore relationships between 40,000+ board games using BoardGameGeek data. Find similar games instantly."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://toucan4life.github.io/map-of-boardgames/" />
-    <!-- Social preview image -->
     <meta property="og:image" content="https://toucan4life.github.io/map-of-boardgames/social-share.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:alt" content="Interactive Map of Boardgames preview" />
-    <meta property="og:site_name" content="Map of Boardgames" />
-    <meta property="og:locale" content="en_US" />
 
-    <!-- Twitter Cards -->
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Map of Boardgames" />
-    <meta name="twitter:description" content="Explore an interactive map of 40,000+ board games from BGG and discover related titles." />
+    <meta name="twitter:title" content="Board Game Recommendation Tool - Interactive BGG Map" />
+    <meta name="twitter:description" content="Find similar board games and explore hidden clusters with this interactive recommendation map." />
     <meta name="twitter:image" content="https://toucan4life.github.io/map-of-boardgames/social-share.png" />
-    <meta name="twitter:image:alt" content="Interactive Map of Boardgames preview" />
 
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -60,13 +56,12 @@
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Map of Boardgames",
-        "description": "Interactive map of 40,000+ board games from BoardGameGeek, showing relationships through shared reviewers.",
-        "url": "https://toucan4life.github.io/map-of-boardgames/"
+        "url": "https://toucan4life.github.io/map-of-boardgames/",
+        "description": "Interactive board game recommendation tool based on BoardGameGeek data."
       }
     </script>
 
     <style>
-      /* Base Reset & Styles - Design tokens loaded via main.css */
       *,
       *::before,
       *::after {
@@ -85,7 +80,12 @@
         font-size: 15px;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 16px;
       }
 
       .boot {
@@ -95,9 +95,13 @@
         text-align: right;
       }
 
-      .no-webgl {
-        text-align: center;
-        padding-top: 8px;
+      .seo-content {
+        position: absolute;
+        left: -9999px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
       }
     </style>
     <script type="module" crossorigin src="./assets/index-BBmp8y6b.js"></script>
@@ -105,15 +109,46 @@
   </head>
 
   <body>
-    <!-- Accessibility: Helpful message if JS is disabled -->
+    <main>
+      <!-- SEO CONTENT FOR GOOGLE -->
+      <section class="seo-content">
+        <h1>Interactive Board Game Recommendation Map (40,000+ BGG Games)</h1>
+
+        <p>
+          This interactive board game recommendation tool visualizes relationships between more than 40,000 titles from BoardGameGeek. Each node
+          represents a game, and distance between games is based on shared player ratings, helping you find similar board games instantly.
+        </p>
+
+        <p>
+          Use the map to explore clusters of related games, discover hidden gems, and get recommendations based on the titles you already love. It
+          works as a visual alternative to the BGG “Fans Also Like” system.
+        </p>
+
+        <h2>How to find similar board games</h2>
+        <ul>
+          <li>Search for any board game in the database</li>
+          <li>Zoom into clusters of related mechanics and themes</li>
+          <li>Identify gateway games and expert-level paths</li>
+        </ul>
+
+        <h2>Based on BoardGameGeek community data</h2>
+        <p>
+          All similarities are computed from real user behaviour and ratings on BoardGameGeek, making this a powerful board game discovery and
+          recommendation engine.
+        </p>
+      </section>
+    </main>
+
     <noscript>
       <div class="no-js">Map of Boardgames requires JavaScript enabled to run.</div>
     </noscript>
+
     <div class="boot">
       <div>Website load sequence initiated...</div>
       <div class="vue-loading"></div>
       <div class="map-loading"></div>
     </div>
+
     <div id="app"></div>
   </body>
 </html>
