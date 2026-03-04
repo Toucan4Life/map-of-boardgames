@@ -24,6 +24,8 @@ export interface SearchParameters {
   maxWeight: number
   minRating: number
   maxRating: number
+  minNumRatings: number
+  maxNumRatings: number
   minPlaytime: number
   maxPlaytime: number
   playerChoice: number
@@ -155,6 +157,8 @@ export class BoardGameMap {
     // Add numeric filters
     params.set('ratings_min', searchParameters.minRating.toString())
     params.set('ratings_max', searchParameters.maxRating.toString())
+    params.set('size_min', searchParameters.minNumRatings.toString())
+    params.set('size_max', searchParameters.maxNumRatings.toString())
     params.set('complexity_min', searchParameters.minWeight.toString())
     params.set('complexity_max', searchParameters.maxWeight.toString())
     params.set('year_min', searchParameters.minYear.toString())
