@@ -83,11 +83,18 @@ function getOrCreateGroupViewModel(groupId: number) {
 function findProject(repo: SearchResult) {
   lastSelected = lastSelected?.id === repo.id ? lastSelected : repo
   mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lon, lastSelected.lat], zoom: 10 }, lastSelected.skipAnimation)
-  Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
+  if (isSmallScreen.value) {
+    Object.assign(project, {
+      currentId: lastSelected.id,
+      smallPreviewName: lastSelected.text,
+    })
+  } else {
+    Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
+  }
   currentFocus.value?.handleCurrentProjectChange(lastSelected.id)
   const reposs = currentFocus.value?.getCoordinates(lastSelected.id)
   if (reposs) {
-    repoSelectedHandler(reposs, false)
+    repoSelectedHandler(reposs)
   }
 }
 
@@ -117,6 +124,8 @@ async function search(params: AdvSearchResult) {
     maxWeight: params.maxWeight ?? 10,
     minRating: params.minRating ?? 0,
     maxRating: params.maxRating ?? 10,
+    minNumRatings: params.minNumRatings ?? 1,
+    maxNumRatings: params.maxNumRatings ?? 150000,
     minPlaytime: params.minPlaytime ?? 0,
     maxPlaytime: params.maxPlaytime ?? 1000,
     playerChoice: params.playerChoice ?? 0,
@@ -142,9 +151,9 @@ function handleAdvSearchToggle() {
 }
 
 // Keep handler references for cleanup
-const repoSelectedHandler = (repo: SearchResult, fullView = false) => {
+const repoSelectedHandler = (repo: SearchResult) => {
   lastSelected = repo
-  if (isSmallScreen.value && !fullView) {
+  if (isSmallScreen.value) {
     Object.assign(project, {
       current: '',
       currentId: repo.id,

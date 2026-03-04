@@ -56,6 +56,8 @@ export interface AdvSearchResult {
   maxWeight: number
   minRating: number
   maxRating: number
+  minNumRatings: number
+  maxNumRatings: number
   minPlaytime: number
   maxPlaytime: number
   minPlayers: number
@@ -71,6 +73,8 @@ function search(
   maxW: number,
   minR: number,
   maxR: number,
+  minNumR: number,
+  maxNumR: number,
   minP: number,
   maxP: number,
   minPl: number,
@@ -84,6 +88,8 @@ function search(
     maxWeight: maxW,
     minRating: minR,
     maxRating: maxR,
+    minNumRatings: numRatingsScale[minNumR],
+    maxNumRatings: numRatingsScale[maxNumR],
     minPlaytime: timescale[minP],
     maxPlaytime: timescale[maxP],
     minPlayers: playersScale[minPl],
@@ -99,6 +105,8 @@ const sliderMin = ref(1)
 const sliderMax = ref(5)
 const sliderMinR = ref(0)
 const sliderMaxR = ref(10)
+const sliderMinNumR = ref(0)
+const sliderMaxNumR = ref(5)
 const sliderMinP = ref(0)
 const sliderMaxP = ref(13)
 const sliderMinPl = ref(0)
@@ -111,7 +119,15 @@ const tagSearchQuery = ref('')
 const showTagDropdown = ref(false)
 const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2021, 2022, 2023, 2024, 2025, 2026]
 const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
+const numRatingsScale = [1, 10, 100, 1000, 10000, 150000]
 const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
+
+function formatCompactCount(value: number): string {
+  if (value >= 1000) {
+    return `${Math.round(value / 1000)}k`
+  }
+  return value.toString()
+}
 // reassigned in the template
 // eslint-disable-next-line prefer-const
 let playersChoice: string = '0'
@@ -403,6 +419,12 @@ const filteredTags = computed(() => {
           <CustomMinMaxSlider v-model:min-value="sliderMin" v-model:max-value="sliderMax" :min="1" :max="5" :step="0.1" />
         </div>
         <div class="slider-cont">
+          <h3 class="slider-label">
+            # Ratings: {{ formatCompactCount(numRatingsScale[sliderMinNumR]) }} - {{ formatCompactCount(numRatingsScale[sliderMaxNumR]) }}
+          </h3>
+          <CustomMinMaxSlider v-model:min-value="sliderMinNumR" v-model:max-value="sliderMaxNumR" :min="0" :max="5" />
+        </div>
+        <div class="slider-cont">
           <h3 class="slider-label">Player count: {{ playersScale[sliderMinPl] }} - {{ playersScale[sliderMaxPl] }}</h3>
           <div class="segmented-control">
             <input id="radio1" v-model="playersChoice" name="segmented" type="radio" value="0" checked />
@@ -489,6 +511,8 @@ const filteredTags = computed(() => {
               sliderMax,
               sliderMinR,
               sliderMaxR,
+              sliderMinNumR,
+              sliderMaxNumR,
               sliderMinP,
               sliderMaxP,
               sliderMinPl,
