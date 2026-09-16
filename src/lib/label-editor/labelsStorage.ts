@@ -1,21 +1,24 @@
 import type { Feature, Point } from 'geojson'
+import type { LngLat } from 'maplibre-gl'
 
 export function getPlaceLabels(onlinePlaces: Feature<Point>[], localPlaces: Feature<Point>[]): { isChanged: boolean; merged: Feature<Point>[] } {
-  const merg = new Map(localPlaces.filter((f) => f.properties?.labelId).map((f) => [f.properties?.labelId, f]))
+  // Local edits (identified by labelId) take priority over their online counterpart.
+  const localEditsById = new Map(localPlaces.filter((f) => f.properties?.labelId).map((f) => [f.properties?.labelId as string, f]))
 
-  onlinePlaces.forEach((f, k) => {
-    if (!merg.has(k)) {
-      merg.set(k, f)
-    }
-  })
+  const merged = [
+    ...localEditsById.values(),
+    ...onlinePlaces.filter((f) => {
+      const labelId = f.properties?.labelId as string | undefined
+      return !labelId || !localEditsById.has(labelId)
+    }),
+  ]
 
-  const merged = Array.from(merg.values())
   return { isChanged: hasChanges(merged, onlinePlaces), merged }
 }
 
 function hasChanges(merged: Feature<Point>[], indexedPlaces: Feature<Point>[]): boolean {
   return merged.some((f) => {
-    const orig = f.properties?.labelId && indexedPlaces.find((feat) => feat?.properties?.labelId === f?.properties?.labelId)
+    const orig = f.properties?.labelId && indexedPlaces.find((feat) => feat.properties?.labelId === f.properties?.labelId)
     return (
       !orig ||
       orig.properties?.name !== f.properties?.name ||
@@ -31,7 +34,7 @@ const generateShortRandomId = () => Math.random().toString(36).substring(2, 5)
 
 export function editLabel(
   value: string,
-  lnglat: maplibregl.LngLat,
+  lnglat: LngLat,
   features: GeoJSON.Feature<GeoJSON.Point>[],
   oldLabelProps: string | undefined,
   zoom: number,

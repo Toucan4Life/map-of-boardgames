@@ -79,20 +79,6 @@ export async function fetchTagMappings(): Promise<TagMappings> {
 }
 
 /**
- * Get a tag name by its ID and type
- */
-export function getTagName(mappings: TagMappings, type: 'category' | 'mechanic' | 'family', id: string): string {
-  const typeMap = {
-    category: mappings.categories,
-    mechanic: mappings.mechanics,
-    family: mappings.families,
-  }
-
-  const mapping = typeMap[type].find((m) => m.id === id)
-  return mapping ? mapping.name : id
-}
-
-/**
  * Parse the tags attribute from vector tile node
  * Format: "category1,category2;mechanic1,mechanic2;family1,family2"
  */

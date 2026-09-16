@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import CustomMinMaxSlider from './CustomMinMaxSlider.vue'
 import BaseButton from './base/BaseButton.vue'
 import BaseCard from './base/BaseCard.vue'
 import BaseChip from './base/BaseChip.vue'
 import type { SearchResult } from '@/lib/createFuzzySearcher'
-import { fetchTagMappings, type TagMappings, type TagMapping } from '@/lib/tagMappings'
+import { formatCompactCount, getShapeForWeight, getColorForRating } from '@/lib/gameVisuals'
+import { useSortableResults } from '@/composables/useSortableResults'
+import { usePagination } from '@/composables/usePagination'
+import { useTagFilter } from '@/composables/useTagFilter'
 
 const emit = defineEmits<{ close: []; search: [searchR: AdvSearchResult]; resultSelected: [result: SearchResult] }>()
 
@@ -14,12 +17,28 @@ const props = defineProps<{
 }>()
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
-const currentPage = ref(1)
 const pageSize = 20
 const isExpandedMobile = ref(false)
-const sortBy = ref<'name' | 'year' | 'rating' | 'complexity' | 'numRatings'>('name')
-const sortDirection = ref<'asc' | 'desc'>('asc')
 const resultsSection = ref<HTMLElement | null>(null)
+
+const { sortBy, sortDirection, sortedResults, setSortBy } = useSortableResults(
+  () => props.searchResults,
+  () => { resetPage(); },
+)
+const { currentPage, totalResults, totalPages, paginatedResults, resetPage, nextPage, prevPage } = usePagination(() => sortedResults.value, pageSize)
+const {
+  selectedTags,
+  tagSearchQuery,
+  showTagDropdown,
+  filteredTags,
+  toggleTag,
+  removeTag,
+  getTagDisplayName,
+  getTagVariant,
+  getTagTypeLabel,
+  openTagDropdown,
+  closeTagDropdown,
+} = useTagFilter()
 
 // Helper function to check if we're on mobile
 function isMobileView(): boolean {
@@ -31,7 +50,7 @@ watch(
   () => props.searchResults,
   (newResults) => {
     if (newResults && newResults.length > 0 && isMobileView()) {
-      nextTick(() => {
+      void nextTick(() => {
         resultsSection.value?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
@@ -68,6 +87,11 @@ export interface AdvSearchResult {
   maxYear: number
 }
 
+const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2021, 2022, 2023, 2024, 2025, 2026]
+const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
+const numRatingsScale = [1, 10, 100, 1000, 10000, 150000]
+const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
+
 function search(
   minW: number,
   maxW: number,
@@ -101,6 +125,12 @@ function search(
   })
 }
 
+// Reset pagination when a new search is issued
+function handleSearch(...args: Parameters<typeof search>) {
+  resetPage()
+  search(...args)
+}
+
 const sliderMin = ref(1)
 const sliderMax = ref(5)
 const sliderMinR = ref(0)
@@ -113,240 +143,13 @@ const sliderMinPl = ref(0)
 const sliderMaxPl = ref(9)
 const sliderMinY = ref(0)
 const sliderMaxY = ref(16)
-const selectedTags = ref<string[]>([])
-const tagMappings = ref<TagMappings>({ categories: [], mechanics: [], families: [] })
-const tagSearchQuery = ref('')
-const showTagDropdown = ref(false)
-const yearscale = [0, 1, 1500, 1900, 1950, 1980, 1990, 2000, 2005, 2010, 2015, 2021, 2022, 2023, 2024, 2025, 2026]
-const timescale = [0, 1, 5, 15, 30, 45, 60, 90, 120, 180, 240, 480, 960, 1800]
-const numRatingsScale = [1, 10, 100, 1000, 10000, 150000]
-const playersScale = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15]
-
-function formatCompactCount(value: number): string {
-  if (value >= 1000) {
-    return `${Math.round(value / 1000)}k`
-  }
-  return value.toString()
-}
 // reassigned in the template
 // eslint-disable-next-line prefer-const
 let playersChoice: string = '0'
 
-// Pagination computed properties
-const totalResults = computed(() => props.searchResults?.length || 0)
-const totalPages = computed(() => Math.ceil(totalResults.value / pageSize))
-
-// Sorted results
-const sortedResults = computed(() => {
-  if (!props.searchResults) return []
-
-  const results = [...props.searchResults]
-
-  results.sort((a, b) => {
-    let compareValue = 0
-
-    switch (sortBy.value) {
-      case 'name':
-        compareValue = a.text.localeCompare(b.text)
-        break
-      case 'year':
-        compareValue = Number(a.year || 0) - Number(b.year || 0)
-        break
-      case 'rating':
-        compareValue = (a.rating || 0) - (b.rating || 0)
-        break
-      case 'complexity':
-        compareValue = (a.weight || 0) - (b.weight || 0)
-        break
-      case 'numRatings':
-        compareValue = (a.size || 0) - (b.size || 0)
-        break
-    }
-
-    return sortDirection.value === 'asc' ? compareValue : -compareValue
-  })
-
-  return results
-})
-
-const paginatedResults = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return sortedResults.value.slice(start, end)
-})
-
-function nextPage() {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--
-  }
-}
-
-function goToPage(page: number) {
-  currentPage.value = page
-}
-
-function selectResult(result: SearchResult, event: MouseEvent) {
+function selectResult(result: SearchResult) {
   emit('resultSelected', result)
 }
-
-function getShapeForWeight(weight?: number): string {
-  if (!weight) return 'circle'
-  if (weight < 2) return 'circle'
-  if (weight < 3) return 'triangle'
-  if (weight < 4) return 'diamond'
-  return 'star'
-}
-
-function getColorForRating(rating?: number): string {
-  if (!rating) return 'var(--rating-1)'
-  if (rating < 5.1) return 'var(--rating-1)'
-  if (rating < 5.6) return 'var(--rating-2)'
-  if (rating < 5.9) return 'var(--rating-3)'
-  if (rating < 6.2) return 'var(--rating-4)'
-  if (rating < 6.4) return 'var(--rating-5)'
-  if (rating < 6.7) return 'var(--rating-6)'
-  if (rating < 6.9) return 'var(--rating-7)'
-  if (rating < 7.2) return 'var(--rating-8)'
-  if (rating < 7.6) return 'var(--rating-9)'
-  return 'var(--rating-10)'
-}
-
-// Reset pagination when results change
-function handleSearch(...args: Parameters<typeof search>) {
-  currentPage.value = 1
-  search(...args)
-}
-
-function toggleSortDirection() {
-  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-}
-
-function setSortBy(criteria: 'name' | 'year' | 'rating' | 'complexity' | 'numRatings') {
-  if (sortBy.value === criteria) {
-    toggleSortDirection()
-  } else {
-    sortBy.value = criteria
-    sortDirection.value = 'asc'
-  }
-  currentPage.value = 1
-}
-
-// Tag selection functions
-onMounted(async () => {
-  tagMappings.value = await fetchTagMappings()
-})
-
-function toggleTag(tagKey: string) {
-  const index = selectedTags.value.indexOf(tagKey)
-  if (index > -1) {
-    selectedTags.value.splice(index, 1)
-  } else {
-    selectedTags.value.push(tagKey)
-  }
-}
-
-function removeTag(tagKey: string) {
-  const index = selectedTags.value.indexOf(tagKey)
-  if (index > -1) {
-    selectedTags.value.splice(index, 1)
-  }
-}
-
-function parseTagKey(tagKey: string): { type: 'category' | 'mechanic' | 'family'; id: string } | null {
-  const parts = tagKey.split('-')
-  if (parts.length < 2) return null
-  const type = parts[0] as 'category' | 'mechanic' | 'family'
-  const id = parts.slice(1).join('-') // Handle IDs that might contain dashes
-  return { type, id }
-}
-
-function getTagDisplayName(tagKey: string): string {
-  const parsed = parseTagKey(tagKey)
-  if (!parsed) return tagKey
-
-  const { type, id } = parsed
-  if (type === 'category') {
-    const tag = tagMappings.value.categories.find((t) => t.id === id)
-    return tag ? tag.name : id
-  } else if (type === 'mechanic') {
-    const tag = tagMappings.value.mechanics.find((t) => t.id === id)
-    return tag ? tag.name : id
-  } else if (type === 'family') {
-    const tag = tagMappings.value.families.find((t) => t.id === id)
-    return tag ? tag.name : id
-  }
-  return tagKey
-}
-
-function getTagVariant(tagKey: string): 'primary' | 'accent' | 'success' {
-  const parsed = parseTagKey(tagKey)
-  if (!parsed) return 'success'
-
-  if (parsed.type === 'category') return 'primary'
-  if (parsed.type === 'mechanic') return 'accent'
-  return 'success'
-}
-
-function getTagType(tagId: string): 'category' | 'mechanic' | 'family' | null {
-  if (tagMappings.value.categories.some((t) => t.id === tagId)) return 'category'
-  if (tagMappings.value.mechanics.some((t) => t.id === tagId)) return 'mechanic'
-  if (tagMappings.value.families.some((t) => t.id === tagId)) return 'family'
-  return null
-}
-
-function getTagTypeLabel(type: 'category' | 'mechanic' | 'family'): string {
-  const labels = {
-    category: 'Category',
-    mechanic: 'Mechanic',
-    family: 'Family',
-  }
-  return labels[type]
-}
-
-function openTagDropdown() {
-  showTagDropdown.value = true
-  tagSearchQuery.value = ''
-}
-
-function closeTagDropdown() {
-  showTagDropdown.value = false
-  tagSearchQuery.value = ''
-}
-
-interface TagWithType extends TagMapping {
-  type: 'category' | 'mechanic' | 'family'
-}
-
-const filteredTags = computed(() => {
-  // Combine all tags with their types
-  const allTags: TagWithType[] = [
-    ...tagMappings.value.categories.map((tag) => ({ ...tag, type: 'category' as const })),
-    ...tagMappings.value.mechanics.map((tag) => ({ ...tag, type: 'mechanic' as const })),
-    ...tagMappings.value.families.map((tag) => ({ ...tag, type: 'family' as const })),
-  ]
-
-  // Sort by type first (category, mechanic, family), then alphabetically within each type
-  const typeOrder = { category: 1, mechanic: 2, family: 3 }
-  const sortedTags = allTags.sort((a, b) => {
-    const typeComparison = typeOrder[a.type] - typeOrder[b.type]
-    if (typeComparison !== 0) return typeComparison
-    return a.name.localeCompare(b.name)
-  })
-
-  // Filter by search query if present
-  if (!tagSearchQuery.value) {
-    return sortedTags
-  }
-
-  const query = tagSearchQuery.value.toLowerCase()
-  return sortedTags.filter((tag) => tag.name.toLowerCase().includes(query))
-})
 </script>
 
 <template>
@@ -452,8 +255,8 @@ const filteredTags = computed(() => {
               :key="tagId"
               :variant="getTagVariant(tagId)"
               size="sm"
-              @click="removeTag(tagId)"
               class="tag-chip-removable"
+              @click="removeTag(tagId)"
             >
               {{ getTagDisplayName(tagId) }}
               <span class="tag-remove">×</span>
@@ -536,23 +339,23 @@ const filteredTags = computed(() => {
             <div class="sort-controls">
               <label class="sort-label">Sort by:</label>
               <div class="sort-buttons">
-                <button :class="['sort-button', { active: sortBy === 'name' }]" @click="setSortBy('name')" type="button">
+                <button :class="['sort-button', { active: sortBy === 'name' }]" type="button" @click="setSortBy('name')">
                   Name
                   <span v-if="sortBy === 'name'" class="sort-arrow">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </button>
-                <button :class="['sort-button', { active: sortBy === 'year' }]" @click="setSortBy('year')" type="button">
+                <button :class="['sort-button', { active: sortBy === 'year' }]" type="button" @click="setSortBy('year')">
                   Year
                   <span v-if="sortBy === 'year'" class="sort-arrow">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </button>
-                <button :class="['sort-button', { active: sortBy === 'rating' }]" @click="setSortBy('rating')" type="button">
+                <button :class="['sort-button', { active: sortBy === 'rating' }]" type="button" @click="setSortBy('rating')">
                   Rating
                   <span v-if="sortBy === 'rating'" class="sort-arrow">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </button>
-                <button :class="['sort-button', { active: sortBy === 'complexity' }]" @click="setSortBy('complexity')" type="button">
+                <button :class="['sort-button', { active: sortBy === 'complexity' }]" type="button" @click="setSortBy('complexity')">
                   Complexity
                   <span v-if="sortBy === 'complexity'" class="sort-arrow">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </button>
-                <button :class="['sort-button', { active: sortBy === 'numRatings' }]" @click="setSortBy('numRatings')" type="button">
+                <button :class="['sort-button', { active: sortBy === 'numRatings' }]" type="button" @click="setSortBy('numRatings')">
                   # Ratings
                   <span v-if="sortBy === 'numRatings'" class="sort-arrow">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </button>
@@ -563,7 +366,7 @@ const filteredTags = computed(() => {
           <ul class="results-list">
             <li v-for="result in paginatedResults" :key="result.id" class="result-item">
               <BaseCard elevation="sm" interactive>
-                <a href="#" class="result-link" @click.prevent="selectResult(result, $event)">
+                <a href="#" class="result-link" @click.prevent="selectResult(result)">
                   {{ result.text }}
                   <span class="result-meta">
                     <span v-if="result.year && result.year !== '0'" class="result-year">({{ result.year }})</span>

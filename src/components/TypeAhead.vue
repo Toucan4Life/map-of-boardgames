@@ -101,7 +101,7 @@
       role="listbox"
       :aria-label="`${suggestions.length} games found`"
     >
-      <li v-for="(s, i) in suggestions" :key="i" role="option" :id="`suggestion-${i}`" :aria-selected="s.selected">
+      <li v-for="(s, i) in suggestions" :id="`suggestion-${i}`" :key="i" role="option" :aria-selected="s.selected">
         <a class="typeahead__suggestion" :class="{ 'typeahead__suggestion--selected': s.selected }" href="#" @click.prevent="selectSuggestion(s)">
           {{ `${s.text} (${s.year})` }}
         </a>

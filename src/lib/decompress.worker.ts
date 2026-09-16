@@ -1,4 +1,6 @@
-import pako from 'pako'
+import * as pako from 'pako'
+import type { Node, Link } from 'ngraph.graph'
+import type { BoardGameNodeData, BoardGameLinkData } from './fetchAndProcessGraph'
 
 self.onmessage = async (e: MessageEvent) => {
   const { data, id } = e.data
@@ -12,24 +14,24 @@ self.onmessage = async (e: MessageEvent) => {
     // Progress: Parsing
     self.postMessage({ id, type: 'progress', status: 'parsing' })
     const fromDot = await import('ngraph.fromdot')
-    const graph = fromDot.default(text)
+    const graph = fromDot.default<BoardGameNodeData, BoardGameLinkData>(text)
 
     // Progress: Serializing
     self.postMessage({ id, type: 'progress', status: 'serializing' })
-    const nodes: any[] = []
-    const links: any[] = []
+    const nodes: { id: number; data: BoardGameNodeData }[] = []
+    const links: { fromId: number; toId: number; data: BoardGameLinkData }[] = []
 
-    graph.forEachNode((node: any) => {
+    graph.forEachNode((node: Node<BoardGameNodeData>) => {
       nodes.push({
-        id: node.id,
+        id: node.id as number,
         data: node.data
       })
     })
 
-    graph.forEachLink((link: any) => {
+    graph.forEachLink((link: Link<BoardGameLinkData>) => {
       links.push({
-        fromId: link.fromId,
-        toId: link.toId,
+        fromId: link.fromId as number,
+        toId: link.toId as number,
         data: link.data
       })
     })

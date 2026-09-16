@@ -1,22 +1,8 @@
 import type { Repositories } from './FocusViewModel'
 
-export interface chatMessage {
-  id: string
-  isEdited: boolean
-  role: string
-  content: string
-}
+/** View model backing the "largest games in this region" side panel. */
 export default class GroupViewModel {
-  loading: boolean
-  error: string
-  chat: chatMessage[]
-  largest: Repositories[]
-  constructor() {
-    this.largest = []
-    this.chat = []
-    this.error = ''
-    this.loading = false
-  }
+  largest: Repositories[] = []
 
   setLargest(currentLargest: Repositories[]): void {
     this.largest = currentLargest

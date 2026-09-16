@@ -1,22 +1,24 @@
-import type { Graph, Link, Node, NodeId } from 'ngraph.graph'
+import type { Graph } from 'ngraph.graph'
 import { fetchAndProcessGraph } from './fetchAndProcessGraph'
 import type { BoardGameNodeData, BoardGameLinkData } from './fetchAndProcessGraph'
-const graphsCache = new Map()
-const pendingRequests = new Map()
 
+export type GameGraph = Graph<BoardGameNodeData, BoardGameLinkData>
+
+const graphsCache = new Map<number, GameGraph>()
+const pendingRequests = new Map<number, Promise<GameGraph>>()
+
+/** Downloads a single group's graph, caching the result and deduping concurrent in-flight requests for the same group. */
 export default async function downloadGroupGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
   processingCallback?: (status: 'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing') => void,
-): Promise<Graph<BoardGameNodeData, BoardGameLinkData>> {
-  if (graphsCache.has(groupId)) {
-    return graphsCache.get(groupId)
-  }
+): Promise<GameGraph> {
+  const cached = graphsCache.get(groupId)
+  if (cached) return cached
 
   // Prevent duplicate network requests by returning the in-flight promise
-  if (pendingRequests.has(groupId)) {
-    return pendingRequests.get(groupId)
-  }
+  const pending = pendingRequests.get(groupId)
+  if (pending) return pending
 
   const promise = fetchAndProcessGraph(groupId, progressCallback, processingCallback)
   pendingRequests.set(groupId, promise)
@@ -29,186 +31,4 @@ export default async function downloadGroupGraph(
     // Always clean up to prevent memory leaks, even on errors
     pendingRequests.delete(groupId)
   }
-}
-
-// Helper function to format bytes
-function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return '0 Bytes'
-
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)).toString() + ' ' + sizes[i]
-}
-
-export async function buildLocalNeighborsGraphForGroup(
-  groupId: number,
-  repositoryName: NodeId,
-  depth: number,
-  logCallback?: (message: string) => void,
-) {
-  const createGraph = await import('ngraph.graph')
-  const localGraph: Graph<BoardGameNodeData, BoardGameLinkData> = createGraph.default()
-
-  if (logCallback) logCallback(`Downloading network data for group ${groupId.toString()}...`)
-
-  const startTime = performance.now()
-
-  // Create a download progress tracker
-  const downloadProgressCallback = (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => {
-    if (!logCallback) return
-
-    const bytesReceived = progress.bytesReceived || 0
-    const totalBytes = progress.totalBytes
-
-    if (totalBytes) {
-      const percentComplete = Math.round((bytesReceived / totalBytes) * 100)
-      logCallback(`Downloading ${progress.fileName}: ${formatBytes(bytesReceived)} of ${formatBytes(totalBytes)} (${percentComplete.toString()}%)`)
-    } else {
-      logCallback(`Downloading ${progress.fileName}: ${formatBytes(bytesReceived)} received`)
-    }
-  }
-
-  // Create a processing status tracker
-  const processingStatusCallback = (status: 'downloading' | 'decompressing' | 'parsing' | 'serializing' | 'reconstructing') => {
-    if (!logCallback) return
-
-    const statusMessages = {
-      downloading: 'Downloading...',
-      decompressing: 'Decompressing data...',
-      parsing: 'Parsing graph structure...',
-      serializing: 'Preparing data...',
-      reconstructing: 'Building graph...'
-    }
-    logCallback(statusMessages[status])
-  }
-
-  // Fetch the initial group's graph with progress tracking
-  let rootGraph: Graph<BoardGameNodeData, BoardGameLinkData> | undefined
-  try {
-    rootGraph = await downloadGroupGraph(groupId, downloadProgressCallback, processingStatusCallback)
-    if (!rootGraph) {
-      if (logCallback) logCallback(`Error: Failed to load graph for group ${groupId.toString()}`)
-      return
-    }
-    if (logCallback) {
-      logCallback(`Graph loaded: ${rootGraph.getNodesCount().toString()} nodes, ${rootGraph.getLinksCount().toString()} links`)
-    }
-  } catch (error: unknown) {
-    if (logCallback) logCallback(`Error downloading group data: ${(error as Error).message}`)
-    return
-  }
-
-  const downloadTime = Math.round(performance.now() - startTime)
-  if (logCallback) logCallback(`Download complete in ${downloadTime.toString()}ms. Building network graph...`)
-
-  // Track visited nodes to avoid duplicates
-  const visited = new Set()
-  // Queue for BFS traversal with node id, source group, and current depth
-  const queue: { nodeId: NodeId; groupId: number; currentDepth: number }[] = []
-
-  // Get the starting node
-  const startNode = rootGraph.getNode(repositoryName)
-  if (!startNode) {
-    if (logCallback) logCallback(`Error: Repository "${repositoryName.toString()}" not found in group ${groupId.toString()}`)
-    return
-  }
-
-  if (logCallback) logCallback(`Root node "${repositoryName.toString()}" found. Starting graph exploration...`)
-
-  // Add starting node to local graph and queue
-  localGraph.addNode(startNode.id, { ...startNode.data })
-  queue.push({ nodeId: startNode.id, groupId, currentDepth: 0 })
-  visited.add(startNode.id)
-
-  // Stats tracking
-  let processedNodes = 0
-  let totalLinks = 0
-  const externalGroups = new Set()
-
-  // BFS traversal up to specified depth
-  while (queue.length > 0) {
-    const item = queue.shift()
-    if (!item) continue
-    const { nodeId, groupId: currentGroupId, currentDepth } = item
-
-    if (currentDepth >= depth) continue
-
-    processedNodes++
-
-    // Get the graph for the current group
-    let currentGraph
-    if (currentGroupId !== groupId) {
-      if (logCallback) {
-        logCallback(`Loading external group: ${currentGroupId.toString()} (external group)`)
-      }
-      currentGraph = await downloadGroupGraph(currentGroupId, downloadProgressCallback, processingStatusCallback)
-      if (!currentGraph) {
-        if (logCallback) {
-          logCallback(`Warning: Failed to load external group ${currentGroupId.toString()}. Skipping its neighbors.`)
-        }
-        continue
-      }
-      externalGroups.add(currentGroupId)
-    } else {
-      currentGraph = rootGraph
-    }
-
-    let linksAdded = 0
-
-    // Collect all neighbor links for the current node
-    const neighborLinks: { neighborNode: Node<BoardGameNodeData>; link: Link }[] = []
-    currentGraph.forEachLinkedNode(
-      nodeId,
-      (neighborNode: Node<BoardGameNodeData>, link: Link) => {
-        neighborLinks.push({ neighborNode, link })
-      },
-      false,
-    )
-
-    // Sort neighbor links by link weight descending and take the top 25
-    neighborLinks.sort((a, b) => b.link.data.weight - a.link.data.weight)
-    const topNeighborLinks = neighborLinks.slice(0, 25)
-
-    // Process only the top 25 neighbor links
-    for (const { neighborNode, link } of topNeighborLinks) {
-      // Add the edge to the local graph
-      if (!localGraph.hasLink(link.fromId, link.toId) && !localGraph.hasLink(link.toId, link.fromId)) {
-        localGraph.addLink(link.fromId, link.toId, { ...link.data })
-        linksAdded++
-        totalLinks++
-      }
-
-      // Skip already visited nodes
-      if (visited.has(neighborNode.id)) continue
-
-      // Add the neighbor node to the local graph
-      localGraph.addNode(neighborNode.id, { ...neighborNode.data })
-      visited.add(neighborNode.id)
-
-      // Add neighbor to queue with its group and incremented depth
-      const neighborGroupId = neighborNode.data.c
-      queue.push({
-        nodeId: neighborNode.id,
-        groupId: neighborGroupId,
-        currentDepth: currentDepth + 1,
-      })
-    }
-
-    if (logCallback && (processedNodes % 10 === 0 || linksAdded > 20)) {
-      logCallback(
-        `Processed ${processedNodes.toString()} nodes, discovered ${visited.size.toString()} nodes, ${totalLinks.toString()} connections. Queue size: ${queue.length.toString()}`,
-      )
-    }
-  }
-
-  if (logCallback) {
-    const externalGroupText = externalGroups.size > 0 ? `, including ${externalGroups.size.toString()} external groups` : ''
-    logCallback(`Graph construction complete. Total: ${visited.size.toString()} nodes, ${totalLinks.toString()} connections${externalGroupText}.`)
-  }
-
-  return localGraph
 }

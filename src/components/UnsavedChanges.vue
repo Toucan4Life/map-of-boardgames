@@ -4,7 +4,7 @@ const emit = defineEmits(['close'])
 const copiedTooltipVisible = ref(false)
 
 const props = defineProps<{
-  geojson: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined
+  geojson: GeoJSON.FeatureCollection<GeoJSON.Point> | undefined
 }>()
 
 function onClose() {

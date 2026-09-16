@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { getGameInfo, type GameDetail } from '@/lib/bggClient'
-import { computed, ref, watchEffect } from 'vue'
-import BaseCard from './base/BaseCard.vue'
+import { getGameInfo } from '@/lib/bggClient'
+import { computed } from 'vue'
+import { useAsyncData } from '@/composables/useAsyncData'
 import BaseChip from './base/BaseChip.vue'
 import BaseButton from './base/BaseButton.vue'
 
@@ -10,10 +10,8 @@ interface Repo {
   id: number
 }
 
-const gameDetail = ref<GameDetail>()
-const isLoading = ref(true)
-const hasError = ref(false)
 const props = defineProps<Repo>()
+const { data: gameDetail, isLoading, hasError, retry: retryFetch } = useAsyncData(() => getGameInfo(props.id.toString()))
 
 const emit = defineEmits<{ listConnections: [] }>()
 const repoLink = computed(() => {
@@ -42,50 +40,6 @@ const ratingColor = computed(() => {
   if (rating < 7.6) return 'var(--rating-9)'
   return 'var(--rating-10)'
 })
-
-watchEffect(() => {
-  isLoading.value = true
-  hasError.value = false
-
-  getGameInfo(props.id.toString())
-    .then((resp) => {
-      if (resp) {
-        gameDetail.value = resp
-        hasError.value = false
-      } else {
-        hasError.value = true
-      }
-    })
-    .catch((error: unknown) => {
-      console.error('Error fetching game info:', error)
-      hasError.value = true
-    })
-    .finally(() => {
-      isLoading.value = false
-    })
-})
-
-function retryFetch(): void {
-  isLoading.value = true
-  hasError.value = false
-
-  getGameInfo(props.id.toString())
-    .then((resp) => {
-      if (resp) {
-        gameDetail.value = resp
-        hasError.value = false
-      } else {
-        hasError.value = true
-      }
-    })
-    .catch((error: unknown) => {
-      console.error('Error fetching game info:', error)
-      hasError.value = true
-    })
-    .finally(() => {
-      isLoading.value = false
-    })
-}
 
 function listConnections(): void {
   emit('listConnections')
@@ -149,22 +103,22 @@ function listConnections(): void {
       <div class="gameplay-grid">
         <div class="gameplay-stat">
           <div class="stat-content">
-            <div class="stat-value" v-if="gameDetail?.minPlayers != gameDetail?.maxPlayers">
+            <div v-if="gameDetail?.minPlayers != gameDetail?.maxPlayers" class="stat-value">
               {{ gameDetail?.minPlayers }}-{{ gameDetail?.maxPlayers }}
             </div>
-            <div class="stat-value" v-else>{{ gameDetail?.minPlayers }}</div>
+            <div v-else class="stat-value">{{ gameDetail?.minPlayers }}</div>
             <div class="stat-label">Players</div>
-            <div class="stat-meta" v-if="gameDetail?.recommendedPlayers">Rec: {{ gameDetail?.recommendedPlayers }}</div>
-            <div class="stat-meta" v-if="gameDetail?.bestPlayers">Best: {{ gameDetail?.bestPlayers }}</div>
+            <div v-if="gameDetail?.recommendedPlayers" class="stat-meta">Rec: {{ gameDetail?.recommendedPlayers }}</div>
+            <div v-if="gameDetail?.bestPlayers" class="stat-meta">Best: {{ gameDetail?.bestPlayers }}</div>
           </div>
         </div>
 
         <div class="gameplay-stat">
           <div class="stat-content">
-            <div class="stat-value" v-if="gameDetail?.minPlayTime != gameDetail?.maxPlayTime">
+            <div v-if="gameDetail?.minPlayTime != gameDetail?.maxPlayTime" class="stat-value">
               {{ gameDetail?.minPlayTime }}-{{ gameDetail?.maxPlayTime }}
             </div>
-            <div class="stat-value" v-else>{{ gameDetail?.minPlayTime }}</div>
+            <div v-else class="stat-value">{{ gameDetail?.minPlayTime }}</div>
             <div class="stat-label">Minutes</div>
           </div>
         </div>
@@ -173,7 +127,7 @@ function listConnections(): void {
           <div class="stat-content">
             <div class="stat-value">{{ gameDetail?.minAge }}+</div>
             <div class="stat-label">Age</div>
-            <div class="stat-meta" v-if="gameDetail?.recommendedAge">Rec: {{ gameDetail?.recommendedAge }}+</div>
+            <div v-if="gameDetail?.recommendedAge" class="stat-meta">Rec: {{ gameDetail?.recommendedAge }}+</div>
           </div>
         </div>
 
@@ -187,7 +141,7 @@ function listConnections(): void {
 
       <!-- Actions -->
       <div class="actions">
-        <BaseButton variant="secondary" size="md" fullWidth @click="listConnections()"> List connections </BaseButton>
+        <BaseButton variant="secondary" size="md" full-width @click="listConnections()"> List connections </BaseButton>
       </div>
 
       <!-- Game Details Section -->

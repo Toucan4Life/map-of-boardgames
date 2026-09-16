@@ -15,7 +15,7 @@ function getDecompressWorker(): Worker {
 async function decompressAndParseInWorker(
   data: Uint8Array,
   onProgress?: (status: 'decompressing' | 'parsing' | 'serializing') => void
-): Promise<{ nodes: any[], links: any[] }> {
+): Promise<{ nodes: RawGraphNode[], links: RawGraphLink[] }> {
   const worker = getDecompressWorker()
   const id = workerId++
 
@@ -59,6 +59,17 @@ export type BoardGameLinkData = {
   s: string | undefined
 }
 
+interface RawGraphNode {
+  id: number
+  data: BoardGameNodeData
+}
+
+interface RawGraphLink {
+  fromId: number
+  toId: number
+  data: BoardGameLinkData
+}
+
 export async function fetchAndProcessGraph(
   groupId: number,
   progressCallback?: (progress: { fileName: string; bytesReceived: number; totalBytes: number }) => void,
@@ -68,68 +79,37 @@ export async function fetchAndProcessGraph(
   const fileName = `${groupId.toString()}.gzip`
   const url = `${config.compressedGraphEndpoint}/${fileName}`
 
-  let compressedData: Uint8Array
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
+  }
+  if (!response.body) {
+    throw new Error(`Response body is null`)
+  }
 
-  if (progressCallback) {
-    // Fetch with progress tracking
-    const response = await fetch(url)
+  const totalBytes = parseInt(response.headers.get('content-length') ?? '', 10) || 0
+  const reader = response.body.getReader()
+  let bytesReceived = 0
+  const chunks: Uint8Array[] = []
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
+  let done = false
+  while (!done) {
+    const result = await reader.read()
+    done = result.done
+
+    if (!done && result.value) {
+      chunks.push(result.value)
+      bytesReceived += result.value.length
+      progressCallback?.({ fileName, bytesReceived, totalBytes })
     }
+  }
 
-    // Get content length if available
-    const contentLength = response.headers.get('content-length')
-    const totalBytes = contentLength !== null ? parseInt(contentLength, 10) : undefined
-
-    // Create a reader from the response body
-    if (!response.body) {
-      throw new Error(`Response body is null`)
-    }
-    const reader = response.body.getReader()
-    let bytesReceived = 0
-    const chunks: Uint8Array[] = []
-
-    let done = false
-    while (!done) {
-      const result = await reader.read()
-      done = result.done
-
-      if (!done) {
-        const value = result.value
-        if (value) {
-          chunks.push(value)
-          bytesReceived += value.length
-        }
-
-        progressCallback({
-          fileName,
-          bytesReceived,
-          totalBytes: totalBytes ?? 0,
-        })
-      }
-    }
-
-    // Combine all chunks into a single array
-    const chunksAll = new Uint8Array(bytesReceived)
-    let position = 0
-    for (const chunk of chunks) {
-      chunksAll.set(chunk, position)
-      position += chunk.length
-    }
-
-    compressedData = chunksAll
-  } else {
-    // Standard fetch without progress
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch graph for group ${groupId.toString()}: ${response.status.toString()} ${response.statusText}`)
-    }
-
-    // Get the compressed data as ArrayBuffer
-    const compressedBuffer = await response.arrayBuffer()
-    compressedData = new Uint8Array(compressedBuffer)
+  // Combine all chunks into a single array
+  const compressedData = new Uint8Array(bytesReceived)
+  let position = 0
+  for (const chunk of chunks) {
+    compressedData.set(chunk, position)
+    position += chunk.length
   }
 
   // Decompress and parse in Web Worker (non-blocking)

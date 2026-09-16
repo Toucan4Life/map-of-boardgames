@@ -15,7 +15,7 @@ const emit = defineEmits<{
  * Create a unique key for each node based on its ID and parent path
  */
 function getNodeKey(nodeId: string | undefined, parentPath = ''): string {
-  return `${parentPath}_${nodeId !== undefined ? nodeId.toString() : ''}`
+  return `${parentPath}_${nodeId ?? ''}`
 }
 
 const expandedNodes = ref<Set<string>>(new Set())

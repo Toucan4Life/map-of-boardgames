@@ -20,7 +20,7 @@ let keyHandler: ((e: KeyboardEvent) => void) | null = null
 function submit(e: Event) {
   if (!popup) return
   e.preventDefault()
-  const value = (popup.getElement().querySelector('input') as HTMLInputElement)?.value
+  const value = (popup.getElement().querySelector('input') as HTMLInputElement).value
   props.onSave(value, popup.getLngLat())
   close()
 }
@@ -37,7 +37,8 @@ onMounted(() => {
   // Create container for Vue template
   const container = document.createElement('div')
   container.className = 'label-marker'
-  container.appendChild(document.querySelector<HTMLTemplateElement>('#vue-marker-template')!.content.cloneNode(true))
+  const template = document.querySelector<HTMLTemplateElement>('#vue-marker-template')
+  if (template) container.appendChild(template.content.cloneNode(true))
 
   // Wire up DOM inside container
   const form = container.querySelector('form')
@@ -95,6 +96,7 @@ onUnmounted(() => {
 
 <template>
   <!-- template cloned into DOM container -->
+  <!-- eslint-disable-next-line vue/no-lone-template -- native HTML <template> used for DOM cloning, not a Vue block -->
   <template id="vue-marker-template">
     <form class="mini-label">
       <input type="text" placeholder="Label" />

@@ -58,7 +58,7 @@ export async function getGameInfo(thingId: string): Promise<GameDetail | undefin
     const res = await fetch(`${rawBGGUrl}/xmlapi2/thing?id=${thingId}&stats=1`)
 
     if (!res.ok) {
-      console.warn(`BGG API returned ${res.status} for game ${thingId}`)
+      console.warn(`BGG API returned ${String(res.status)} for game ${thingId}`)
       return undefined
     }
 

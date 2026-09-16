@@ -1,11 +1,12 @@
-import maplibregl, { GeoJSONSource, type AddLayerObject, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
+import { GeoJSONSource, type AddLayerObject, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
 import config from './config'
 import getColorTheme from './getColorTheme'
-import { type Layout } from 'ngraph.forcelayout'
 import type { Graph, NodeId } from 'ngraph.graph'
-import createLayout from 'ngraph.forcelayout'
 import type { BoardGameLinkData, BoardGameNodeData } from './fetchAndProcessGraph.js'
 import type { SearchResult } from './createFuzzySearcher.js'
+import { ICON_IMAGE_BY_COMPLEXITY, ICON_COLOR_BY_RATING, GRAPH_EDGES_PAINT, getLineColorForWeight, linesToGeoJSON, emptyFeatureCollection } from './mapStyleExpressions'
+import { ForceLayoutEngine } from './forceLayoutEngine'
 const currentColorTheme = getColorTheme()
 interface LinkLine {
   from: [number, number]
@@ -88,18 +89,17 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   map.touchZoomRotate.disableRotation()
 
   // Track state
-  let layout: Layout<Graph<BoardGameNodeData, BoardGameLinkData>> | undefined = undefined
   const graph = subgraphInfo.graph
   let isDisposed = false
-  let layoutSteps = 400
-  let layoutAnimationFrame: number | undefined = undefined
   let lastSelectedNode: number | undefined = undefined
-  const nodesGeoJSON = {
-    type: 'FeatureCollection',
-    features: [],
-  } as GeoJSON.FeatureCollection<GeoJSON.Point>
+  const nodesGeoJSON = emptyFeatureCollection() as GeoJSON.FeatureCollection<GeoJSON.Point>
   let linksLayer: AddLayerObject | null = null
-  let firstTimeLayout = true
+
+  const layoutEngine = new ForceLayoutEngine(graph, {
+    onStep: updateNodesOnMap,
+    onSettled: () => { selectNode(subgraphInfo.nodeId, true); },
+    onStatusChange: subgraphInfo.onLayoutStatusChange,
+  })
 
   // Set up maplibre sources and layers once map is loaded
   map.on('load', () => {
@@ -112,17 +112,11 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     // Add selected nodes source (for highlighted nodes)
     map.addSource('selected-nodes', {
       type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [],
-      },
+      data: emptyFeatureCollection(),
     })
     map.addSource('graph-edges-source', {
       type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [],
-      },
+      data: emptyFeatureCollection(),
     })
     const iconNames = ['circle', 'diamond', 'triangle', 'star']
 
@@ -142,16 +136,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       type: 'symbol',
       source: 'nodes',
       layout: {
-        'icon-image': [
-          'case',
-          ['>=', ['to-number', ['get', 'complexity']], 4],
-          'star-icon',
-          ['>=', ['to-number', ['get', 'complexity']], 3],
-          'diamond-icon',
-          ['>=', ['to-number', ['get', 'complexity']], 2],
-          'triangle-icon',
-          'circle-icon',
-        ],
+        'icon-image': ICON_IMAGE_BY_COMPLEXITY,
         'icon-size': [
           'interpolate',
           ['linear'],
@@ -165,28 +150,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         'icon-allow-overlap': true,
       },
       paint: {
-        'icon-color': [
-          'case',
-          ['>=', ['to-number', ['get', 'ratings']], 7.6],
-          '#034e7b', // rating 10 - Excellent
-          ['>=', ['to-number', ['get', 'ratings']], 7.2],
-          '#0570b0', // rating 9
-          ['>=', ['to-number', ['get', 'ratings']], 6.9],
-          '#3690c0', // rating 8 - Good
-          ['>=', ['to-number', ['get', 'ratings']], 6.7],
-          '#74a9cf', // rating 7
-          ['>=', ['to-number', ['get', 'ratings']], 6.4],
-          '#a6bddb', // rating 6
-          ['>=', ['to-number', ['get', 'ratings']], 6.2],
-          '#d0d1e6', // rating 5 - Average
-          ['>=', ['to-number', ['get', 'ratings']], 5.9],
-          '#fef0d9', // rating 4
-          ['>=', ['to-number', ['get', 'ratings']], 5.6],
-          '#fdcc8a', // rating 3
-          ['>=', ['to-number', ['get', 'ratings']], 5.1],
-          '#fc8d59', // rating 2
-          '#d7301f', // rating 1 - Poor
-        ],
+        'icon-color': ICON_COLOR_BY_RATING,
       },
     })
 
@@ -200,16 +164,6 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 12, 23, 24],
       },
     })
-
-    // // Add highlighted nodes layer (selected node and its neighbors)
-    // map.addLayer({
-    //   id: 'selected-nodes-layer',
-    //   type: 'circle',
-    //   source: 'selected-nodes',
-    //   paint: {
-    //     'circle-color': ['get', 'color'],
-    //   },
-    // })
 
     // Add regular labels layer
     map.addLayer({
@@ -260,16 +214,12 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       id: 'graph-edges',
       type: 'line',
       source: 'graph-edges-source',
-      paint: {
-        'line-color': ['get', 'color'],
-        'line-width': 2, // 2 pixels wide
-        'line-opacity': 0.4,
-      },
+      paint: GRAPH_EDGES_PAINT,
     }
     map.addLayer(linksLayer, 'nodes')
 
     // Set up click listener for node selection
-    map.on('click', 'nodes-touch-target', (e) => handleNodeClick(e, subgraphInfo.onMapClicked))
+    map.on('click', 'nodes-touch-target', (e) => { handleNodeClick(e, subgraphInfo.onMapClicked); })
 
     // Also set up hover effects for better feedback
     map.on('mouseenter', 'nodes-touch-target', () => {
@@ -290,27 +240,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       disposeViewer()
     },
     stopLayout() {
-      layoutSteps = 0
-
+      layoutEngine.stop()
       subgraphInfo.onLayoutStatusChange(false)
     },
     resumeLayout() {
-      layoutSteps = 400
-      ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData({
-        type: 'FeatureCollection',
-        features: [],
-      })
-      ;(map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData({
-        type: 'FeatureCollection',
-        features: [],
-      })
-      if (!isDisposed && layout) {
-        subgraphInfo.onLayoutStatusChange(true)
-
-        if (!layoutAnimationFrame) {
-          layoutAnimationFrame = requestAnimationFrame(runLayout)
-        }
-      }
+      void (map.getSource('nodes') as maplibregl.GeoJSONSource).setData(emptyFeatureCollection())
+      void (map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData(emptyFeatureCollection())
+      layoutEngine.resume()
     },
     handleCurrentProjectChange(projectName: number) {
       handleCurrentProjectChange(projectName)
@@ -320,72 +256,18 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     },
   }
 
-  // Initialize force-directed layout
+  // Initialize force-directed layout and select the root node
   function initializeLayout() {
-    // Dynamically import ngraph.forcelayout
-
     if (isDisposed) return
 
-    layout = createLayout(graph, {
-      timeStep: 0.5,
-      springLength: 10,
-      springCoefficient: 0.8,
-      gravity: -12,
-      dragCoefficient: 0.9,
-    })
-
-    // Pin the root node to improve stability
-    const rootNode = graph.getNode(subgraphInfo.nodeId)
-    if (rootNode) {
-      layout.pinNode(rootNode, true)
-    }
-
-    // Initialize node positions
-    layout.step()
-
-    // Update the map with initial node positions
-    updateNodesOnMap()
-
-    // Start the layout animation
-
-    layoutAnimationFrame = requestAnimationFrame(runLayout)
-    // Select root node initially
+    layoutEngine.start(subgraphInfo.nodeId)
     selectNode(subgraphInfo.nodeId)
-  }
-
-  // Run layout steps and update the visual representation
-  function runLayout() {
-    if (isDisposed || !layout) return
-
-    const willStop = layoutSteps <= 1
-
-    if (layoutSteps > 0) {
-      layoutSteps--
-      layout.step()
-      updateNodesOnMap()
-    }
-
-    if (willStop) {
-      subgraphInfo.onLayoutStatusChange(false)
-
-      if (firstTimeLayout) {
-        firstTimeLayout = false
-        // need a timeout, because maplibre.isStyleLoaded() is not true immediately after we
-        // modify the points.
-        setTimeout(() => {
-          selectNode(subgraphInfo.nodeId, true)
-        }, 200)
-      }
-      layoutAnimationFrame = undefined
-    } else {
-      layoutAnimationFrame = requestAnimationFrame(runLayout)
-    }
   }
 
   // Helper to create a link line between two nodes
   function createLinkLine(fromId: NodeId, toId: NodeId, color: string): LinkLine | null {
-    const fromBody = layout?.getBody(fromId)
-    const toBody = layout?.getBody(toId)
+    const fromBody = layoutEngine.getBody(fromId)
+    const toBody = layoutEngine.getBody(toId)
     if (!fromBody || !toBody) return null
 
     const fromMapCoords = convertLayoutToMapCoordinates(fromBody.pos)
@@ -399,14 +281,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   }
 
   function updateNodesOnMap() {
-    if (!layout || !map.isStyleLoaded()) return
+    if (!layoutEngine.isReady() || !map.isStyleLoaded()) return
 
     // Update the GeoJSON features with current layout positions
     const features: GeoJSON.Feature<GeoJSON.Point>[] = []
-    // ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
-    //   type: 'FeatureCollection',
-    //   features: [],
-    // })
 
     // Calculate node sizes based on connections
     const nodeSizes: { [key: string]: number } = {}
@@ -418,10 +296,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     })
 
     graph.forEachNode((node) => {
-      if (!layout?.getBody(node.id)) return // Skip if node not in layout
+      const body = layoutEngine.getBody(node.id)
+      if (!body) return // Skip if node not in layout
 
-      const pos = layout.getNodePosition(node.id)
-      const mapCoords = convertLayoutToMapCoordinates(pos)
+      const mapCoords = convertLayoutToMapCoordinates(body.pos)
 
       // Add node feature with size based on connections
       features.push({
@@ -434,7 +312,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
           id: node.id,
           label: node.data.label,
           size: node.data.size,
-          originalPos: { x: pos.x, y: pos.y }, // Store original position for edge rendering
+          originalPos: { x: body.pos.x, y: body.pos.y }, // Store original position for edge rendering
           complexity: node.data.complexity || 0,
           ratings: node.data.rating || 0,
         },
@@ -448,20 +326,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     graph.forEachLink((link) => {
       // Determine if this is a first-level link (connected to selected node)
       const isSelectedLink = lastSelectedNode && (link.fromId === lastSelectedNode || link.toId === lastSelectedNode)
-      const lineColor = (() => {
-        switch (true) {
-          case link.data.weight < 0.011183:
-            return '#543005'
-          case link.data.weight < 0.046948:
-            return '#8c510a'
-          case link.data.weight < 0.080745:
-            return '#bf812d'
-          case link.data.weight < 0.142361:
-            return '#dfc27d'
-          default:
-            return '#f6e8c3'
-        }
-      })()
+      const lineColor = getLineColorForWeight(link.data.weight)
       const line = createLinkLine(link.fromId, link.toId, isSelectedLink ? '#ffffff' : lineColor)
 
       if (!line) return
@@ -478,26 +343,12 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     firstLevelLinks.forEach((line) => {
       lines.push(line)
     })
-    const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
-    lines.forEach((line) =>
-      GeoJSONLine.push({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [line.from, line.to],
-        },
-        properties: {
-          color: line.color,
-          weight: line.weight,
-        },
-      }),
-    )
     // Update the nodes source with new features
     nodesGeoJSON.features = features
-    ;(map.getSource('nodes') as maplibregl.GeoJSONSource).setData(nodesGeoJSON)
-    ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+    void (map.getSource('nodes') as maplibregl.GeoJSONSource).setData(nodesGeoJSON)
+    void (map.getSource('graph-edges-source') as GeoJSONSource).setData({
       type: 'FeatureCollection',
-      features: GeoJSONLine,
+      features: linesToGeoJSON(lines),
     })
     // Fit map to nodes if first update
     if (features.length > 0 && !lastSelectedNode) {
@@ -513,9 +364,9 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     if (!e.features || e.features.length === 0) return
 
     const nodeId = e.features[0].properties.id
-    let selectedMapCoords = selectNode(nodeId, false)
+    const selectedMapCoords = selectNode(nodeId, false)
     if (!selectedMapCoords) return
-    let searchResult = {
+    const searchResult = {
       text: graph.getNode(nodeId)?.data.label ?? '',
       lat: selectedMapCoords.lat,
       lon: selectedMapCoords.lng,
@@ -531,10 +382,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   // Helper to create a node feature for GeoJSON
   function createNodeFeature(nodeId: NodeId, properties = {}): GeoJSON.Feature<GeoJSON.Point> | null {
-    if (!layout?.getBody(nodeId)) return null
+    const body = layoutEngine.getBody(nodeId)
+    if (!body) return null
 
-    const pos = layout.getNodePosition(nodeId)
-    const mapCoords = convertLayoutToMapCoordinates(pos)
+    const mapCoords = convertLayoutToMapCoordinates(body.pos)
 
     return {
       type: 'Feature',
@@ -552,18 +403,15 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   // Select a node and update visual highlighting
   function selectNode(nodeId: number, bringToView = true) {
-    if (!map.isStyleLoaded() || !layout || nodeId === lastSelectedNode) {
+    if (!map.isStyleLoaded() || !layoutEngine.isReady() || nodeId === lastSelectedNode) {
       return
     }
 
     // Create highlighted nodes data
-    const highlightedNodes: GeoJSON.FeatureCollection<GeoJSON.Point> = {
-      type: 'FeatureCollection',
-      features: [],
-    }
+    const highlightedNodes = emptyFeatureCollection() as GeoJSON.FeatureCollection<GeoJSON.Point>
 
     // Get the selected node position
-    const selectedPos = layout.getBody(nodeId)?.pos
+    const selectedPos = layoutEngine.getBody(nodeId)?.pos
     if (!selectedPos) return // Node not in layout yet
 
     // Add the primary selected node
@@ -577,18 +425,13 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
       highlightedNodes.features.push(selectedFeature)
     }
 
-    // Update edges in the custom layer
-    // ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
-    //   type: 'FeatureCollection',
-    //   features: [],
-    // })
     const firstLevelLinks: { from: [number, number]; to: [number, number]; color: string }[] = []
 
     // Find and highlight neighbors of the selected node
     graph.forEachLinkedNode(
       nodeId,
       (linkedNode) => {
-        if (!layout?.getBody(linkedNode.id)) return
+        if (!layoutEngine.getBody(linkedNode.id)) return
 
         // Add neighbor node to highlighted features
         const neighborFeature = createNodeFeature(linkedNode.id, {
@@ -612,52 +455,25 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     const lines: LinkLine[] = []
     // Draw all other connections (non-highlighted)
     graph.forEachLink((link) => {
-      if (!layout?.getBody(link.fromId) || !layout.getBody(link.toId)) return
+      if (!layoutEngine.getBody(link.fromId) || !layoutEngine.getBody(link.toId)) return
       // Skip links connected to selected node as they're already handled
       if (link.fromId === nodeId || link.toId === nodeId) return
-      const lineColor = (() => {
-        switch (true) {
-          case link.data.weight < 0.011183:
-            return '#543005'
-          case link.data.weight < 0.046948:
-            return '#8c510a'
-          case link.data.weight < 0.080745:
-            return '#bf812d'
-          case link.data.weight < 0.142361:
-            return '#dfc27d'
-          default:
-            return '#f6e8c3'
-        }
-      })()
+      const lineColor = getLineColorForWeight(link.data.weight)
       const line = createLinkLine(link.fromId, link.toId, lineColor) // Semi-transparent for background connections
       if (line) lines.push(line)
     })
 
     // Add the selected node and neighbors to the map
-    ;(map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData(highlightedNodes)
+    void (map.getSource('selected-nodes') as maplibregl.GeoJSONSource).setData(highlightedNodes)
 
     // Update the links layer with the new lines
     firstLevelLinks.forEach((line) => {
       lines.push(line)
     })
-    const GeoJSONLine: GeoJSON.Feature<GeoJSON.LineString>[] = []
-    lines.forEach((line) =>
-      GeoJSONLine.push({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [line.from, line.to],
-        },
-        properties: {
-          color: line.color,
-          weight: line.weight,
-        },
-      }),
-    )
     // Update the nodes source with new features
-    ;(map.getSource('graph-edges-source') as GeoJSONSource).setData({
+    void (map.getSource('graph-edges-source') as GeoJSONSource).setData({
       type: 'FeatureCollection',
-      features: GeoJSONLine,
+      features: linesToGeoJSON(lines),
     })
     lastSelectedNode = nodeId
 
@@ -670,7 +486,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   // Fit the map to the bounds of the current nodes
   function fitMapToNodes() {
-    if (!layout || isDisposed) return
+    if (!layoutEngine.isReady() || isDisposed) return
 
     const bounds = calculateBounds()
     if (!bounds) return
@@ -683,7 +499,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   // Calculate the bounds for all current nodes in the viewer
   function calculateBounds(): LngLatBoundsLike | null {
-    if (!layout || isDisposed) return null
+    if (!layoutEngine.isReady() || isDisposed) return null
 
     let minLng = Infinity
     let minLat = Infinity
@@ -691,10 +507,10 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
     let maxLat = -Infinity
 
     graph.forEachNode((node) => {
-      if (!layout?.getBody(node.id)) return // Skip if node not in layout
+      const body = layoutEngine.getBody(node.id)
+      if (!body) return // Skip if node not in layout
 
-      const pos = layout.getNodePosition(node.id)
-      const mapCoords = convertLayoutToMapCoordinates(pos)
+      const mapCoords = convertLayoutToMapCoordinates(body.pos)
 
       if (mapCoords.lng < minLng) minLng = mapCoords.lng
       if (mapCoords.lat < minLat) minLat = mapCoords.lat
@@ -715,11 +531,7 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
   // Dispose the viewer and clean up resources
   function disposeViewer() {
     isDisposed = true
-
-    if (layoutAnimationFrame) {
-      cancelAnimationFrame(layoutAnimationFrame)
-      layoutAnimationFrame = undefined
-    }
+    layoutEngine.dispose()
 
     map.remove()
 
@@ -732,18 +544,18 @@ export function createMaplibreSubgraphViewer(subgraphInfo: {
 
   function handleCurrentProjectChange(projectId: number) {
     // Check if projectId exists in our graph
-    if (projectId === undefined || !layout?.getBody(projectId)) return
+    if (!layoutEngine.getBody(projectId)) return
 
     // Select the node
     selectNode(projectId)
   }
 
   function getCoordinates(nodeId: number): SearchResult | undefined {
-    if (nodeId === undefined || !layout?.getBody(nodeId)) return
+    if (!layoutEngine.getBody(nodeId)) return
     const node = graph.getNode(nodeId)
     if (node === undefined) return
     // Get the selected node position
-    const selectedPos = layout.getBody(nodeId)?.pos
+    const selectedPos = layoutEngine.getBody(nodeId)?.pos
     if (!selectedPos) return // Node not in layout yet
     const selectedMapCoords = convertLayoutToMapCoordinates(selectedPos)
     return {

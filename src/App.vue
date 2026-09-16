@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, onBeforeMount, computed, reactive, watch } from 'vue'
-import TypeAhead from './components/Type-Ahead.vue'
+import { ref, onBeforeUnmount, computed } from 'vue'
+import TypeAhead from './components/TypeAhead.vue'
 import GithubRepository from './components/GithubRepository.vue'
 import SmallPreview from './components/SmallPreview.vue'
 import About from './components/AboutComp.vue'
@@ -9,112 +9,53 @@ import UnsavedChanges from './components/UnsavedChanges.vue'
 import LargestRepositories from './components/LargestRepositories.vue'
 import FocusRepository from './components/FocusRepository.vue'
 import LegendCard from './components/LegendCard.vue'
-import GroupViewModel from './lib/GroupViewModel'
-import { FocusViewModel, type Repositories } from './lib/FocusViewModel'
-import type { SearchResult } from './lib/createFuzzySearcher'
-import type { AdvSearchResult } from './components/AdvSearch.vue'
 import MapView from './components/MapView.vue'
-import downloadGroupGraph from './lib/downloadGroupGraph'
-const SM_SCREEN_BREAKPOINT = 640
-const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
-// UI state
-const sidebarVisible = ref(false)
-const aboutVisible = ref(false)
-const advSearchVisible = ref(false)
-const advSearchResults = ref<SearchResult[]>()
-const unsavedChangesVisible = ref(false)
+import type { Repositories } from './lib/FocusViewModel'
+import type { AdvSearchResult } from './components/AdvSearch.vue'
+import type { ContextMenuState } from './composables/useOverlays'
+import type { ComponentExposed } from 'vue-component-type-helpers'
+import { useResponsiveScreen } from './composables/useResponsiveScreen'
+import { useGraphFocus } from './composables/useGraphFocus'
+import { useProjectSelection } from './composables/useProjectSelection'
+import { useOverlays } from './composables/useOverlays'
+
+// ESLint's cross-file .vue type resolution doesn't fully resolve ComponentExposed<typeof MapView>
+// here (confirmed correct via `vue-tsc`); false positive.
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+const mapViewRef = ref<ComponentExposed<typeof MapView> | null>(null)
 const hasUnsavedChanges = ref(false)
-const isSmallScreen = ref(window.innerWidth < SM_SCREEN_BREAKPOINT)
-const showAdvSearchHint = ref(!localStorage.getItem('advSearchHintDismissed'))
-let loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties> | undefined>(undefined)
-// Project state
-const defaultProjectState = {
-  current: '',
-  currentId: null as number | null,
-  smallPreviewName: '',
-}
-const project = reactive({ ...defaultProjectState })
+const loadedPlaces = ref<GeoJSON.FeatureCollection<GeoJSON.Point>>()
 
-// View models
-const currentGroup = ref<GroupViewModel>()
-const currentFocus = ref<FocusViewModel>()
-
-// Overlays
-const tooltip = ref<{ left: string; top: string; background: string; text: string }>()
-const contextMenu = ref<
-  | {
-      left: string
-      top: string
-      items: { text: string; click: () => void }[]
-    }
-  | undefined
->()
-
-// Internal state
-let lastSelected: SearchResult | undefined
-const groupCache = new Map<number, GroupViewModel>()
+const { isSmallScreen } = useResponsiveScreen()
+const { currentGroup, currentFocus, loadFocus, showLargest, closeGroupView, closeFocusView } = useGraphFocus(mapViewRef)
+const { project, lastSelected, findProject, showFullPreview, clearProjectState, clearProjectStateIfSmallScreen, closeSmallPreview, repoSelected } =
+  useProjectSelection(mapViewRef, isSmallScreen, currentFocus)
+const {
+  aboutVisible,
+  advSearchVisible,
+  advSearchResults,
+  unsavedChangesVisible,
+  showAdvSearchHint,
+  contextMenu,
+  dismissAdvSearchHint,
+  toggleAdvSearch,
+  closeAdvSearch,
+  handleContextMenuItem,
+} = useOverlays()
 
 const typeAheadVisible = computed(() => !(isSmallScreen.value && currentGroup.value && !project.current))
 
-function showFullPreview() {
-  if (!lastSelected) return
-  Object.assign(project, {
-    current: lastSelected.text,
-    currentId: lastSelected.id,
-    smallPreviewName: '',
-  })
-}
-function clearProjectState() {
-  sidebarVisible.value = false
-  Object.assign(project, defaultProjectState)
-  mapViewRef.value?.clearHighlights()
-}
-function clearProjectStateIfSmallScreen() {
-  if (isSmallScreen.value) {
-    clearProjectState()
-  }
-}
-
-function getOrCreateGroupViewModel(groupId: number) {
-  if (!groupCache.has(groupId)) groupCache.set(groupId, new GroupViewModel())
-  return groupCache.get(groupId)!
-}
-
-function findProject(repo: SearchResult) {
-  lastSelected = lastSelected?.id === repo.id ? lastSelected : repo
-  mapViewRef.value?.makeVisible(lastSelected.text, { center: [lastSelected.lon, lastSelected.lat], zoom: 10 }, lastSelected.skipAnimation)
-  if (isSmallScreen.value) {
-    Object.assign(project, {
-      currentId: lastSelected.id,
-      smallPreviewName: lastSelected.text,
-    })
-  } else {
-    Object.assign(project, { current: lastSelected.text, currentId: lastSelected.id })
-  }
-  currentFocus.value?.handleCurrentProjectChange(lastSelected.id)
-  const reposs = currentFocus.value?.getCoordinates(lastSelected.id)
-  if (reposs) {
-    repoSelectedHandler(reposs)
-  }
-}
-
 async function listCurrentConnections() {
-  if (!lastSelected) {
+  if (!lastSelected.value) {
     console.warn('No last selected repository to list connections for.')
     return
   }
   currentFocus.value?.disposeSubgraphViewer()
   contextMenu.value = undefined
   advSearchVisible.value = false
-  const groupId = lastSelected.groupId ?? (await mapViewRef.value?.getGroupIdAt(lastSelected.lat, lastSelected.lon))
+  const groupId = lastSelected.value.groupId ?? (await mapViewRef.value?.getGroupIdAt(lastSelected.value.lat, lastSelected.value.lon))
   if (groupId !== undefined) {
-    currentGroup.value = undefined
-    try {
-      const graph = await downloadGroupGraph(groupId)
-      currentFocus.value = new FocusViewModel(lastSelected.id, groupId, lastSelected.text, graph)
-    } catch (error) {
-      console.error(`Error: Failed to load graph for group ${groupId}`)
-    }
+    await loadFocus(lastSelected.value.id, groupId, lastSelected.value.text)
   }
 }
 
@@ -138,116 +79,30 @@ async function search(params: AdvSearchResult) {
   advSearchResults.value = results || []
 }
 
-const resizeHandler = () => {
-  isSmallScreen.value = window.innerWidth < SM_SCREEN_BREAKPOINT
-}
-
-function handleAdvSearchToggle() {
-  advSearchVisible.value = !advSearchVisible.value
-  // Dismiss hint when user interacts with advanced search
-  if (showAdvSearchHint.value) {
-    dismissAdvSearchHint()
-  }
-}
-
-// Keep handler references for cleanup
-const repoSelectedHandler = (repo: SearchResult) => {
-  lastSelected = repo
-  if (isSmallScreen.value) {
-    Object.assign(project, {
-      current: '',
-      currentId: repo.id,
-      smallPreviewName: repo.text,
-    })
-  } else {
-    Object.assign(project, {
-      current: repo.text,
-      currentId: repo.id,
-      smallPreviewName: '',
-    })
-  }
-}
-
-const showLargestHandler = (id: number, largest: Repositories[]) => {
-  const g = getOrCreateGroupViewModel(id)
-  g.setLargest(largest)
-  currentFocus.value = undefined
-  currentGroup.value = g
+function showLargestHandler(groupId: number, largest: Repositories[]) {
+  showLargest(groupId, largest)
   advSearchVisible.value = false
 }
 
-const focusOnRepoHandler = async (repo: number, groupId: number, label: string) => {
+async function focusOnRepoHandler(repo: number, groupId: number, label: string) {
   currentGroup.value = undefined
   advSearchVisible.value = false
-  try {
-    const graph = await downloadGroupGraph(groupId)
-    currentFocus.value = new FocusViewModel(repo, groupId, label, graph)
-  } catch (error) {
-    console.error(`Error: Failed to load graph for group ${groupId}`)
-  }
+  await loadFocus(repo, groupId, label)
 }
 
-const unsavedChangesHandler = (has: boolean) => {
+function unsavedChangesHandler(has: boolean) {
   hasUnsavedChanges.value = has
 }
 
-const closeSmallPreview = () => {
-  Object.assign(project, {
-    smallPreviewName: '',
-    currentId: 0,
-  })
+function showContextMenuHandler(menu: ContextMenuState | undefined) {
+  contextMenu.value = menu
 }
 
-onBeforeMount(() => {
-  window.addEventListener('resize', resizeHandler)
-})
-
-onBeforeUnmount(() => {
-  mapViewRef.value?.dispose()
-  window.removeEventListener('resize', resizeHandler)
-})
-
-function showContextMenuHandler(
-  m:
-    | {
-        left: string
-        top: string
-        items: {
-          text: string
-          click: () => void
-        }[]
-      }
-    | undefined,
-) {
-  contextMenu.value = m
-}
-function labelEditorLoadedHandler(ldPlaces: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties>) {
-  loadedPlaces.value = ldPlaces
+function labelEditorLoadedHandler(places: GeoJSON.FeatureCollection<GeoJSON.Point>) {
+  loadedPlaces.value = places
 }
 
-function closeGroupView() {
-  currentGroup.value = undefined
-  mapViewRef.value?.clearBorderHighlights()
-}
-
-function closeFocusView() {
-  currentFocus.value = undefined
-}
-
-function closeAdvSearch() {
-  advSearchVisible.value = false
-  advSearchResults.value = undefined
-}
-
-function handleItem(item: { text: string; click: () => void }) {
-  contextMenu.value = undefined
-  item.click()
-}
-
-function dismissAdvSearchHint() {
-  showAdvSearchHint.value = false
-  localStorage.setItem('advSearchHintDismissed', 'true')
-}
+onBeforeUnmount(() => mapViewRef.value?.dispose())
 </script>
 
 <template>
@@ -271,7 +126,7 @@ function dismissAdvSearchHint() {
       aria-label="Interactive map of board games"
       @focus-on-repo="focusOnRepoHandler"
       @show-context-menu="showContextMenuHandler"
-      @repo-selected="repoSelectedHandler"
+      @repo-selected="repoSelected"
       @show-largest-in-group="showLargestHandler"
       @label-editor-loaded="labelEditorLoadedHandler"
       @unsaved-changes-detected="unsavedChangesHandler"
@@ -324,7 +179,7 @@ function dismissAdvSearchHint() {
       @selected="findProject"
       @close="closeFocusView"
       @cleared="clearProjectStateIfSmallScreen"
-      @repoSelected="repoSelectedHandler"
+      @repo-selected="repoSelected"
     />
 
     <!-- Full repository view -->
@@ -344,7 +199,7 @@ function dismissAdvSearchHint() {
         :show-clear-button="project.current ? 'true' : 'false'"
         :query="project.current"
         @menu-clicked="aboutVisible = true"
-        @show-advanced-search="handleAdvSearchToggle"
+        @show-advanced-search="toggleAdvSearch"
         @selected="findProject"
         @before-clear="clearProjectState"
         @cleared="clearProjectState"
@@ -362,7 +217,7 @@ function dismissAdvSearchHint() {
             <strong>New to the map?</strong> Use <strong>Advanced Search</strong> to filter games by rating, complexity, player count, and more!
           </span>
         </div>
-        <button class="hint-close" @click="dismissAdvSearchHint" aria-label="Dismiss hint">
+        <button class="hint-close" aria-label="Dismiss hint" @click="dismissAdvSearchHint">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
@@ -383,21 +238,16 @@ function dismissAdvSearchHint() {
       />
     </transition>
 
-    <!-- Tooltip -->
-    <div v-if="tooltip" class="tooltip" :style="{ left: tooltip.left, top: tooltip.top, background: tooltip.background }">
-      {{ tooltip.text }}
-    </div>
-
     <!-- Context menu -->
     <div v-if="contextMenu" class="context-menu" :style="{ left: contextMenu.left, top: contextMenu.top }">
-      <a v-for="(item, key) in contextMenu.items" :key="key" href="#" @click.prevent="handleItem(item)">
+      <a v-for="(item, key) in contextMenu.items" :key="key" href="#" @click.prevent="handleContextMenuItem(item)">
         {{ item.text }}
       </a>
     </div>
 
     <!-- Slide-in overlays -->
     <transition name="slide-top">
-      <unsaved-changes :geojson="loadedPlaces" v-if="unsavedChangesVisible" class="changes-window" @close="unsavedChangesVisible = false" />
+      <unsaved-changes v-if="unsavedChangesVisible" :geojson="loadedPlaces" class="changes-window" @close="unsavedChangesVisible = false" />
     </transition>
     <about v-model:is-open="aboutVisible" @close="aboutVisible = false" />
     <advSearch
@@ -603,23 +453,8 @@ function dismissAdvSearchHint() {
 }
 
 /* ==========================================
-   TOOLTIP & CONTEXT MENU
+   CONTEXT MENU
    ========================================== */
-.tooltip {
-  position: absolute;
-  background: var(--color-background-soft);
-  border: 1px solid var(--color-border);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-popover);
-  pointer-events: none;
-  white-space: nowrap;
-  transform: translate(-50%, calc(-100% - 12px));
-}
-
 .context-menu {
   position: absolute;
   background: var(--color-background-elevated);

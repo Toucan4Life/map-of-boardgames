@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import maplibregl, { GeoJSONSource, LngLat, Map as MapLibreMap, MapMouseEvent, type LngLatLike, type MapGeoJSONFeature } from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
+import { GeoJSONSource, LngLat, Map as MapLibreMap, type MapGeoJSONFeature } from 'maplibre-gl'
 import { BoardGameMap, type SearchParameters } from '@/lib/createMap'
 import type { SearchResult } from '@/lib/createFuzzySearcher'
 import type { Repositories } from '@/lib/FocusViewModel'
@@ -41,7 +42,7 @@ const emit = defineEmits<{
   ): void
   (e: 'repoSelected', repoSelected: SearchResult): void
   (e: 'showLargestInGroup', bggId: number, array: Repositories[]): void
-  (e: 'labelEditorLoaded', loadedPlaces: GeoJSON.FeatureCollection<GeoJSON.Point, GeoJSON.GeoJsonProperties>): void
+  (e: 'labelEditorLoaded', loadedPlaces: GeoJSON.FeatureCollection<GeoJSON.Point>): void
   (e: 'unsaved-changes-detected', hasUnsavedChanges: boolean): void
 }>()
 
@@ -71,7 +72,7 @@ async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapG
 
     boardGameMap.drawBackgroundEdges(label, feat, graph)
   } catch (ex) {
-    console.error(`Error: Failed to load graph for group ${groupId}`, ex)
+    console.error(`Error: Failed to load graph for group ${String(groupId)}`, ex)
   } finally {
     isLoadingGraph.value = false
   }
@@ -79,10 +80,12 @@ async function fetchAndDrawGroupGraph(groupId: number, label: string, feat: MapG
 function makeVisible(repository: string, location: { center: [number, number]; zoom: number }, disableAnimation?: boolean): void {
   const moveMethod = disableAnimation ? 'jumpTo' : 'flyTo'
   boardGameMap.map[moveMethod](location)
-  boardGameMap.map.once('moveend', async () => {
-    const feat = boardGameMap.getBackgroundNearPoint(location.center)
-    if (!feat.id) return
-    await fetchAndDrawGroupGraph(+feat.id, repository, feat)
+  void boardGameMap.map.once('moveend', () => {
+    void (async () => {
+      const feat = boardGameMap.getBackgroundNearPoint(location.center)
+      if (!feat?.id) return
+      await fetchAndDrawGroupGraph(+feat.id, repository, feat)
+    })()
   })
 }
 function clearHighlights(): void {
@@ -100,27 +103,29 @@ onMounted(() => {
   boardGameMap = new BoardGameMap(mapContainer.value)
   map = boardGameMap.map
 
-  map.on('load', async () => {
-    try {
-      await boardGameMap.LoadMap()
-      const placeSource = map.getSource('place') as GeoJSONSource
-      places = (await placeSource.getData()) as GeoJSON.FeatureCollection<GeoJSON.Point>
+  map.on('load', () => {
+    void (async () => {
+      try {
+        await boardGameMap.LoadMap()
+        const placeSource = map.getSource('place') as GeoJSONSource
+        places = (await placeSource.getData()) as GeoJSON.FeatureCollection<GeoJSON.Point>
 
-      const localPlaces = JSON.parse(localStorage.getItem('places') ?? '[]')
-      const labelsResult = getPlaceLabels(places.features, localPlaces)
-      places.features = labelsResult.merged
-      if (labelsResult.isChanged) emit('unsaved-changes-detected', true)
+        const localPlaces = JSON.parse(localStorage.getItem('places') ?? '[]')
+        const labelsResult = getPlaceLabels(places.features, localPlaces)
+        places.features = labelsResult.merged
+        if (labelsResult.isChanged) emit('unsaved-changes-detected', true)
 
-      emit('labelEditorLoaded', places)
-      placeSource.setData(places)
-    } catch (error) {
-      console.error('Error loading map:', error)
-    }
+        emit('labelEditorLoaded', places)
+        void placeSource.setData(places)
+      } catch (error) {
+        console.error('Error loading map:', error)
+      }
+    })()
   })
 
   map.on('contextmenu', (e) => {
     const bg = boardGameMap.getBackgroundNearPoint(e.point)
-    if (bg.id == null) return
+    if (bg?.id == null) return
     const groupId = +bg.id
 
     const items: { text: string; click: () => void }[] = [
@@ -138,16 +143,16 @@ onMounted(() => {
     const labelFeature = map.queryRenderedFeatures(e.point, { layers: ['place-country-1'] })[0]
     items.push({
       text: 'Set label',
-      click: () => setLabel(e.lngLat, labelFeature?.properties),
+      click: () => { setLabel(e.lngLat, labelFeature.properties); },
     })
 
     const nearestCity = boardGameMap.findNearestCity(e.point)
     const cityLabel = nearestCity?.properties.label
     if (nearestCity && cityLabel) {
       items.push({
-        text: `List connections of ${cityLabel}`,
+        text: `List connections of ${String(cityLabel)}`,
         click: () => {
-          focusMapOnRepo(nearestCity, e.point, cityLabel)
+          void focusMapOnRepo(nearestCity, e.point, cityLabel)
           emit('focusOnRepo', nearestCity.properties.id, groupId, cityLabel)
         },
       })
@@ -155,8 +160,8 @@ onMounted(() => {
 
     emit('showContextMenu', {
       items,
-      left: `${e.point.x}px`,
-      top: `${e.point.y}px`,
+      left: `${String(e.point.x)}px`,
+      top: `${String(e.point.y)}px`,
     })
   })
 
@@ -165,13 +170,13 @@ onMounted(() => {
     const nearestCity = boardGameMap.findNearestCity(e.point)
     const repo = nearestCity?.properties.label
     if (!nearestCity || !repo) return
-    focusMapOnRepo(nearestCity, e.point, repo)
+    void focusMapOnRepo(nearestCity, e.point, repo)
   })
 })
 
-onBeforeUnmount(() => map?.remove())
+onBeforeUnmount(() => { map.remove(); })
 
-async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: maplibregl.Point & Object, name: string) {
+async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: maplibregl.Point & object, name: string) {
   const repo = nearestCity.properties.label
   if (!repo) return
   const [lon, lat] = (nearestCity.geometry as GeoJSON.Point).coordinates
@@ -188,7 +193,7 @@ async function focusMapOnRepo(nearestCity: maplibregl.MapGeoJSONFeature, point: 
   })
 
   const bgFeature = boardGameMap.getBackgroundNearPoint(point)
-  if (bgFeature.id == undefined) return
+  if (bgFeature?.id == undefined) return
   await fetchAndDrawGroupGraph(+bgFeature.id, name, bgFeature)
 }
 
@@ -202,7 +207,7 @@ function setLabel(lngLat: LngLat, props?: Record<string, string>): void {
 function handleSave(value: string, lnglat: LngLat) {
   places.features = editLabel(value, lnglat, places.features, oldLabelProps, map.getZoom())
   localStorage.setItem('places', JSON.stringify(places.features))
-  ;(map.getSource('place') as GeoJSONSource).setData(places)
+  void (map.getSource('place') as GeoJSONSource).setData(places)
   emit('unsaved-changes-detected', true)
   showEditor.value = false
   oldLabelProps = undefined
@@ -215,9 +220,9 @@ function handleSave(value: string, lnglat: LngLat) {
     <PopUp
       v-if="showEditor && map"
       :map="map"
-      :lngLat="editorPosition"
-      :defaultText="editorDefault"
-      :onSave="handleSave"
+      :lng-lat="editorPosition"
+      :default-text="editorDefault"
+      :on-save="handleSave"
       @closed="showEditor = false"
     />
     <div ref="mapContainer" class="w-full h-full"></div>
